@@ -1,0 +1,16 @@
+import type { PropsWithChildren } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { color, font, space } from './tokens';
+import { Wordmark } from './primitives';
+
+type Tab = 'today' | 'library' | 'paths' | 'compare' | 'discover';
+const tabs: Array<{ id: Tab; icon: string; label: string; href: string }> = [
+  { id: 'today', icon: '⌂', label: 'Today', href: '/' }, { id: 'library', icon: '▥', label: 'Library', href: '/library' },
+  { id: 'paths', icon: '⌘', label: 'Paths', href: '/paths' }, { id: 'compare', icon: '◫', label: 'Compare', href: '/compare' }, { id: 'discover', icon: '◈', label: 'Discover', href: '/discover' },
+];
+export function AppShell({ active, title, children, logo = false, right }: PropsWithChildren<{ active: Tab; title?: string; logo?: boolean; right?: React.ReactNode }>) {
+  return <SafeAreaView style={styles.safe} edges={['top']}><View style={styles.header}>{logo ? <Wordmark small /> : <Text style={styles.headerTitle}>{title}</Text>}<View style={styles.headerRight}>{right ?? <Pressable onPress={() => router.push('/profile')} style={styles.avatar}><Text style={styles.avatarText}>M</Text></Pressable>}</View></View><View style={styles.body}>{children}</View><View style={styles.nav}>{tabs.map((tab) => <Pressable key={tab.id} onPress={() => router.replace(tab.href as never)} style={styles.tab}><Text style={[styles.tabIcon, active === tab.id && styles.active]}>{tab.icon}</Text><Text style={[styles.tabLabel, active === tab.id && styles.active]}>{tab.label}</Text></Pressable>)}</View><Pressable accessibilityLabel="Scan collection" onPress={() => router.push('/scan')} style={({ pressed }) => [styles.fab, pressed && { transform: [{ scale: 0.96 }] }]}><Text style={styles.fabIcon}>⌗</Text></Pressable></SafeAreaView>;
+}
+const styles = StyleSheet.create({ safe: { flex: 1, backgroundColor: color.bg }, header: { height: 62, paddingHorizontal: space.lg, alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' }, headerTitle: { color: color.text, fontSize: 26, fontFamily: font.display }, headerRight: { minWidth: 36, alignItems: 'flex-end' }, avatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: color.accentDeep, borderWidth: 1, borderColor: color.accent, alignItems: 'center', justifyContent: 'center' }, avatarText: { color: color.text, fontFamily: font.displayMedium }, body: { flex: 1 }, nav: { height: 70, backgroundColor: color.surface, borderTopColor: color.border, borderTopWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingHorizontal: 8 }, tab: { alignItems: 'center', gap: 2, width: 54 }, tabIcon: { color: color.faint, fontSize: 19 }, tabLabel: { color: color.faint, fontFamily: font.bodyMedium, fontSize: 10 }, active: { color: color.accent }, fab: { position: 'absolute', alignSelf: 'center', bottom: 43, width: 58, height: 58, borderRadius: 29, backgroundColor: color.accent, borderWidth: 5, borderColor: color.bg, alignItems: 'center', justifyContent: 'center', shadowColor: color.accent, shadowOpacity: 0.5, shadowRadius: 12, elevation: 10 }, fabIcon: { color: color.text, fontSize: 27, fontFamily: font.bodySemibold } });

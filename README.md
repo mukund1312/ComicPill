@@ -2,9 +2,10 @@
 
 A personal decision system for comics: what to read tonight, and what's worth
 owning. See `docs/frontend-blueprint.md` for the full UI/UX spec (and
-`docs/mockups/`) — this README documents the **backend this UI is built
-against**: the data model, the taste/recommendation/purchase engines, and the
-hooks a screen calls to get real data.
+`docs/mockups/`) and `docs/PERFORMANCE.md` for the concrete "fast, quick,
+crisp" budget and rules — this README documents the **backend this UI is
+built against**: the data model, the taste/recommendation/purchase engines,
+and the hooks a screen calls to get real data.
 
 ## Status
 
@@ -17,7 +18,7 @@ this pass; the app is local-only (one implicit user, one SQLite database).
 ```
 npm install
 npx expo start        # scan the QR with Expo Go on your phone
-npm test               # engine unit tests (vitest, ~48 tests)
+npm test               # engine unit tests (vitest, ~50 tests)
 npx tsc --noEmit        # typecheck
 npx expo-doctor         # verify Expo config/deps
 ```
@@ -161,7 +162,7 @@ always be **one more event type**, handled in `applySignal`
 npm test
 ```
 
-48 tests across 4 files. The one worth reading first is
+50 tests across 5 files. The one worth reading first is
 `src/lib/engines/__tests__/twoWeeks.spec.ts` — it replays the taste-engine
 blueprint's own worked example (Dark Victory → ... → Fantastic Four: Solve
 Everything) end to end through the real engines, and is the acceptance test
@@ -169,9 +170,12 @@ for "does the loop actually work." Its comments explain a few places where
 the blueprint's prose was ambiguous or (in one case, the affinity formula)
 outright wrong, and how that got resolved.
 
-`bench/score.bench.ts` doesn't exist yet — the plan's target is `pickToday`
-staying under 8ms for 500 works; worth adding once Library has real content
-at that scale.
+`src/lib/engines/__tests__/performance.spec.ts` enforces the "fast, quick,
+crisp" budget as an actual number: `pickToday` over 500 works must average
+under 8ms (currently ~0.5ms) and must scale roughly linearly, not
+quadratically. See `docs/PERFORMANCE.md` for the full budget and the rules
+that matter more right now (mainly: use `FlashList`, not `ScrollView`, for
+any list of comics).
 
 ## What's NOT built yet (by design, or because it's a later milestone)
 
