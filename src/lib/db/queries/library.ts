@@ -1,27 +1,38 @@
 import { eq } from 'drizzle-orm';
 import { db } from '../client';
-import { works, editions, pathItems, paths, userLibrary, storyEdges } from '../schema';
+import { works, editions, editionWorks, pathItems, paths, userLibrary, storyEdges } from '../schema';
 import { toScorableWork, toStoryEdge, type WorkContext } from '../map';
 import type { ScorableWork } from '../../types/engine-io';
 import type { Own, ReadStatus } from '../../types/domain';
 
-/** All works joined with their edition, library entry, and owning path's bucket
- *  key — the raw material every other query builds on. One pass, no N+1. */
+/** All works joined with every edition that collects them (via edition_works
+ *  — an omnibus can list several works, which is why this is a join, not a
+ *  direct foreign key), the library entry, and the owning path's bucket key.
+ *  One pass, no N+1. */
 export function loadAllWorkContexts(): WorkContext[] {
   const allWorks = db.select().from(works).all();
   const allEditions = db.select().from(editions).all();
+  const allEditionWorks = db.select().from(editionWorks).all();
   const allLibrary = db.select().from(userLibrary).all();
   const allPathItems = db.select().from(pathItems).all();
   const allPaths = db.select().from(paths).all();
 
-  const editionByWork = new Map(allEditions.map((e) => [e.workId, e]));
+  const editionById = new Map(allEditions.map((e) => [e.id, e]));
+  const editionsByWork = new Map<string, (typeof allEditions)>();
+  for (const ew of allEditionWorks) {
+    const edition = editionById.get(ew.editionId);
+    if (!edition) continue;
+    const list = editionsByWork.get(ew.workId) ?? [];
+    list.push(edition);
+    editionsByWork.set(ew.workId, list);
+  }
   const libraryByWork = new Map(allLibrary.map((l) => [l.workId, l]));
   const pathKeyById = new Map(allPaths.map((p) => [p.id, p.pathKey]));
   const bucketByWork = new Map(allPathItems.map((pi) => [pi.workId, pathKeyById.get(pi.pathId) ?? 'other']));
 
   return allWorks.map((work) => ({
     work,
-    edition: editionByWork.get(work.id) ?? null,
+    editions: editionsByWork.get(work.id) ?? [],
     library: libraryByWork.get(work.id) ?? null,
     bucket: bucketByWork.get(work.id) ?? 'other',
   }));

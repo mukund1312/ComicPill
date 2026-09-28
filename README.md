@@ -61,6 +61,7 @@ a screen (app/**/*.tsx)
 | `useToday()` | `src/features/today/useToday.ts` | `continueCard`, `switchCard`, `exploreCard` (each `{workId, title, bucket, own, reasons}` or `null`), `lead`, `mood`/`setMood`, `ownedOnly`/`setOwnedOnly`, `notTonight(workId)`, `refresh()` |
 | `useCheckIn(workId, recentFinished)` | `src/features/checkin/useCheckIn.ts` | `cards` (≤4, from `pickCheckInCards`), `currentCard`, `appetitePreset`/`appetiteLine` (pre-set thumb + one-liner), `answerRating(1-5)`, `answerDropped()`, `answerChip(kind, value)`, `answerCalibration(dim, answer)`, `answerAppetite(answer)`, `skip()` |
 | `useLibrary()` | `src/features/library/useLibrary.ts` | `items: LibraryItem[]` (title, bucket, own, status, rating, keeper, formatVerdict), `setOwnership`, `setStatus`, `refresh()` |
+| `useComicDetail(workId, contextLevel?)` | `src/features/library/useComicDetail.ts` | `detail: ComicDetail \| null` — summary, **all** editions of the work (for the format/price comparison), position in its path with `previousInPath`/`nextInPath`, `related` works from the story graph, `issues` (empty until real issue data is imported — see the data model section), `refresh()` |
 
 None of these exist yet for Paths, Compare, or Discover — the engines they'd
 call (`engines/graph`, `engines/purchase`, `engines/recommend/deck.ts`) are
@@ -95,11 +96,31 @@ Local-only SQLite for this pass (`src/lib/db/schema.ts`, bootstrapped by
 `src/lib/db/client.ts`'s `initDatabase()`, called once from `app/_layout.tsx`).
 No Supabase/auth/sync yet — that's the next milestone. Tables:
 
-- `works` / `editions` — the catalog. One `work` per story (e.g. *Batman: The
-  Long Halloween*), with its 8-slider `fingerprint` (tone, violence, scale,
+- `series` / `issues` / `issue_creators` — the bibliographic layer. A `series`
+  is one periodical run (a title relaunched with a new #1 is a *different*
+  series row, not the same one continuing). An `issue` is one periodical
+  chapter; `sortPosition` (not the display `issueNumber`) is what orders them
+  correctly, since annuals and specials don't sort as plain numbers.
+  **Schema is complete; rows are empty for the seed catalog** — populating
+  real issue-level data (which issues a given collected edition actually
+  contains) needs a real bibliographic source rather than guessed numbers;
+  Grand Comics Database's bulk dump (CC BY-SA, commercial use permitted with
+  attribution) is the intended import path, not something to hand-type.
+- `works` — one `work` per STORY as a reading unit (e.g. *Batman: The Long
+  Halloween*), with its 8-slider `fingerprint` (tone, violence, scale,
   complexity, mystery, pace, artForward, commitment, each 0–1), genres,
-  creators, characters. `editions` hold the physical/digital format + price.
-  **Global and shared** — not per-user.
+  creators, characters. **Global and shared** — not per-user. `work_issues`
+  says exactly which issues make up a work, in order (empty for now, same
+  reason as above).
+- `editions` / `edition_works` / `edition_issues` — the commerce layer: the
+  physical/digital PRODUCTS of a work. `printing` is a real enum
+  (`single_issue`, `trade_paperback`, `hardcover`, `deluxe`, `omnibus`,
+  `absolute`, `compact`, `digital`) — the actual distinction the "which one
+  should I buy" comparison and Compare's purchase labels turn on. An edition
+  is scoped to either issues (`edition_issues`, a single-issue purchase) or
+  works (`edition_works`) — **never a direct `work_id` foreign key**, because
+  an omnibus or "complete collection" can legitimately span *multiple*
+  works, and a single foreign key can't represent that.
 - `story_edges` — the reading-order graph (`direct_sequel`, `required_context`,
   `optional_context`, `same_run`, `same_event`, `alternate_universe`,
   `similar_tone`), each `confirmed` or not.
@@ -132,6 +153,35 @@ starts empty — they build it by scanning/adding books, exactly like the
 onboarding flow in the frontend blueprint describes. Do not wire
 `DEV_LIBRARY_ENTRIES` into a real signup path; that was a bug caught and fixed
 before it shipped (see the plan doc's "Bug caught before it shipped" note).
+
+### Cover images
+
+`scripts/fetch-covers.py` (+ `fetch-covers-retry.py` for a second pass on
+transient network failures) fetches official cover thumbnails for the seed
+catalog from **Open Library's public covers API** — the sanctioned,
+third-party-display use of that API, the same mechanism Goodreads/Libby use,
+never a redrawn or generated image. They're bundled as local assets
+(`assets/covers/<workId>.jpg`) rather than fetched at runtime, so covers
+render instantly with zero network dependency (see `docs/PERFORMANCE.md`).
+
+- `src/ui/coverAssets.ts` is **generated**, not hand-written — Metro needs
+  static, bundle-time-known `require()` paths, so this file maps a `workId`
+  to its bundled asset. Re-run the fetch script after catalog changes.
+- `ComicCover` (`src/ui/comic.tsx`) takes an optional `workId`: when
+  `COVER_ASSETS[workId]` exists it renders via `expo-image`
+  (`cachePolicy="memory-disk"`); otherwise it falls back to the tinted
+  placeholder, which is a deliberate, graceful state — not an error — since
+  plenty of works (mocks, unmatched scan results) never get a real cover.
+- `docs/cover-sources.json` records what was matched and where each cover
+  came from, for the Sources & Transparency screen the blueprint calls for.
+- Currently 42/65 seed books have a bundled cover (Open Library's title-only
+  search doesn't confidently match every collected-edition title — some
+  omnibus/absolute/"complete collection" titles need a cleaner query or a
+  second source). **Google Books would likely recover more of the misses**
+  (better coverage of modern collected editions specifically) but needs an
+  API key with a real quota — the unauthenticated public endpoint used during
+  development returned `RESOURCE_EXHAUSTED` with a zero daily quota. Get a
+  key, add it to the script, and re-run for the rest.
 
 ### The event model
 

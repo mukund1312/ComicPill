@@ -7,9 +7,9 @@
 // someone else's shelf. DEV_LIBRARY_ENTRIES is never applied unless
 // isDevSeedUser() says so.
 import { db } from '../client';
-import { works, editions, paths, pathItems, storyEdges, userLibrary } from '../schema';
+import { works, editions, editionWorks, paths, pathItems, storyEdges, userLibrary } from '../schema';
 import {
-  CATALOG_WORKS, CATALOG_EDITIONS, CATALOG_PATHS, CATALOG_PATH_ITEMS, CATALOG_EDGES,
+  CATALOG_WORKS, CATALOG_EDITIONS, CATALOG_EDITION_WORKS, CATALOG_PATHS, CATALOG_PATH_ITEMS, CATALOG_EDGES,
   DEV_LIBRARY_ENTRIES, FINGERPRINT_PROMPT_VERSION,
 } from './catalog';
 import { newId } from '../../util/id';
@@ -36,7 +36,11 @@ export function seedCatalogIfEmpty(): void {
   ).run();
 
   db.insert(editions).values(
-    CATALOG_EDITIONS.map((e) => ({ id: e.id, workId: e.workId, format: e.format, formatNote: e.formatNote })),
+    CATALOG_EDITIONS.map((e) => ({ id: e.id, format: e.format, printing: e.printing, formatNote: e.formatNote })),
+  ).run();
+
+  db.insert(editionWorks).values(
+    CATALOG_EDITION_WORKS.map((ew) => ({ editionId: ew.editionId, workId: ew.workId, position: ew.position })),
   ).run();
 
   db.insert(paths).values(

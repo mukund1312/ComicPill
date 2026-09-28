@@ -16,14 +16,30 @@ type EventRow = typeof events.$inferSelect;
 
 export interface WorkContext {
   work: WorkRow;
-  edition: EditionRow | null;
+  /** Every edition of this work (a work can have several — single issue,
+   *  TPB, hardcover, omnibus...). See pickRepresentativeEdition() for how
+   *  the engine picks one to score against; the detail page shows them all. */
+  editions: EditionRow[];
   library: LibraryRow | null;
   bucket: string; // path_key of the path this work's path_item belongs to
 }
 
+/** For scoring (O, price value, format verdict) the engine needs ONE
+ *  representative edition, not all of them: prefer whichever format the
+ *  reader actually owns, else the first one on record. */
+export function pickRepresentativeEdition(ctx: WorkContext): EditionRow | null {
+  const owned = ctx.library?.own;
+  if (owned && owned !== 'none' && owned !== 'both') {
+    const match = ctx.editions.find((e) => e.format === owned);
+    if (match) return match;
+  }
+  return ctx.editions[0] ?? null;
+}
+
 /** Build the pure ScorableWork the engines consume from the joined row data. */
 export function toScorableWork(ctx: WorkContext, requiredParentIds: string[]): ScorableWork {
-  const { work, edition, library } = ctx;
+  const { work, library } = ctx;
+  const edition = pickRepresentativeEdition(ctx);
   return {
     id: work.id,
     title: work.title,

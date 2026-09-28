@@ -3,6 +3,7 @@
 // screen layer (plain array operations) — nothing here is engine logic.
 import { useMemo, useState } from 'react';
 import { loadAllWorkContexts, upsertLibraryEntry } from '../../lib/db/queries/library';
+import { pickRepresentativeEdition } from '../../lib/db/map';
 import type { Own, ReadStatus } from '../../lib/types/domain';
 
 export interface LibraryItem {
@@ -29,7 +30,7 @@ export function useLibrary() {
       status: (ctx.library?.status ?? 'none') as ReadStatus,
       rating: ctx.library?.rating ?? null,
       keeper: ctx.work.keeperFlag,
-      formatVerdict: (ctx.edition?.format ?? 'digital') as 'physical' | 'digital',
+      formatVerdict: (pickRepresentativeEdition(ctx)?.format ?? 'digital') as 'physical' | 'digital',
       coverPath: ctx.work.coverPath,
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps

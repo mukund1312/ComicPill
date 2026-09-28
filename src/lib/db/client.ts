@@ -11,20 +11,52 @@ const sqlite = openDatabaseSync('comicpill.db');
 export const db = drizzle(sqlite, { schema });
 
 const BOOTSTRAP_SQL = `
+CREATE TABLE IF NOT EXISTS series (
+  id TEXT PRIMARY KEY, name TEXT NOT NULL, publisher TEXT, universe TEXT NOT NULL DEFAULT 'main',
+  volume_label TEXT, start_year INTEGER, end_year INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS issues (
+  id TEXT PRIMARY KEY, series_id TEXT NOT NULL, issue_number TEXT NOT NULL, sort_position REAL NOT NULL,
+  title TEXT, cover_date TEXT, on_sale_date TEXT, page_count INTEGER, cover_path TEXT, synopsis TEXT
+);
+CREATE INDEX IF NOT EXISTS issues_series_id ON issues(series_id, sort_position);
+
+CREATE TABLE IF NOT EXISTS issue_creators (
+  issue_id TEXT NOT NULL, creator_name TEXT NOT NULL, role TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS issue_creators_issue_id ON issue_creators(issue_id);
+
 CREATE TABLE IF NOT EXISTS works (
   id TEXT PRIMARY KEY, title TEXT NOT NULL, sort_title TEXT NOT NULL, match_key TEXT NOT NULL,
-  publisher TEXT, universe TEXT NOT NULL DEFAULT 'main', fingerprint TEXT,
+  publisher TEXT, universe TEXT NOT NULL DEFAULT 'main', primary_series_id TEXT, fingerprint TEXT,
   genres TEXT NOT NULL DEFAULT '[]', creators TEXT NOT NULL DEFAULT '[]', characters TEXT NOT NULL DEFAULT '[]',
   keeper_flag INTEGER NOT NULL DEFAULT 0, context_needed TEXT NOT NULL DEFAULT 'none',
   summary TEXT, cover_path TEXT, fingerprint_prompt_version INTEGER NOT NULL DEFAULT 0
 );
 CREATE UNIQUE INDEX IF NOT EXISTS works_match_key ON works(match_key);
 
-CREATE TABLE IF NOT EXISTS editions (
-  id TEXT PRIMARY KEY, work_id TEXT NOT NULL, format TEXT NOT NULL, printing TEXT,
-  isbn13 TEXT, pages INTEGER, typical_price_paise INTEGER, format_note TEXT
+CREATE TABLE IF NOT EXISTS work_issues (
+  work_id TEXT NOT NULL, issue_id TEXT NOT NULL, position REAL NOT NULL
 );
-CREATE INDEX IF NOT EXISTS editions_work_id ON editions(work_id);
+CREATE INDEX IF NOT EXISTS work_issues_work_id ON work_issues(work_id, position);
+
+CREATE TABLE IF NOT EXISTS editions (
+  id TEXT PRIMARY KEY, printing TEXT NOT NULL DEFAULT 'trade_paperback', format TEXT NOT NULL,
+  isbn13 TEXT, diamond_code TEXT, pages INTEGER, typical_price_paise INTEGER,
+  release_date TEXT, format_note TEXT
+);
+
+CREATE TABLE IF NOT EXISTS edition_works (
+  edition_id TEXT NOT NULL, work_id TEXT NOT NULL, position REAL NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS edition_works_edition_id ON edition_works(edition_id);
+CREATE INDEX IF NOT EXISTS edition_works_work_id ON edition_works(work_id);
+
+CREATE TABLE IF NOT EXISTS edition_issues (
+  edition_id TEXT NOT NULL, issue_id TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS edition_issues_edition_id ON edition_issues(edition_id);
 
 CREATE TABLE IF NOT EXISTS story_edges (
   id TEXT PRIMARY KEY, from_work TEXT NOT NULL, to_work TEXT NOT NULL, type TEXT NOT NULL,
@@ -89,7 +121,10 @@ export function initDatabase(): void {
 
 export function resetDatabase(): void {
   sqlite.execSync(`
-    DELETE FROM works; DELETE FROM editions; DELETE FROM story_edges; DELETE FROM paths;
+    DELETE FROM series; DELETE FROM issues; DELETE FROM issue_creators;
+    DELETE FROM works; DELETE FROM work_issues;
+    DELETE FROM editions; DELETE FROM edition_works; DELETE FROM edition_issues;
+    DELETE FROM story_edges; DELETE FROM paths;
     DELETE FROM path_items; DELETE FROM user_library; DELETE FROM events; DELETE FROM taste_profiles;
     DELETE FROM shown; DELETE FROM not_tonight;
   `);

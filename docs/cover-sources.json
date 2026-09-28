@@ -1,0 +1,338 @@
+{
+  "abs-superman": {
+    "title": "Absolute Superman Vol. 1",
+    "matchedTitle": "Absolute Superman, Vol. 1",
+    "openLibraryWorkKey": "/works/OL44334665W",
+    "coverId": 15138771,
+    "coverUrl": "https://covers.openlibrary.org/b/id/15138771-L.jpg",
+    "source": "Open Library"
+  },
+  "abs-wonder-woman": {
+    "title": "Absolute Wonder Woman Vol. 1",
+    "matchedTitle": "Absolute Wonder Woman, Vol. 1",
+    "openLibraryWorkKey": "/works/OL42554488W",
+    "coverId": 15108588,
+    "coverUrl": "https://covers.openlibrary.org/b/id/15108588-L.jpg",
+    "source": "Open Library"
+  },
+  "all-star": {
+    "title": "All-Star Superman",
+    "matchedTitle": "All-star Superman",
+    "openLibraryWorkKey": "/works/OL15023038W",
+    "coverId": 11956378,
+    "coverUrl": "https://covers.openlibrary.org/b/id/11956378-L.jpg",
+    "source": "Open Library"
+  },
+  "avengers-hickman": {
+    "title": "Avengers by Jonathan Hickman",
+    "matchedTitle": "Avengers By Jonathan Hickman",
+    "openLibraryWorkKey": "/works/OL25143184W",
+    "coverId": 11975078,
+    "coverUrl": "https://covers.openlibrary.org/b/id/11975078-L.jpg",
+    "source": "Open Library"
+  },
+  "boys-1": {
+    "title": "The Boys Omnibus Vol. 1",
+    "matchedTitle": "The Boys Omnibus Vol. 1 TPB",
+    "openLibraryWorkKey": "/works/OL20514921W",
+    "coverId": 9165708,
+    "coverUrl": "https://covers.openlibrary.org/b/id/9165708-L.jpg",
+    "source": "Open Library"
+  },
+  "civil-war": {
+    "title": "Civil War",
+    "matchedTitle": "Civil War on Sunday",
+    "openLibraryWorkKey": "/works/OL81769W",
+    "coverId": 424179,
+    "coverUrl": "https://covers.openlibrary.org/b/id/424179-L.jpg",
+    "source": "Open Library"
+  },
+  "coie": {
+    "title": "Crisis on Infinite Earths",
+    "matchedTitle": "Crisis on Infinite Earths",
+    "openLibraryWorkKey": "/works/OL2564992W",
+    "coverId": 749280,
+    "coverUrl": "https://covers.openlibrary.org/b/id/749280-L.jpg",
+    "source": "Open Library"
+  },
+  "dark-victory": {
+    "title": "Batman: Dark Victory",
+    "matchedTitle": "Batman : the Long Halloween : Dark Victory",
+    "openLibraryWorkKey": "/works/OL26040644W",
+    "coverId": 13450204,
+    "coverUrl": "https://covers.openlibrary.org/b/id/13450204-L.jpg",
+    "source": "Open Library"
+  },
+  "dc-one-million": {
+    "title": "DC One Million",
+    "matchedTitle": "Dc Comics One Million Omnibus",
+    "openLibraryWorkKey": "/works/OL17408575W",
+    "coverId": 7519958,
+    "coverUrl": "https://covers.openlibrary.org/b/id/7519958-L.jpg",
+    "source": "Open Library"
+  },
+  "dceased": {
+    "title": "DCeased",
+    "matchedTitle": "DCeased",
+    "openLibraryWorkKey": "/works/OL21364944W",
+    "coverId": 10847828,
+    "coverUrl": "https://covers.openlibrary.org/b/id/10847828-L.jpg",
+    "source": "Open Library"
+  },
+  "dd-bendis": {
+    "title": "Daredevil by Brian Michael Bendis",
+    "matchedTitle": "Daredevil by Brian Michael Bendis Omnibus Vol. 1",
+    "openLibraryWorkKey": "/works/OL20744856W",
+    "coverId": 11209875,
+    "coverUrl": "https://covers.openlibrary.org/b/id/11209875-L.jpg",
+    "source": "Open Library"
+  },
+  "dd-born-again": {
+    "title": "Daredevil: Born Again",
+    "matchedTitle": "David Mazzucchelli\u2019s Daredevil Born Again Artisan Edition",
+    "openLibraryWorkKey": "/works/OL22511961W",
+    "coverId": 10472713,
+    "coverUrl": "https://covers.openlibrary.org/b/id/10472713-L.jpg",
+    "source": "Open Library"
+  },
+  "dd-brubaker": {
+    "title": "Daredevil by Ed Brubaker",
+    "matchedTitle": "Daredevil by Ed Brubaker & Michael Lark Omnibus",
+    "openLibraryWorkKey": "/works/OL20210347W",
+    "coverId": 8861171,
+    "coverUrl": "https://covers.openlibrary.org/b/id/8861171-L.jpg",
+    "source": "Open Library"
+  },
+  "dd-mwf": {
+    "title": "Daredevil: The Man Without Fear",
+    "matchedTitle": "Daredevil The Man Without Fear",
+    "openLibraryWorkKey": "/works/OL17385636W",
+    "coverId": 7474185,
+    "coverUrl": "https://covers.openlibrary.org/b/id/7474185-L.jpg",
+    "source": "Open Library"
+  },
+  "dd-waid": {
+    "title": "Daredevil by Mark Waid",
+    "matchedTitle": "Daredevil by Mark Waid - Volume 4",
+    "openLibraryWorkKey": "/works/OL19347970W",
+    "coverId": 8459816,
+    "coverUrl": "https://covers.openlibrary.org/b/id/8459816-L.jpg",
+    "source": "Open Library"
+  },
+  "death-in-family": {
+    "title": "Batman: A Death in the Family",
+    "matchedTitle": "Batman a Death in the Family",
+    "openLibraryWorkKey": "/works/OL3038464W",
+    "coverId": 7249255,
+    "coverUrl": "https://covers.openlibrary.org/b/id/7249255-L.jpg",
+    "source": "Open Library"
+  },
+  "death-metal": {
+    "title": "Dark Nights: Death Metal",
+    "matchedTitle": "Dark Nights : Death Metal",
+    "openLibraryWorkKey": "/works/OL24323339W",
+    "coverId": 10842766,
+    "coverUrl": "https://covers.openlibrary.org/b/id/10842766-L.jpg",
+    "source": "Open Library"
+  },
+  "multiversity": {
+    "title": "The Multiversity",
+    "matchedTitle": "In Search of the Multiverse",
+    "openLibraryWorkKey": "/works/OL15444609W",
+    "coverId": 12853693,
+    "coverUrl": "https://covers.openlibrary.org/b/id/12853693-L.jpg",
+    "source": "Open Library"
+  },
+  "preacher-1": {
+    "title": "Preacher Book One",
+    "matchedTitle": "Preacher, Book One",
+    "openLibraryWorkKey": "/works/OL16341095W",
+    "coverId": 12579747,
+    "coverUrl": "https://covers.openlibrary.org/b/id/12579747-L.jpg",
+    "source": "Open Library"
+  },
+  "red-son": {
+    "title": "Superman: Red Son",
+    "matchedTitle": "Superman Red Son",
+    "openLibraryWorkKey": "/works/OL26353993W",
+    "coverId": 12297940,
+    "coverUrl": "https://covers.openlibrary.org/b/id/12297940-L.jpg",
+    "source": "Open Library"
+  },
+  "superman-batman": {
+    "title": "Superman/Batman",
+    "matchedTitle": "Superman, Batman",
+    "openLibraryWorkKey": "/works/OL818837W",
+    "coverId": 748994,
+    "coverUrl": "https://covers.openlibrary.org/b/id/748994-L.jpg",
+    "source": "Open Library"
+  },
+  "swamp-thing": {
+    "title": "Swamp Thing by Alan Moore",
+    "matchedTitle": "Absolute Swamp Thing by Alan Moore Vol. 3",
+    "openLibraryWorkKey": "/works/OL25912760W",
+    "coverId": 14641943,
+    "coverUrl": "https://covers.openlibrary.org/b/id/14641943-L.jpg",
+    "source": "Open Library"
+  },
+  "under-red-hood": {
+    "title": "Batman: Under the Red Hood",
+    "matchedTitle": "Batman Under the Red Hood",
+    "openLibraryWorkKey": "/works/OL19793804W",
+    "coverId": 14822258,
+    "coverUrl": "https://covers.openlibrary.org/b/id/14822258-L.jpg",
+    "source": "Open Library"
+  },
+  "watchmen": {
+    "title": "Watchmen",
+    "matchedTitle": "Watchmen",
+    "openLibraryWorkKey": "/works/OL2897798W",
+    "coverId": 7774899,
+    "coverUrl": "https://covers.openlibrary.org/b/id/7774899-L.jpg",
+    "source": "Open Library"
+  },
+  "white-knight": {
+    "title": "Batman: White Knight",
+    "matchedTitle": "Batman \u2013 curse of the white knight",
+    "openLibraryWorkKey": "/works/OL27704952W",
+    "coverId": 12697588,
+    "coverUrl": "https://covers.openlibrary.org/b/id/12697588-L.jpg",
+    "source": "Open Library"
+  },
+  "devils-reign": {
+    "title": "Devil's Reign",
+    "matchedTitle": "Devils will reign",
+    "openLibraryWorkKey": "/works/OL2902240W",
+    "coverId": 1624629,
+    "coverUrl": "https://covers.openlibrary.org/b/id/1624629-L.jpg",
+    "source": "Open Library"
+  },
+  "ff-ff": {
+    "title": "FF by Jonathan Hickman",
+    "matchedTitle": "FF by Jonathan Hickman - Volume 3",
+    "openLibraryWorkKey": "/works/OL19348005W",
+    "coverId": 8459858,
+    "coverUrl": "https://covers.openlibrary.org/b/id/8459858-L.jpg",
+    "source": "Open Library"
+  },
+  "final-crisis": {
+    "title": "Final Crisis",
+    "matchedTitle": "Final crisis",
+    "openLibraryWorkKey": "/works/OL15023037W",
+    "coverId": 11631691,
+    "coverUrl": "https://covers.openlibrary.org/b/id/11631691-L.jpg",
+    "source": "Open Library"
+  },
+  "flashpoint": {
+    "title": "Flashpoint",
+    "matchedTitle": "Flashpoint",
+    "openLibraryWorkKey": "/works/OL19982821W",
+    "coverId": 9509634,
+    "coverUrl": "https://covers.openlibrary.org/b/id/9509634-L.jpg",
+    "source": "Open Library"
+  },
+  "hush": {
+    "title": "Batman: Hush",
+    "matchedTitle": "Absolute Batman hush",
+    "openLibraryWorkKey": "/works/OL16586709W",
+    "coverId": 749064,
+    "coverUrl": "https://covers.openlibrary.org/b/id/749064-L.jpg",
+    "source": "Open Library"
+  },
+  "infinite-crisis": {
+    "title": "Infinite Crisis",
+    "matchedTitle": "Infinite Crisis",
+    "openLibraryWorkKey": "/works/OL1831575W",
+    "coverId": 284381,
+    "coverUrl": "https://covers.openlibrary.org/b/id/284381-L.jpg",
+    "source": "Open Library"
+  },
+  "infinity": {
+    "title": "Infinity",
+    "matchedTitle": "Split infinity",
+    "openLibraryWorkKey": "/works/OL80805W",
+    "coverId": 6564851,
+    "coverUrl": "https://covers.openlibrary.org/b/id/6564851-L.jpg",
+    "source": "Open Library"
+  },
+  "jl-origin": {
+    "title": "Justice League: Origin",
+    "matchedTitle": "Justice League Volume 1 - Origin",
+    "openLibraryWorkKey": "/works/OL44700568W",
+    "coverId": 15157667,
+    "coverUrl": "https://covers.openlibrary.org/b/id/15157667-L.jpg",
+    "source": "Open Library"
+  },
+  "killing-joke": {
+    "title": "Batman: The Killing Joke",
+    "matchedTitle": "Batman Noir the Killing Joke",
+    "openLibraryWorkKey": "/works/OL21125343W",
+    "coverId": 12926724,
+    "coverUrl": "https://covers.openlibrary.org/b/id/12926724-L.jpg",
+    "source": "Open Library"
+  },
+  "kingdom-come": {
+    "title": "Kingdom Come",
+    "matchedTitle": "Kingdom Come",
+    "openLibraryWorkKey": "/works/OL1646670W",
+    "coverId": 798157,
+    "coverUrl": "https://covers.openlibrary.org/b/id/798157-L.jpg",
+    "source": "Open Library"
+  },
+  "long-halloween": {
+    "title": "Batman: The Long Halloween",
+    "matchedTitle": "Batman : the Long Halloween",
+    "openLibraryWorkKey": "/works/OL25612131W",
+    "coverId": 14681206,
+    "coverUrl": "https://covers.openlibrary.org/b/id/14681206-L.jpg",
+    "source": "Open Library"
+  },
+  "man-who-laughs": {
+    "title": "Batman: The Man Who Laughs",
+    "matchedTitle": "Batman, the man who laughs",
+    "openLibraryWorkKey": "/works/OL16603496W",
+    "coverId": 15166226,
+    "coverUrl": "https://covers.openlibrary.org/b/id/15166226-L.jpg",
+    "source": "Open Library"
+  },
+  "marvels": {
+    "title": "Marvels",
+    "matchedTitle": "George's Marvelous Medicine",
+    "openLibraryWorkKey": "/works/OL45866W",
+    "coverId": 11388220,
+    "coverUrl": "https://covers.openlibrary.org/b/id/11388220-L.jpg",
+    "source": "Open Library"
+  },
+  "metal": {
+    "title": "Dark Nights: Metal",
+    "matchedTitle": "Dark Nights : Metal",
+    "openLibraryWorkKey": "/works/OL20160279W",
+    "coverId": 8805716,
+    "coverUrl": "https://covers.openlibrary.org/b/id/8805716-L.jpg",
+    "source": "Open Library"
+  },
+  "secret-wars-2015": {
+    "title": "Secret Wars (2015)",
+    "matchedTitle": "My Secret War",
+    "openLibraryWorkKey": "/works/OL81829W",
+    "coverId": 385383,
+    "coverUrl": "https://covers.openlibrary.org/b/id/385383-L.jpg",
+    "source": "Open Library"
+  },
+  "siktc": {
+    "title": "Something Is Killing the Children Vol. 1",
+    "matchedTitle": "Something is Killing the Children, Vol. 1",
+    "openLibraryWorkKey": "/works/OL21668748W",
+    "coverId": 12705637,
+    "coverUrl": "https://covers.openlibrary.org/b/id/12705637-L.jpg",
+    "source": "Open Library"
+  },
+  "time-runs-out": {
+    "title": "Time Runs Out",
+    "matchedTitle": "Running Out of Time",
+    "openLibraryWorkKey": "/works/OL548169W",
+    "coverId": 1472071,
+    "coverUrl": "https://covers.openlibrary.org/b/id/1472071-L.jpg",
+    "source": "Open Library"
+  }
+}

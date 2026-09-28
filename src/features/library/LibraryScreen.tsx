@@ -21,7 +21,7 @@ export default function LibraryScreen() {
 }
 
 function LibraryCell({ item }: { item: LibraryItem }) {
-  return <View style={styles.gridItem}><ComicCover title={item.title} recyclingKey={item.workId} status={item.status === 'done' ? '✓' : undefined} onPress={() => router.push(`/comic/${item.workId}`)} /><Text numberOfLines={2} style={styles.gridTitle}>{item.title}</Text><Text style={[styles.gridStatus, item.status === 'reading' && { color: color.accent }]}>{item.status === 'none' ? item.own === 'none' ? 'Wishlist' : 'Unread' : item.status}</Text></View>;
+  return <View style={styles.gridItem}><ComicCover title={item.title} workId={item.workId} recyclingKey={item.workId} status={item.status === 'done' ? '✓' : undefined} onPress={() => router.push(`/comic/${item.workId}`)} /><Text numberOfLines={2} style={styles.gridTitle}>{item.title}</Text><Text style={[styles.gridStatus, item.status === 'reading' && { color: color.accent }]}>{item.status === 'none' ? item.own === 'none' ? 'Wishlist' : 'Unread' : item.status}</Text></View>;
 }
 
 const styles = StyleSheet.create({

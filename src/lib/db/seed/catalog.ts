@@ -11,7 +11,7 @@
 //     from the prototype) and must NEVER be applied to a new user's library.
 //     It is gated behind isDevSeedUser() at the call site.
 import raw from './catalog.data.json';
-import type { Dim, Own, ReadStatus, Universe } from '../../types/domain';
+import type { Dim, Own, PrintingType, ReadStatus, Universe } from '../../types/domain';
 
 interface RawRow {
   id: string; title: string; lane: string; laneName: string; universe: string;
@@ -30,8 +30,9 @@ export interface CatalogWork {
   keeperFlag: boolean; summary: string | null;
 }
 export interface CatalogEdition {
-  id: string; workId: string; format: 'physical' | 'digital'; formatNote: string | null;
+  id: string; format: 'physical' | 'digital'; printing: PrintingType; formatNote: string | null;
 }
+export interface CatalogEditionWork { editionId: string; workId: string; position: number }
 export interface CatalogPath { id: string; name: string; pathKey: string }
 export interface CatalogPathItem { pathId: string; workId: string; position: number }
 export interface CatalogEdge { fromWork: string; toWork: string; type: 'same_run'; confirmed: true }
@@ -43,6 +44,22 @@ function normalizeTitle(t: string): string {
     .replace(/^(the|a|an)\s+/, '')
     .replace(/[^a-z0-9]+/g, ' ')
     .trim();
+}
+
+// Inferred from the title itself — these words are how publishers actually
+// name these printings ("Absolute Batman", "... Omnibus", "Compact Comics"),
+// not a guess about any specific book's real bibliographic history. Digital
+// entries stay 'digital' regardless of title wording. Anything else defaults
+// to 'trade_paperback', the most common form collected editions take.
+function inferPrinting(title: string, format: 'physical' | 'digital'): PrintingType {
+  if (format === 'digital') return 'digital';
+  const t = title.toLowerCase();
+  if (t.includes('absolute')) return 'absolute';
+  if (t.includes('omnibus')) return 'omnibus';
+  if (t.includes('deluxe')) return 'deluxe';
+  if (t.includes('compact')) return 'compact';
+  if (t.includes('hardcover') || t.includes(' hc')) return 'hardcover';
+  return 'trade_paperback';
 }
 
 export const CATALOG_WORKS: CatalogWork[] = ROWS.map((r) => ({
@@ -61,9 +78,18 @@ export const CATALOG_WORKS: CatalogWork[] = ROWS.map((r) => ({
 
 export const CATALOG_EDITIONS: CatalogEdition[] = ROWS.map((r) => ({
   id: `${r.id}-ed`,
-  workId: r.id,
   format: r.format as 'physical' | 'digital',
+  printing: inferPrinting(r.title, r.format as 'physical' | 'digital'),
   formatNote: r.formatWhy || null,
+}));
+
+// One edition-to-work link per seed row (a 1:1 case — the seed data has no
+// multi-work omnibuses yet). A real omnibus spanning several works would add
+// multiple rows here, one per work it collects, in reading order.
+export const CATALOG_EDITION_WORKS: CatalogEditionWork[] = ROWS.map((r) => ({
+  editionId: `${r.id}-ed`,
+  workId: r.id,
+  position: 0,
 }));
 
 const LANE_KEYS = [...new Set(ROWS.map((r) => r.lane))];
