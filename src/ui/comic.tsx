@@ -4,16 +4,19 @@ import { PurchaseBadge } from './primitives';
 
 const coverColors = ['#5b1015', '#421619', '#182b35', '#302042', '#5b351b', '#172b26', '#402121'];
 function tint(title: string) { return coverColors[title.split('').reduce((sum, c) => sum + c.charCodeAt(0), 0) % coverColors.length]; }
-export function ComicCover({ title, size = 'grid', status, onPress }: { title: string; size?: 'tiny' | 'list' | 'grid' | 'hero'; status?: string; onPress?: () => void }) {
+
+/** A fixed 2:3 cover cell. `recyclingKey` is intentionally explicit so the
+ * future Expo Image implementation can safely recycle its image request. */
+export function ComicCover({ title, size = 'grid', status, onPress, recyclingKey }: { title: string; size?: 'tiny' | 'list' | 'grid' | 'hero'; status?: string; onPress?: () => void; recyclingKey?: string }) {
   const dims = { tiny: [44, 66], list: [58, 86], grid: [104, 156], hero: [132, 198] }[size];
-  return <Pressable accessibilityRole={onPress ? 'button' : undefined} onPress={onPress} style={({ pressed }) => [styles.cover, { width: dims[0], height: dims[1], backgroundColor: tint(title) }, pressed && { transform: [{ scale: 0.98 }] }]}>
+  return <Pressable testID={recyclingKey ? `cover-${recyclingKey}` : undefined} accessibilityRole={onPress ? 'button' : undefined} onPress={onPress} style={({ pressed }) => [styles.cover, { width: dims[0], height: dims[1], backgroundColor: tint(title) }, pressed && { transform: [{ scale: 0.98 }] }]}>
     <View style={styles.moon} /><Text numberOfLines={4} style={[styles.coverTitle, size === 'tiny' && { fontSize: 7 }]}>{title}</Text><View style={styles.coverRule} />
     {status ? <View style={styles.status}><Text style={styles.statusText}>{status}</Text></View> : null}
   </Pressable>;
 }
 
-export function ComicRow({ title, meta, status, label, onPress }: { title: string; meta?: string; status?: string; label?: 'collect' | 'buy_on_sale' | 'digital_is_fine' | 'try_digital_first' | 'skip'; onPress?: () => void }) {
-  return <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && { opacity: 0.8 }]}><ComicCover title={title} size="list" /><View style={styles.rowBody}><Text style={styles.rowTitle}>{title}</Text>{meta ? <Text style={styles.rowMeta}>{meta}</Text> : null}{label ? <PurchaseBadge label={label} /> : status ? <Text style={styles.rowStatus}>{status}</Text> : null}</View><Text style={styles.chevron}>›</Text></Pressable>;
+export function ComicRow({ title, meta, status, label, onPress, recyclingKey }: { title: string; meta?: string; status?: string; label?: 'collect' | 'buy_on_sale' | 'digital_is_fine' | 'try_digital_first' | 'skip'; onPress?: () => void; recyclingKey?: string }) {
+  return <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && { opacity: 0.8 }]}><ComicCover title={title} size="list" recyclingKey={recyclingKey ?? title} /><View style={styles.rowBody}><Text style={styles.rowTitle}>{title}</Text>{meta ? <Text style={styles.rowMeta}>{meta}</Text> : null}{label ? <PurchaseBadge label={label} /> : status ? <Text style={styles.rowStatus}>{status}</Text> : null}</View><Text style={styles.chevron}>›</Text></Pressable>;
 }
 
 const styles = StyleSheet.create({
