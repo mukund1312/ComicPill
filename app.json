@@ -1,17 +1,21 @@
 {
   "expo": {
-    "name": "comicpill",
+    "name": "ComicPill",
     "slug": "comicpill",
     "version": "1.0.0",
+    "scheme": "comicpill",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0B0C0F",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mukund.comicpill"
     },
     "android": {
+      "package": "com.mukund.comicpill",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0B0C0F",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -20,6 +24,26 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-image",
+      "expo-font",
+      "expo-status-bar",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "ComicPill uses the camera to scan your comic shelf."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "ComicPill needs access to your photos to import screenshots of your digital library."
+        }
+      ],
+      "expo-splash-screen"
+    ]
   }
 }

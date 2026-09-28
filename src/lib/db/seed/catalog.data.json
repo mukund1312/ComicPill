@@ -1,0 +1,2280 @@
+[
+ {
+  "id": "abs-batman-1",
+  "title": "Absolute Batman Vol. 1: The Zoo",
+  "lane": "elseworld",
+  "laneName": "Alternate universes",
+  "universe": "alternate",
+  "order": 10,
+  "own": "physical",
+  "status": "done",
+  "format": "physical",
+  "formatWhy": "Dragotta\u2019s art is a big part of the appeal.",
+  "note": "Your entry into the Absolute Universe.",
+  "flag": null,
+  "fp": {
+   "tone": 0.6,
+   "violence": 0.6,
+   "scale": 0.2,
+   "complexity": 0.4,
+   "mystery": 0.4,
+   "pace": 0.6,
+   "artForward": 0.75,
+   "commitment": 0.3
+  },
+  "genres": [
+   "crime",
+   "detective"
+  ],
+  "creators": [
+   "Scott Snyder",
+   "Nick Dragotta"
+  ],
+  "characters": [
+   "Batman"
+  ],
+  "keeper": true
+ },
+ {
+  "id": "abs-batman-2",
+  "title": "Absolute Batman Vol. 2: Abomination",
+  "lane": "elseworld",
+  "laneName": "Alternate universes",
+  "universe": "alternate",
+  "order": 20,
+  "own": "physical",
+  "status": "none",
+  "format": "physical",
+  "formatWhy": "Keeps your Absolute Batman shelf complete.",
+  "note": "Continue directly from Vol. 1.",
+  "flag": null,
+  "fp": {
+   "tone": 0.6,
+   "violence": 0.6,
+   "scale": 0.25,
+   "complexity": 0.4,
+   "mystery": 0.4,
+   "pace": 0.6,
+   "artForward": 0.75,
+   "commitment": 0.3
+  },
+  "genres": [
+   "crime",
+   "detective"
+  ],
+  "creators": [
+   "Scott Snyder",
+   "Nick Dragotta"
+  ],
+  "characters": [
+   "Batman"
+  ],
+  "keeper": true
+ },
+ {
+  "id": "abs-superman",
+  "title": "Absolute Superman Vol. 1",
+  "lane": "elseworld",
+  "laneName": "Alternate universes",
+  "universe": "alternate",
+  "order": 40,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Try it digitally first.",
+  "note": "Complete the core Absolute trio when you are ready.",
+  "flag": null,
+  "fp": {
+   "tone": 0.4,
+   "violence": 0.4,
+   "scale": 0.5,
+   "complexity": 0.35,
+   "mystery": 0.2,
+   "pace": 0.5,
+   "artForward": 0.65,
+   "commitment": 0.3
+  },
+  "genres": [
+   "heroic",
+   "sci-fi"
+  ],
+  "creators": [
+   "Jason Aaron"
+  ],
+  "characters": [
+   "Superman"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "abs-wonder-woman",
+  "title": "Absolute Wonder Woman Vol. 1",
+  "lane": "elseworld",
+  "laneName": "Alternate universes",
+  "universe": "alternate",
+  "order": 30,
+  "own": "digital",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Try it digitally first.",
+  "note": "Explore another corner of the Absolute Universe.",
+  "flag": null,
+  "fp": {
+   "tone": 0.55,
+   "violence": 0.5,
+   "scale": 0.4,
+   "complexity": 0.4,
+   "mystery": 0.3,
+   "pace": 0.55,
+   "artForward": 0.7,
+   "commitment": 0.3
+  },
+  "genres": [
+   "mythic",
+   "heroic"
+  ],
+  "creators": [
+   "Kelly Thompson"
+  ],
+  "characters": [
+   "Wonder Woman"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "all-star",
+  "title": "All-Star Superman",
+  "lane": "heroic",
+  "laneName": "Superman & heroic DC",
+  "universe": "main",
+  "order": 30,
+  "own": "both",
+  "status": "none",
+  "format": "physical",
+  "formatWhy": "Frank Quitely\u2019s art; an all-time keeper.",
+  "note": "Mythic, self-contained Superman.",
+  "flag": null,
+  "fp": {
+   "tone": 0.25,
+   "violence": 0.2,
+   "scale": 0.55,
+   "complexity": 0.4,
+   "mystery": 0.15,
+   "pace": 0.4,
+   "artForward": 0.85,
+   "commitment": 0.3
+  },
+  "genres": [
+   "heroic",
+   "mythic"
+  ],
+  "creators": [
+   "Grant Morrison",
+   "Frank Quitely"
+  ],
+  "characters": [
+   "Superman"
+  ],
+  "keeper": true
+ },
+ {
+  "id": "authority",
+  "title": "The Authority: Relentless",
+  "lane": "dark",
+  "laneName": "Mature, horror & deconstruction",
+  "universe": "main",
+  "order": 20,
+  "own": "physical",
+  "status": "none",
+  "format": "physical",
+  "formatWhy": "Hitch\u2019s widescreen panels suit print.",
+  "note": "Widescreen, aggressive superhero storytelling.",
+  "flag": null,
+  "fp": {
+   "tone": 0.65,
+   "violence": 0.75,
+   "scale": 0.6,
+   "complexity": 0.4,
+   "mystery": 0.15,
+   "pace": 0.75,
+   "artForward": 0.7,
+   "commitment": 0.3
+  },
+  "genres": [
+   "satire"
+  ],
+  "creators": [
+   "Bryan Hitch"
+  ],
+  "characters": [],
+  "keeper": true
+ },
+ {
+  "id": "avengers-continue",
+  "title": "Continue Avengers + New Avengers",
+  "lane": "marvelcosmic",
+  "laneName": "Marvel cosmic \u2192 Secret Wars",
+  "universe": "main",
+  "order": 70,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Long run; digital is cheaper.",
+  "note": "Keep alternating the two runs after Infinity.",
+  "flag": null,
+  "fp": {
+   "tone": 0.45,
+   "violence": 0.45,
+   "scale": 0.85,
+   "complexity": 0.65,
+   "mystery": 0.35,
+   "pace": 0.45,
+   "artForward": 0.55,
+   "commitment": 0.45
+  },
+  "genres": [
+   "cosmic"
+  ],
+  "creators": [
+   "Jonathan Hickman"
+  ],
+  "characters": [],
+  "keeper": false
+ },
+ {
+  "id": "avengers-hickman",
+  "title": "Avengers by Jonathan Hickman",
+  "lane": "marvelcosmic",
+  "laneName": "Marvel cosmic \u2192 Secret Wars",
+  "universe": "main",
+  "order": 40,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Long run; digital is cheaper.",
+  "note": "One half of the road to Secret Wars.",
+  "flag": null,
+  "fp": {
+   "tone": 0.4,
+   "violence": 0.4,
+   "scale": 0.85,
+   "complexity": 0.65,
+   "mystery": 0.3,
+   "pace": 0.45,
+   "artForward": 0.55,
+   "commitment": 0.5
+  },
+  "genres": [
+   "cosmic"
+  ],
+  "creators": [
+   "Jonathan Hickman"
+  ],
+  "characters": [],
+  "keeper": false
+ },
+ {
+  "id": "birthright",
+  "title": "Superman: Birthright",
+  "lane": "heroic",
+  "laneName": "Superman & heroic DC",
+  "universe": "main",
+  "order": 10,
+  "own": "both",
+  "status": "none",
+  "format": "physical",
+  "formatWhy": "Leinil Yu\u2019s art looks great in print.",
+  "note": "Modern Superman foundation / origin.",
+  "flag": null,
+  "fp": {
+   "tone": 0.4,
+   "violence": 0.35,
+   "scale": 0.35,
+   "complexity": 0.35,
+   "mystery": 0.2,
+   "pace": 0.4,
+   "artForward": 0.55,
+   "commitment": 0.35
+  },
+  "genres": [
+   "heroic",
+   "mythic"
+  ],
+  "creators": [
+   "Mark Waid"
+  ],
+  "characters": [
+   "Superman"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "black-mirror",
+  "title": "Batman: The Black Mirror",
+  "lane": "batman",
+  "laneName": "Batman: Gotham & crime",
+  "universe": "main",
+  "order": 80,
+  "own": "both",
+  "status": "none",
+  "format": "physical",
+  "formatWhy": "Jock\u2019s moody art suits print.",
+  "note": "Dick Grayson as Batman; detective-horror tone.",
+  "flag": null,
+  "fp": {
+   "tone": 0.7,
+   "violence": 0.6,
+   "scale": 0.2,
+   "complexity": 0.55,
+   "mystery": 0.75,
+   "pace": 0.45,
+   "artForward": 0.75,
+   "commitment": 0.4
+  },
+  "genres": [
+   "detective",
+   "mystery",
+   "horror"
+  ],
+  "creators": [
+   "Scott Snyder",
+   "Jock"
+  ],
+  "characters": [
+   "Dick Grayson",
+   "Commissioner Gordon"
+  ],
+  "keeper": true
+ },
+ {
+  "id": "boys-1",
+  "title": "The Boys Omnibus Vol. 1",
+  "lane": "dark",
+  "laneName": "Mature, horror & deconstruction",
+  "universe": "main",
+  "order": 10,
+  "own": "digital",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Try it first; it\u2019s divisive.",
+  "note": "Ultra-cynical, violent superhero deconstruction.",
+  "flag": null,
+  "fp": {
+   "tone": 0.85,
+   "violence": 0.9,
+   "scale": 0.3,
+   "complexity": 0.4,
+   "mystery": 0.3,
+   "pace": 0.65,
+   "artForward": 0.4,
+   "commitment": 0.4
+  },
+  "genres": [
+   "satire",
+   "crime"
+  ],
+  "creators": [
+   "Garth Ennis"
+  ],
+  "characters": [
+   "Hughie",
+   "Butcher"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "civil-war",
+  "title": "Civil War",
+  "lane": "marvelcosmic",
+  "laneName": "Marvel cosmic \u2192 Secret Wars",
+  "universe": "main",
+  "order": 100,
+  "own": "physical",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Fine digitally.",
+  "note": "Side quest: broad Marvel event. Read anytime after you know the core heroes.",
+  "flag": null,
+  "fp": {
+   "tone": 0.55,
+   "violence": 0.55,
+   "scale": 0.5,
+   "complexity": 0.45,
+   "mystery": 0.2,
+   "pace": 0.6,
+   "artForward": 0.55,
+   "commitment": 0.3
+  },
+  "genres": [
+   "heroic"
+  ],
+  "creators": [
+   "Mark Millar"
+  ],
+  "characters": [
+   "Captain America",
+   "Iron Man"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "coie",
+  "title": "Crisis on Infinite Earths",
+  "lane": "dccosmic",
+  "laneName": "DC gods, crises & multiverse",
+  "universe": "main",
+  "order": 30,
+  "own": "digital",
+  "status": "none",
+  "format": "physical",
+  "formatWhy": "George P\u00e9rez\u2019s dense art; a classic worth owning.",
+  "note": "The foundational DC multiverse catastrophe.",
+  "flag": null,
+  "fp": {
+   "tone": 0.55,
+   "violence": 0.55,
+   "scale": 0.95,
+   "complexity": 0.6,
+   "mystery": 0.2,
+   "pace": 0.5,
+   "artForward": 0.55,
+   "commitment": 0.5
+  },
+  "genres": [
+   "cosmic"
+  ],
+  "creators": [
+   "Marv Wolfman",
+   "George P\u00e9rez"
+  ],
+  "characters": [],
+  "keeper": true
+ },
+ {
+  "id": "cult",
+  "title": "Batman: The Cult",
+  "lane": "batman",
+  "laneName": "Batman: Gotham & crime",
+  "universe": "main",
+  "order": 100,
+  "own": "digital",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Fine digitally.",
+  "note": "Dark psychological Batman story.",
+  "flag": null,
+  "fp": {
+   "tone": 0.75,
+   "violence": 0.7,
+   "scale": 0.25,
+   "complexity": 0.5,
+   "mystery": 0.4,
+   "pace": 0.5,
+   "artForward": 0.55,
+   "commitment": 0.3
+  },
+  "genres": [
+   "horror",
+   "crime"
+  ],
+  "creators": [
+   "Jim Starlin",
+   "Bernie Wrightson"
+  ],
+  "characters": [
+   "Batman"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "dark-crisis",
+  "title": "Dark Crisis on Infinite Earths",
+  "lane": "dccosmic",
+  "laneName": "DC gods, crises & multiverse",
+  "universe": "main",
+  "order": 100,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Fine digitally.",
+  "note": "Later-generation Crisis event.",
+  "flag": null,
+  "fp": {
+   "tone": 0.5,
+   "violence": 0.55,
+   "scale": 0.8,
+   "complexity": 0.45,
+   "mystery": 0.2,
+   "pace": 0.6,
+   "artForward": 0.55,
+   "commitment": 0.3
+  },
+  "genres": [
+   "cosmic"
+  ],
+  "creators": [
+   "Joshua Williamson"
+  ],
+  "characters": [],
+  "keeper": false
+ },
+ {
+  "id": "dark-knight-returns",
+  "title": "Batman: The Dark Knight Returns",
+  "lane": "batman",
+  "laneName": "Batman: Gotham & crime",
+  "universe": "main",
+  "order": 130,
+  "own": "physical",
+  "status": "none",
+  "format": "physical",
+  "formatWhy": "A cornerstone book; worth having in print.",
+  "note": "Older Batman / dystopian future.",
+  "flag": null,
+  "fp": {
+   "tone": 0.75,
+   "violence": 0.65,
+   "scale": 0.35,
+   "complexity": 0.5,
+   "mystery": 0.25,
+   "pace": 0.55,
+   "artForward": 0.6,
+   "commitment": 0.3
+  },
+  "genres": [
+   "crime",
+   "dystopia"
+  ],
+  "creators": [
+   "Frank Miller"
+  ],
+  "characters": [
+   "Batman",
+   "Superman"
+  ],
+  "keeper": true
+ },
+ {
+  "id": "dark-victory",
+  "title": "Batman: Dark Victory",
+  "lane": "batman",
+  "laneName": "Batman: Gotham & crime",
+  "universe": "main",
+  "order": 40,
+  "own": "physical",
+  "status": "none",
+  "format": "physical",
+  "formatWhy": "Pairs with Long Halloween on the shelf.",
+  "note": "Direct sequel to The Long Halloween. Your next major Batman read.",
+  "flag": null,
+  "fp": {
+   "tone": 0.6,
+   "violence": 0.5,
+   "scale": 0.2,
+   "complexity": 0.55,
+   "mystery": 0.85,
+   "pace": 0.4,
+   "artForward": 0.65,
+   "commitment": 0.45
+  },
+  "genres": [
+   "detective",
+   "mystery",
+   "crime"
+  ],
+  "creators": [
+   "Jeph Loeb",
+   "Tim Sale"
+  ],
+  "characters": [
+   "Batman",
+   "Two-Face"
+  ],
+  "keeper": true
+ },
+ {
+  "id": "darkseid-war",
+  "title": "Justice League: Darkseid War",
+  "lane": "dccosmic",
+  "laneName": "DC gods, crises & multiverse",
+  "universe": "main",
+  "order": 20,
+  "own": "none",
+  "status": "none",
+  "format": "physical",
+  "formatWhy": "Jason Fabok\u2019s art is spectacular in print.",
+  "note": "God-level Justice League / Darkseid scale.",
+  "flag": null,
+  "fp": {
+   "tone": 0.55,
+   "violence": 0.6,
+   "scale": 0.85,
+   "complexity": 0.5,
+   "mystery": 0.2,
+   "pace": 0.6,
+   "artForward": 0.65,
+   "commitment": 0.3
+  },
+  "genres": [
+   "cosmic",
+   "mythic"
+  ],
+  "creators": [
+   "Geoff Johns"
+  ],
+  "characters": [
+   "Darkseid"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "dc-one-million",
+  "title": "DC One Million",
+  "lane": "dccosmic",
+  "laneName": "DC gods, crises & multiverse",
+  "universe": "main",
+  "order": 40,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Fine digitally.",
+  "note": "Morrison cosmic future / huge-scale DC.",
+  "flag": null,
+  "fp": {
+   "tone": 0.35,
+   "violence": 0.3,
+   "scale": 0.9,
+   "complexity": 0.55,
+   "mystery": 0.2,
+   "pace": 0.5,
+   "artForward": 0.55,
+   "commitment": 0.25
+  },
+  "genres": [
+   "cosmic",
+   "sci-fi"
+  ],
+  "creators": [
+   "Grant Morrison"
+  ],
+  "characters": [],
+  "keeper": false
+ },
+ {
+  "id": "dceased",
+  "title": "DCeased",
+  "lane": "elseworld",
+  "laneName": "Alternate universes",
+  "universe": "alternate",
+  "order": 80,
+  "own": "physical",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Fun, but not a must-own format.",
+  "note": "Alternate DC apocalypse; self-contained enough to read anytime.",
+  "flag": null,
+  "fp": {
+   "tone": 0.85,
+   "violence": 0.7,
+   "scale": 0.7,
+   "complexity": 0.35,
+   "mystery": 0.15,
+   "pace": 0.65,
+   "artForward": 0.55,
+   "commitment": 0.35
+  },
+  "genres": [
+   "horror",
+   "cosmic"
+  ],
+  "creators": [
+   "Tom Taylor"
+  ],
+  "characters": [],
+  "keeper": false
+ },
+ {
+  "id": "dd-bendis",
+  "title": "Daredevil by Brian Michael Bendis",
+  "lane": "street",
+  "laneName": "Marvel street level",
+  "universe": "main",
+  "order": 30,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Long run; digital is cheaper.",
+  "note": "Long-form crime-noir Daredevil.",
+  "flag": "later",
+  "fp": {
+   "tone": 0.65,
+   "violence": 0.5,
+   "scale": 0.15,
+   "complexity": 0.5,
+   "mystery": 0.4,
+   "pace": 0.45,
+   "artForward": 0.55,
+   "commitment": 0.5
+  },
+  "genres": [
+   "crime",
+   "street-level"
+  ],
+  "creators": [
+   "Brian Michael Bendis"
+  ],
+  "characters": [
+   "Daredevil"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "dd-born-again",
+  "title": "Daredevil: Born Again",
+  "lane": "street",
+  "laneName": "Marvel street level",
+  "universe": "main",
+  "order": 20,
+  "own": "none",
+  "status": "none",
+  "format": "physical",
+  "formatWhy": "Mazzucchelli art and a top-tier classic.",
+  "note": "Defining Frank Miller story.",
+  "flag": null,
+  "fp": {
+   "tone": 0.65,
+   "violence": 0.55,
+   "scale": 0.15,
+   "complexity": 0.5,
+   "mystery": 0.35,
+   "pace": 0.55,
+   "artForward": 0.55,
+   "commitment": 0.35
+  },
+  "genres": [
+   "crime",
+   "street-level"
+  ],
+  "creators": [
+   "Frank Miller",
+   "David Mazzucchelli"
+  ],
+  "characters": [
+   "Daredevil"
+  ],
+  "keeper": true
+ },
+ {
+  "id": "dd-brubaker",
+  "title": "Daredevil by Ed Brubaker",
+  "lane": "street",
+  "laneName": "Marvel street level",
+  "universe": "main",
+  "order": 40,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Long run; digital is cheaper.",
+  "note": "Directly follows the Bendis era.",
+  "flag": "later",
+  "fp": {
+   "tone": 0.7,
+   "violence": 0.5,
+   "scale": 0.15,
+   "complexity": 0.5,
+   "mystery": 0.35,
+   "pace": 0.4,
+   "artForward": 0.5,
+   "commitment": 0.5
+  },
+  "genres": [
+   "crime",
+   "street-level"
+  ],
+  "creators": [
+   "Ed Brubaker"
+  ],
+  "characters": [
+   "Daredevil"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "dd-mwf",
+  "title": "Daredevil: The Man Without Fear",
+  "lane": "street",
+  "laneName": "Marvel street level",
+  "universe": "main",
+  "order": 10,
+  "own": "digital",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Short origin; digital is fine.",
+  "note": "Best starting point: Matt Murdock's origin.",
+  "flag": null,
+  "fp": {
+   "tone": 0.6,
+   "violence": 0.6,
+   "scale": 0.15,
+   "complexity": 0.4,
+   "mystery": 0.3,
+   "pace": 0.5,
+   "artForward": 0.6,
+   "commitment": 0.3
+  },
+  "genres": [
+   "crime",
+   "street-level",
+   "detective"
+  ],
+  "creators": [
+   "Frank Miller"
+  ],
+  "characters": [
+   "Daredevil"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "dd-waid",
+  "title": "Daredevil by Mark Waid",
+  "lane": "street",
+  "laneName": "Marvel street level",
+  "universe": "main",
+  "order": 50,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Long run; digital is cheaper.",
+  "note": "A tonal shift, while still building Matt's story.",
+  "flag": "later",
+  "fp": {
+   "tone": 0.35,
+   "violence": 0.4,
+   "scale": 0.15,
+   "complexity": 0.35,
+   "mystery": 0.3,
+   "pace": 0.55,
+   "artForward": 0.55,
+   "commitment": 0.4
+  },
+  "genres": [
+   "crime",
+   "street-level"
+  ],
+  "creators": [
+   "Mark Waid"
+  ],
+  "characters": [
+   "Daredevil"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "dd-zdarsky-end",
+  "title": "Zdarsky Daredevil: conclusion",
+  "lane": "street",
+  "laneName": "Marvel street level",
+  "universe": "main",
+  "order": 90,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Ongoing run; read it digitally.",
+  "note": "Finish the run after Devil's Reign.",
+  "flag": null,
+  "fp": {
+   "tone": 0.6,
+   "violence": 0.5,
+   "scale": 0.2,
+   "complexity": 0.45,
+   "mystery": 0.25,
+   "pace": 0.45,
+   "artForward": 0.6,
+   "commitment": 0.35
+  },
+  "genres": [
+   "crime",
+   "street-level"
+  ],
+  "creators": [
+   "Chip Zdarsky"
+  ],
+  "characters": [
+   "Daredevil"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "dd-zdarsky-more",
+  "title": "Continue Zdarsky's Daredevil",
+  "lane": "street",
+  "laneName": "Marvel street level",
+  "universe": "main",
+  "order": 70,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Ongoing run; read it digitally.",
+  "note": "Continue before Devil's Reign.",
+  "flag": null,
+  "fp": {
+   "tone": 0.65,
+   "violence": 0.55,
+   "scale": 0.15,
+   "complexity": 0.5,
+   "mystery": 0.3,
+   "pace": 0.45,
+   "artForward": 0.6,
+   "commitment": 0.4
+  },
+  "genres": [
+   "crime",
+   "street-level"
+  ],
+  "creators": [
+   "Chip Zdarsky"
+  ],
+  "characters": [
+   "Daredevil"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "dd-zdarsky",
+  "title": "Daredevil by Chip Zdarsky Vol. 1: Know Fear",
+  "lane": "street",
+  "laneName": "Marvel street level",
+  "universe": "main",
+  "order": 60,
+  "own": "digital",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Ongoing run; read it digitally.",
+  "note": "Modern darker Daredevil run.",
+  "flag": null,
+  "fp": {
+   "tone": 0.65,
+   "violence": 0.55,
+   "scale": 0.15,
+   "complexity": 0.45,
+   "mystery": 0.3,
+   "pace": 0.45,
+   "artForward": 0.6,
+   "commitment": 0.35
+  },
+  "genres": [
+   "crime",
+   "street-level"
+  ],
+  "creators": [
+   "Chip Zdarsky"
+  ],
+  "characters": [
+   "Daredevil"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "death-in-family",
+  "title": "Batman: A Death in the Family",
+  "lane": "batman",
+  "laneName": "Batman: Gotham & crime",
+  "universe": "main",
+  "order": 60,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Background reading; digital is plenty.",
+  "note": "Optional context for Jason Todd before Under the Red Hood.",
+  "flag": "optional",
+  "fp": {
+   "tone": 0.7,
+   "violence": 0.6,
+   "scale": 0.2,
+   "complexity": 0.3,
+   "mystery": 0.3,
+   "pace": 0.55,
+   "artForward": 0.45,
+   "commitment": 0.2
+  },
+  "genres": [
+   "crime",
+   "tragedy"
+  ],
+  "creators": [
+   "Jim Starlin"
+  ],
+  "characters": [
+   "Batman",
+   "Jason Todd",
+   "Joker"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "death-metal",
+  "title": "Dark Nights: Death Metal",
+  "lane": "dccosmic",
+  "laneName": "DC gods, crises & multiverse",
+  "universe": "main",
+  "order": 90,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Fine digitally.",
+  "note": "Escalation of the Dark Multiverse saga.",
+  "flag": null,
+  "fp": {
+   "tone": 0.6,
+   "violence": 0.65,
+   "scale": 0.95,
+   "complexity": 0.5,
+   "mystery": 0.2,
+   "pace": 0.7,
+   "artForward": 0.7,
+   "commitment": 0.35
+  },
+  "genres": [
+   "cosmic",
+   "horror"
+  ],
+  "creators": [
+   "Scott Snyder"
+  ],
+  "characters": [
+   "Batman"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "death-of-family",
+  "title": "Batman: Death of the Family",
+  "lane": "batman",
+  "laneName": "Batman: Gotham & crime",
+  "universe": "main",
+  "order": 110,
+  "own": "digital",
+  "status": "done",
+  "format": "digital",
+  "formatWhy": "Part of a longer run; digital suits it.",
+  "note": "New 52 Joker horror.",
+  "flag": null,
+  "fp": {
+   "tone": 0.75,
+   "violence": 0.6,
+   "scale": 0.3,
+   "complexity": 0.4,
+   "mystery": 0.35,
+   "pace": 0.6,
+   "artForward": 0.6,
+   "commitment": 0.3
+  },
+  "genres": [
+   "horror",
+   "crime"
+  ],
+  "creators": [
+   "Scott Snyder",
+   "Greg Capullo"
+  ],
+  "characters": [
+   "Batman",
+   "Joker"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "devils-reign",
+  "title": "Devil's Reign",
+  "lane": "street",
+  "laneName": "Marvel street level",
+  "universe": "main",
+  "order": 80,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Event tie-in; digital is fine.",
+  "note": "Major street-level Marvel event.",
+  "flag": null,
+  "fp": {
+   "tone": 0.6,
+   "violence": 0.55,
+   "scale": 0.2,
+   "complexity": 0.45,
+   "mystery": 0.25,
+   "pace": 0.55,
+   "artForward": 0.55,
+   "commitment": 0.3
+  },
+  "genres": [
+   "crime"
+  ],
+  "creators": [
+   "Chip Zdarsky"
+  ],
+  "characters": [
+   "Daredevil",
+   "Kingpin"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "earth-one",
+  "title": "Batman: Earth One Complete Collection",
+  "lane": "elseworld",
+  "laneName": "Alternate universes",
+  "universe": "alternate",
+  "order": 50,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Fine digitally.",
+  "note": "Grounded alternate Batman origin / complete saga.",
+  "flag": null,
+  "fp": {
+   "tone": 0.5,
+   "violence": 0.4,
+   "scale": 0.15,
+   "complexity": 0.4,
+   "mystery": 0.3,
+   "pace": 0.45,
+   "artForward": 0.6,
+   "commitment": 0.35
+  },
+  "genres": [
+   "detective"
+  ],
+  "creators": [
+   "Geoff Johns",
+   "Gary Frank"
+  ],
+  "characters": [
+   "Batman",
+   "Alfred"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "ff-ff",
+  "title": "FF by Jonathan Hickman",
+  "lane": "marvelcosmic",
+  "laneName": "Marvel cosmic \u2192 Secret Wars",
+  "universe": "main",
+  "order": 30,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Long run; digital is cheaper.",
+  "note": "Read alongside the latter Fantastic Four material.",
+  "flag": null,
+  "fp": {
+   "tone": 0.4,
+   "violence": 0.3,
+   "scale": 0.8,
+   "complexity": 0.5,
+   "mystery": 0.35,
+   "pace": 0.45,
+   "artForward": 0.6,
+   "commitment": 0.35
+  },
+  "genres": [
+   "cosmic",
+   "sci-fi"
+  ],
+  "creators": [
+   "Jonathan Hickman"
+  ],
+  "characters": [
+   "Reed Richards"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "ff-more",
+  "title": "Continue Hickman's Fantastic Four",
+  "lane": "marvelcosmic",
+  "laneName": "Marvel cosmic \u2192 Secret Wars",
+  "universe": "main",
+  "order": 20,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Long run; digital is cheaper.",
+  "note": "Continue Reed's long-form science/cosmic story.",
+  "flag": null,
+  "fp": {
+   "tone": 0.35,
+   "violence": 0.3,
+   "scale": 0.85,
+   "complexity": 0.55,
+   "mystery": 0.4,
+   "pace": 0.45,
+   "artForward": 0.6,
+   "commitment": 0.35
+  },
+  "genres": [
+   "cosmic",
+   "sci-fi"
+  ],
+  "creators": [
+   "Jonathan Hickman"
+  ],
+  "characters": [
+   "Reed Richards"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "ff-solve",
+  "title": "Fantastic Four: Solve Everything",
+  "lane": "marvelcosmic",
+  "laneName": "Marvel cosmic \u2192 Secret Wars",
+  "universe": "main",
+  "order": 10,
+  "own": "physical",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Part of a long run; digital suits the rest.",
+  "note": "Your entry point into Hickman's Fantastic Four.",
+  "flag": null,
+  "fp": {
+   "tone": 0.35,
+   "violence": 0.3,
+   "scale": 0.85,
+   "complexity": 0.55,
+   "mystery": 0.5,
+   "pace": 0.45,
+   "artForward": 0.6,
+   "commitment": 0.3
+  },
+  "genres": [
+   "cosmic",
+   "sci-fi",
+   "mystery"
+  ],
+  "creators": [
+   "Jonathan Hickman"
+  ],
+  "characters": [
+   "Reed Richards"
+  ],
+  "keeper": true
+ },
+ {
+  "id": "final-crisis",
+  "title": "Final Crisis",
+  "lane": "dccosmic",
+  "laneName": "DC gods, crises & multiverse",
+  "universe": "main",
+  "order": 60,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Easier with annotations open alongside.",
+  "note": "Darkseid + metaphysical reality-breaking DC.",
+  "flag": null,
+  "fp": {
+   "tone": 0.55,
+   "violence": 0.5,
+   "scale": 0.9,
+   "complexity": 0.8,
+   "mystery": 0.3,
+   "pace": 0.4,
+   "artForward": 0.55,
+   "commitment": 0.35
+  },
+  "genres": [
+   "cosmic",
+   "mind-bending"
+  ],
+  "creators": [
+   "Grant Morrison"
+  ],
+  "characters": [
+   "Darkseid"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "flashpoint",
+  "title": "Flashpoint",
+  "lane": "elseworld",
+  "laneName": "Alternate universes",
+  "universe": "alternate",
+  "order": 70,
+  "own": "digital",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Fine digitally.",
+  "note": "Large-scale alternate DC timeline.",
+  "flag": null,
+  "fp": {
+   "tone": 0.6,
+   "violence": 0.55,
+   "scale": 0.5,
+   "complexity": 0.45,
+   "mystery": 0.25,
+   "pace": 0.65,
+   "artForward": 0.55,
+   "commitment": 0.25
+  },
+  "genres": [
+   "cosmic"
+  ],
+  "creators": [
+   "Geoff Johns"
+  ],
+  "characters": [
+   "Flash"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "hellblazer",
+  "title": "Hellblazer: Dangerous Habits",
+  "lane": "dark",
+  "laneName": "Mature, horror & deconstruction",
+  "universe": "main",
+  "order": 60,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Story-first; digital is fine.",
+  "note": "Occult horror, Constantine, cynical supernatural investigation.",
+  "flag": null,
+  "fp": {
+   "tone": 0.8,
+   "violence": 0.5,
+   "scale": 0.2,
+   "complexity": 0.5,
+   "mystery": 0.5,
+   "pace": 0.45,
+   "artForward": 0.45,
+   "commitment": 0.3
+  },
+  "genres": [
+   "horror",
+   "supernatural"
+  ],
+  "creators": [
+   "Garth Ennis"
+  ],
+  "characters": [
+   "John Constantine"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "hush",
+  "title": "Batman: Hush",
+  "lane": "batman",
+  "laneName": "Batman: Gotham & crime",
+  "universe": "main",
+  "order": 50,
+  "own": "physical",
+  "status": "done",
+  "format": "physical",
+  "formatWhy": "Jim Lee\u2019s splash pages deserve paper.",
+  "note": "Blockbuster Batman mystery.",
+  "flag": null,
+  "fp": {
+   "tone": 0.55,
+   "violence": 0.55,
+   "scale": 0.25,
+   "complexity": 0.45,
+   "mystery": 0.6,
+   "pace": 0.55,
+   "artForward": 0.75,
+   "commitment": 0.35
+  },
+  "genres": [
+   "detective",
+   "mystery"
+  ],
+  "creators": [
+   "Jeph Loeb",
+   "Jim Lee"
+  ],
+  "characters": [
+   "Batman",
+   "Catwoman"
+  ],
+  "keeper": true
+ },
+ {
+  "id": "imposter",
+  "title": "Batman: The Imposter",
+  "lane": "batman",
+  "laneName": "Batman: Gotham & crime",
+  "universe": "main",
+  "order": 120,
+  "own": "digital",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Fine digitally.",
+  "note": "Grounded, realistic, noir-ish Batman.",
+  "flag": null,
+  "fp": {
+   "tone": 0.6,
+   "violence": 0.4,
+   "scale": 0.15,
+   "complexity": 0.45,
+   "mystery": 0.55,
+   "pace": 0.45,
+   "artForward": 0.6,
+   "commitment": 0.2
+  },
+  "genres": [
+   "detective",
+   "mystery"
+  ],
+  "creators": [
+   "Mattson Tomlin"
+  ],
+  "characters": [
+   "Batman"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "infinite-crisis",
+  "title": "Infinite Crisis",
+  "lane": "dccosmic",
+  "laneName": "DC gods, crises & multiverse",
+  "universe": "main",
+  "order": 50,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Fine digitally.",
+  "note": "Major sequel-generation Crisis story.",
+  "flag": null,
+  "fp": {
+   "tone": 0.55,
+   "violence": 0.6,
+   "scale": 0.9,
+   "complexity": 0.5,
+   "mystery": 0.2,
+   "pace": 0.6,
+   "artForward": 0.55,
+   "commitment": 0.35
+  },
+  "genres": [
+   "cosmic"
+  ],
+  "creators": [
+   "Geoff Johns"
+  ],
+  "characters": [],
+  "keeper": false
+ },
+ {
+  "id": "infinity",
+  "title": "Infinity",
+  "lane": "marvelcosmic",
+  "laneName": "Marvel cosmic \u2192 Secret Wars",
+  "universe": "main",
+  "order": 60,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Fine digitally.",
+  "note": "Cosmic event embedded in Hickman's Avengers era.",
+  "flag": null,
+  "fp": {
+   "tone": 0.5,
+   "violence": 0.5,
+   "scale": 0.9,
+   "complexity": 0.55,
+   "mystery": 0.2,
+   "pace": 0.65,
+   "artForward": 0.6,
+   "commitment": 0.35
+  },
+  "genres": [
+   "cosmic"
+  ],
+  "creators": [
+   "Jonathan Hickman"
+  ],
+  "characters": [
+   "Thanos"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "jl-origin",
+  "title": "Justice League: Origin",
+  "lane": "dccosmic",
+  "laneName": "DC gods, crises & multiverse",
+  "universe": "main",
+  "order": 10,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Setup read; digital is fine.",
+  "note": "Meet the modern Justice League before the cosmic escalation.",
+  "flag": null,
+  "fp": {
+   "tone": 0.4,
+   "violence": 0.5,
+   "scale": 0.5,
+   "complexity": 0.35,
+   "mystery": 0.2,
+   "pace": 0.6,
+   "artForward": 0.6,
+   "commitment": 0.25
+  },
+  "genres": [
+   "heroic"
+  ],
+  "creators": [
+   "Geoff Johns",
+   "Jim Lee"
+  ],
+  "characters": [
+   "Justice League"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "killing-joke",
+  "title": "Batman: The Killing Joke",
+  "lane": "batman",
+  "laneName": "Batman: Gotham & crime",
+  "universe": "main",
+  "order": 90,
+  "own": "physical",
+  "status": "none",
+  "format": "physical",
+  "formatWhy": "Bolland\u2019s art is iconic; worth owning.",
+  "note": "Joker classic; psychologically dark.",
+  "flag": null,
+  "fp": {
+   "tone": 0.85,
+   "violence": 0.75,
+   "scale": 0.15,
+   "complexity": 0.4,
+   "mystery": 0.3,
+   "pace": 0.5,
+   "artForward": 0.8,
+   "commitment": 0.15
+  },
+  "genres": [
+   "horror",
+   "crime"
+  ],
+  "creators": [
+   "Alan Moore",
+   "Brian Bolland"
+  ],
+  "characters": [
+   "Batman",
+   "Joker"
+  ],
+  "keeper": true
+ },
+ {
+  "id": "kingdom-come",
+  "title": "Kingdom Come",
+  "lane": "heroic",
+  "laneName": "Superman & heroic DC",
+  "universe": "main",
+  "order": 60,
+  "own": "physical",
+  "status": "none",
+  "format": "physical",
+  "formatWhy": "Alex Ross painted art; made for print.",
+  "note": "Read late: legacy, heroism and the DC mythos.",
+  "flag": null,
+  "fp": {
+   "tone": 0.4,
+   "violence": 0.4,
+   "scale": 0.6,
+   "complexity": 0.5,
+   "mystery": 0.2,
+   "pace": 0.35,
+   "artForward": 0.9,
+   "commitment": 0.35
+  },
+  "genres": [
+   "heroic",
+   "mythic"
+  ],
+  "creators": [
+   "Mark Waid",
+   "Alex Ross"
+  ],
+  "characters": [
+   "Superman"
+  ],
+  "keeper": true
+ },
+ {
+  "id": "long-halloween",
+  "title": "Batman: The Long Halloween",
+  "lane": "batman",
+  "laneName": "Batman: Gotham & crime",
+  "universe": "main",
+  "order": 30,
+  "own": "physical",
+  "status": "done",
+  "format": "physical",
+  "formatWhy": "Tim Sale\u2019s art shines in print.",
+  "note": "Murder mystery and Gotham crime families.",
+  "flag": null,
+  "fp": {
+   "tone": 0.55,
+   "violence": 0.5,
+   "scale": 0.2,
+   "complexity": 0.55,
+   "mystery": 0.9,
+   "pace": 0.4,
+   "artForward": 0.65,
+   "commitment": 0.45
+  },
+  "genres": [
+   "detective",
+   "mystery",
+   "crime"
+  ],
+  "creators": [
+   "Jeph Loeb",
+   "Tim Sale"
+  ],
+  "characters": [
+   "Batman",
+   "Two-Face"
+  ],
+  "keeper": true
+ },
+ {
+  "id": "man-who-laughs",
+  "title": "Batman: The Man Who Laughs",
+  "lane": "batman",
+  "laneName": "Batman: Gotham & crime",
+  "universe": "main",
+  "order": 20,
+  "own": "digital",
+  "status": "done",
+  "format": "digital",
+  "formatWhy": "Short one-shot; reads fine on a screen.",
+  "note": "Early Batman\u2013Joker encounter.",
+  "flag": null,
+  "fp": {
+   "tone": 0.6,
+   "violence": 0.55,
+   "scale": 0.15,
+   "complexity": 0.4,
+   "mystery": 0.6,
+   "pace": 0.45,
+   "artForward": 0.6,
+   "commitment": 0.2
+  },
+  "genres": [
+   "detective",
+   "horror"
+  ],
+  "creators": [
+   "Ed Brubaker"
+  ],
+  "characters": [
+   "Batman",
+   "Joker"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "marvels",
+  "title": "Marvels",
+  "lane": "heroic",
+  "laneName": "Superman & heroic DC",
+  "universe": "main",
+  "order": 50,
+  "own": "digital",
+  "status": "none",
+  "format": "physical",
+  "formatWhy": "Alex Ross painted art. Upgrade to print if you love it.",
+  "note": "Human perspective on superheroes; thematic palate cleanser.",
+  "flag": null,
+  "fp": {
+   "tone": 0.35,
+   "violence": 0.3,
+   "scale": 0.5,
+   "complexity": 0.35,
+   "mystery": 0.2,
+   "pace": 0.35,
+   "artForward": 0.85,
+   "commitment": 0.25
+  },
+  "genres": [
+   "heroic"
+  ],
+  "creators": [
+   "Kurt Busiek",
+   "Alex Ross"
+  ],
+  "characters": [],
+  "keeper": true
+ },
+ {
+  "id": "metal",
+  "title": "Dark Nights: Metal",
+  "lane": "dccosmic",
+  "laneName": "DC gods, crises & multiverse",
+  "universe": "main",
+  "order": 80,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Fine digitally.",
+  "note": "Dark Multiverse / Batman mythology goes cosmic.",
+  "flag": null,
+  "fp": {
+   "tone": 0.65,
+   "violence": 0.65,
+   "scale": 0.9,
+   "complexity": 0.5,
+   "mystery": 0.2,
+   "pace": 0.7,
+   "artForward": 0.7,
+   "commitment": 0.3
+  },
+  "genres": [
+   "cosmic",
+   "horror"
+  ],
+  "creators": [
+   "Scott Snyder",
+   "Greg Capullo"
+  ],
+  "characters": [
+   "Batman"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "multiversity",
+  "title": "The Multiversity",
+  "lane": "dccosmic",
+  "laneName": "DC gods, crises & multiverse",
+  "universe": "main",
+  "order": 70,
+  "own": "none",
+  "status": "none",
+  "format": "physical",
+  "formatWhy": "Quitely\u2019s Pax Americana issue alone justifies print.",
+  "note": "Explore the structure of DC's Multiverse.",
+  "flag": null,
+  "fp": {
+   "tone": 0.4,
+   "violence": 0.4,
+   "scale": 0.95,
+   "complexity": 0.75,
+   "mystery": 0.25,
+   "pace": 0.45,
+   "artForward": 0.7,
+   "commitment": 0.35
+  },
+  "genres": [
+   "cosmic",
+   "mind-bending"
+  ],
+  "creators": [
+   "Grant Morrison"
+  ],
+  "characters": [],
+  "keeper": true
+ },
+ {
+  "id": "new-avengers-hickman",
+  "title": "New Avengers by Jonathan Hickman",
+  "lane": "marvelcosmic",
+  "laneName": "Marvel cosmic \u2192 Secret Wars",
+  "universe": "main",
+  "order": 50,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Long run; digital is cheaper.",
+  "note": "Incursions / Illuminati. Alternate with Avengers.",
+  "flag": null,
+  "fp": {
+   "tone": 0.45,
+   "violence": 0.4,
+   "scale": 0.8,
+   "complexity": 0.7,
+   "mystery": 0.4,
+   "pace": 0.4,
+   "artForward": 0.55,
+   "commitment": 0.5
+  },
+  "genres": [
+   "cosmic",
+   "mystery"
+  ],
+  "creators": [
+   "Jonathan Hickman"
+  ],
+  "characters": [],
+  "keeper": false
+ },
+ {
+  "id": "preacher-1",
+  "title": "Preacher Book One",
+  "lane": "dark",
+  "laneName": "Mature, horror & deconstruction",
+  "universe": "main",
+  "order": 80,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Long saga; digital is cheaper.",
+  "note": "Violent, profane supernatural road story.",
+  "flag": null,
+  "fp": {
+   "tone": 0.85,
+   "violence": 0.8,
+   "scale": 0.35,
+   "complexity": 0.5,
+   "mystery": 0.4,
+   "pace": 0.55,
+   "artForward": 0.5,
+   "commitment": 0.4
+  },
+  "genres": [
+   "horror",
+   "satire",
+   "war"
+  ],
+  "creators": [
+   "Garth Ennis",
+   "Steve Dillon"
+  ],
+  "characters": [
+   "Jesse Custer"
+  ],
+  "keeper": true
+ },
+ {
+  "id": "preacher-more",
+  "title": "Continue Preacher",
+  "lane": "dark",
+  "laneName": "Mature, horror & deconstruction",
+  "universe": "main",
+  "order": 90,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Long saga; digital is cheaper.",
+  "note": "Continue the full saga.",
+  "flag": null,
+  "fp": {
+   "tone": 0.85,
+   "violence": 0.8,
+   "scale": 0.35,
+   "complexity": 0.5,
+   "mystery": 0.3,
+   "pace": 0.55,
+   "artForward": 0.5,
+   "commitment": 0.45
+  },
+  "genres": [
+   "horror",
+   "satire"
+  ],
+  "creators": [
+   "Garth Ennis",
+   "Steve Dillon"
+  ],
+  "characters": [
+   "Jesse Custer"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "red-son",
+  "title": "Superman: Red Son",
+  "lane": "heroic",
+  "laneName": "Superman & heroic DC",
+  "universe": "main",
+  "order": 40,
+  "own": "digital",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Short and story-driven.",
+  "note": "Alternate Superman; ideological thought experiment.",
+  "flag": null,
+  "fp": {
+   "tone": 0.45,
+   "violence": 0.4,
+   "scale": 0.5,
+   "complexity": 0.4,
+   "mystery": 0.2,
+   "pace": 0.4,
+   "artForward": 0.55,
+   "commitment": 0.25
+  },
+  "genres": [
+   "heroic",
+   "mythic"
+  ],
+  "creators": [
+   "Mark Millar"
+  ],
+  "characters": [
+   "Superman"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "secret-wars-2015",
+  "title": "Secret Wars (2015)",
+  "lane": "marvelcosmic",
+  "laneName": "Marvel cosmic \u2192 Secret Wars",
+  "universe": "main",
+  "order": 90,
+  "own": "none",
+  "status": "none",
+  "format": "physical",
+  "formatWhy": "Esad Ribi\u0107\u2019s art; the finale worth owning.",
+  "note": "The destination: final Incursion, Battleworld, Doom.",
+  "flag": null,
+  "fp": {
+   "tone": 0.55,
+   "violence": 0.55,
+   "scale": 0.95,
+   "complexity": 0.65,
+   "mystery": 0.25,
+   "pace": 0.55,
+   "artForward": 0.65,
+   "commitment": 0.4
+  },
+  "genres": [
+   "cosmic"
+  ],
+  "creators": [
+   "Jonathan Hickman"
+  ],
+  "characters": [
+   "Doom"
+  ],
+  "keeper": true
+ },
+ {
+  "id": "siktc-more",
+  "title": "Continue Something Is Killing the Children",
+  "lane": "dark",
+  "laneName": "Mature, horror & deconstruction",
+  "universe": "main",
+  "order": 50,
+  "own": "none",
+  "status": "none",
+  "format": "physical",
+  "formatWhy": "If it hooks you, the series is worth collecting.",
+  "note": "Continue only if Vol. 1 lands for you.",
+  "flag": null,
+  "fp": {
+   "tone": 0.8,
+   "violence": 0.65,
+   "scale": 0.25,
+   "complexity": 0.5,
+   "mystery": 0.75,
+   "pace": 0.55,
+   "artForward": 0.6,
+   "commitment": 0.35
+  },
+  "genres": [
+   "horror",
+   "mystery"
+  ],
+  "creators": [
+   "James Tynion IV"
+  ],
+  "characters": [],
+  "keeper": false
+ },
+ {
+  "id": "siktc",
+  "title": "Something Is Killing the Children Vol. 1",
+  "lane": "dark",
+  "laneName": "Mature, horror & deconstruction",
+  "universe": "main",
+  "order": 40,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Test Vol. 1 digitally before collecting.",
+  "note": "Monster horror + mystery; strong match for your taste.",
+  "flag": null,
+  "fp": {
+   "tone": 0.8,
+   "violence": 0.65,
+   "scale": 0.2,
+   "complexity": 0.45,
+   "mystery": 0.8,
+   "pace": 0.55,
+   "artForward": 0.6,
+   "commitment": 0.3
+  },
+  "genres": [
+   "horror",
+   "mystery"
+  ],
+  "creators": [
+   "James Tynion IV"
+  ],
+  "characters": [],
+  "keeper": false
+ },
+ {
+  "id": "superman-batman",
+  "title": "Superman/Batman",
+  "lane": "heroic",
+  "laneName": "Superman & heroic DC",
+  "universe": "main",
+  "order": 20,
+  "own": "physical",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Fun, but not a must-own format.",
+  "note": "Team-up perspective after meeting Superman.",
+  "flag": null,
+  "fp": {
+   "tone": 0.4,
+   "violence": 0.45,
+   "scale": 0.5,
+   "complexity": 0.3,
+   "mystery": 0.15,
+   "pace": 0.6,
+   "artForward": 0.6,
+   "commitment": 0.2
+  },
+  "genres": [
+   "heroic"
+  ],
+  "creators": [
+   "Jeph Loeb"
+  ],
+  "characters": [
+   "Superman",
+   "Batman"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "swamp-thing",
+  "title": "Swamp Thing by Alan Moore",
+  "lane": "dark",
+  "laneName": "Mature, horror & deconstruction",
+  "universe": "main",
+  "order": 70,
+  "own": "none",
+  "status": "none",
+  "format": "physical",
+  "formatWhy": "Bissette and Totleben\u2019s art rewards print.",
+  "note": "Literary supernatural / body-horror classic.",
+  "flag": null,
+  "fp": {
+   "tone": 0.8,
+   "violence": 0.5,
+   "scale": 0.35,
+   "complexity": 0.55,
+   "mystery": 0.45,
+   "pace": 0.4,
+   "artForward": 0.55,
+   "commitment": 0.35
+  },
+  "genres": [
+   "horror",
+   "supernatural"
+  ],
+  "creators": [
+   "Alan Moore"
+  ],
+  "characters": [
+   "Swamp Thing"
+  ],
+  "keeper": true
+ },
+ {
+  "id": "time-runs-out",
+  "title": "Time Runs Out",
+  "lane": "marvelcosmic",
+  "laneName": "Marvel cosmic \u2192 Secret Wars",
+  "universe": "main",
+  "order": 80,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Fine digitally.",
+  "note": "Final collapse before Secret Wars.",
+  "flag": null,
+  "fp": {
+   "tone": 0.55,
+   "violence": 0.5,
+   "scale": 0.9,
+   "complexity": 0.7,
+   "mystery": 0.3,
+   "pace": 0.5,
+   "artForward": 0.55,
+   "commitment": 0.45
+  },
+  "genres": [
+   "cosmic"
+  ],
+  "creators": [
+   "Jonathan Hickman"
+  ],
+  "characters": [
+   "Doom"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "under-red-hood",
+  "title": "Batman: Under the Red Hood",
+  "lane": "batman",
+  "laneName": "Batman: Gotham & crime",
+  "universe": "main",
+  "order": 70,
+  "own": "digital",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "Story-first; art isn\u2019t the draw.",
+  "note": "Jason Todd, Gotham crime and identity.",
+  "flag": null,
+  "fp": {
+   "tone": 0.6,
+   "violence": 0.6,
+   "scale": 0.25,
+   "complexity": 0.45,
+   "mystery": 0.5,
+   "pace": 0.6,
+   "artForward": 0.55,
+   "commitment": 0.3
+  },
+  "genres": [
+   "detective",
+   "crime"
+  ],
+  "creators": [
+   "Judd Winick"
+  ],
+  "characters": [
+   "Batman",
+   "Jason Todd"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "watchmen",
+  "title": "Watchmen",
+  "lane": "dark",
+  "laneName": "Mature, horror & deconstruction",
+  "universe": "main",
+  "order": 30,
+  "own": "physical",
+  "status": "none",
+  "format": "physical",
+  "formatWhy": "A shelf essential; dense pages read better on paper.",
+  "note": "Dense superhero deconstruction. Take your time with it.",
+  "flag": null,
+  "fp": {
+   "tone": 0.8,
+   "violence": 0.55,
+   "scale": 0.4,
+   "complexity": 0.8,
+   "mystery": 0.6,
+   "pace": 0.35,
+   "artForward": 0.6,
+   "commitment": 0.45
+  },
+  "genres": [
+   "mystery",
+   "drama"
+  ],
+  "creators": [
+   "Alan Moore",
+   "Dave Gibbons"
+  ],
+  "characters": [
+   "Rorschach"
+  ],
+  "keeper": true
+ },
+ {
+  "id": "white-knight",
+  "title": "Batman: White Knight",
+  "lane": "elseworld",
+  "laneName": "Alternate universes",
+  "universe": "alternate",
+  "order": 60,
+  "own": "none",
+  "status": "none",
+  "format": "physical",
+  "formatWhy": "Sean Murphy\u2019s art looks best in print.",
+  "note": "Standalone alternate Gotham / cured Joker premise.",
+  "flag": null,
+  "fp": {
+   "tone": 0.55,
+   "violence": 0.5,
+   "scale": 0.2,
+   "complexity": 0.5,
+   "mystery": 0.45,
+   "pace": 0.55,
+   "artForward": 0.7,
+   "commitment": 0.3
+  },
+  "genres": [
+   "crime",
+   "detective"
+  ],
+  "creators": [
+   "Sean Murphy"
+  ],
+  "characters": [
+   "Batman",
+   "Joker"
+  ],
+  "keeper": true
+ },
+ {
+  "id": "year-one",
+  "title": "Batman: Year One",
+  "lane": "batman",
+  "laneName": "Batman: Gotham & crime",
+  "universe": "main",
+  "order": 10,
+  "own": "physical",
+  "status": "done",
+  "format": "physical",
+  "formatWhy": "Mazzucchelli\u2019s art is a landmark; a shelf essential.",
+  "note": "Origin / early-career Batman.",
+  "flag": null,
+  "fp": {
+   "tone": 0.5,
+   "violence": 0.4,
+   "scale": 0.1,
+   "complexity": 0.35,
+   "mystery": 0.45,
+   "pace": 0.4,
+   "artForward": 0.55,
+   "commitment": 0.25
+  },
+  "genres": [
+   "detective",
+   "crime"
+  ],
+  "creators": [
+   "Frank Miller",
+   "David Mazzucchelli"
+  ],
+  "characters": [
+   "Batman",
+   "Jim Gordon"
+  ],
+  "keeper": true
+ }
+]
