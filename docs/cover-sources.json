@@ -334,5 +334,69 @@
     "coverId": 1472071,
     "coverUrl": "https://covers.openlibrary.org/b/id/1472071-L.jpg",
     "source": "Open Library"
+  },
+  "bp-who-is": {
+    "title": "Black Panther: Who Is the Black Panther?",
+    "matchedTitle": "Who Is the Black Panther",
+    "openLibraryWorkKey": "/works/OL26291650W",
+    "coverId": 536088,
+    "coverUrl": "https://covers.openlibrary.org/b/id/536088-L.jpg",
+    "source": "Open Library"
+  },
+  "thor-god-butcher": {
+    "title": "Thor: God of Thunder Vol. 1: The God Butcher",
+    "matchedTitle": "Thor: God of Thunder, Vol. 1: The God Butcher",
+    "openLibraryWorkKey": "/works/OL19348090W",
+    "coverId": 8459964,
+    "coverUrl": "https://covers.openlibrary.org/b/id/8459964-L.jpg",
+    "source": "Open Library"
+  },
+  "usm-vol1": {
+    "title": "Ultimate Spider-Man Vol. 1",
+    "matchedTitle": "Ultimate Spider-Man, Vol. 1",
+    "openLibraryWorkKey": "/works/OL5799448W",
+    "coverId": 535551,
+    "coverUrl": "https://covers.openlibrary.org/b/id/535551-L.jpg",
+    "source": "Open Library"
+  },
+  "hox-pox": {
+    "title": "House of X / Powers of X",
+    "matchedTitle": "House of X/Powers of X",
+    "openLibraryWorkKey": "/works/OL20725470W",
+    "coverId": 9409849,
+    "coverUrl": "https://covers.openlibrary.org/b/id/9409849-L.jpg",
+    "source": "Open Library"
+  },
+  "saga-vol1": {
+    "title": "Saga Vol. 1",
+    "matchedTitle": "The Saga of Tanya the Evil, Vol. 1",
+    "openLibraryWorkKey": "/works/OL19734230W",
+    "coverId": 10304571,
+    "coverUrl": "https://covers.openlibrary.org/b/id/10304571-L.jpg",
+    "source": "Open Library"
+  },
+  "paper-girls-vol1": {
+    "title": "Paper Girls Vol. 1",
+    "matchedTitle": "Paper girls, Vol. 1",
+    "openLibraryWorkKey": "/works/OL20026390W",
+    "coverId": 10456615,
+    "coverUrl": "https://covers.openlibrary.org/b/id/10456615-L.jpg",
+    "source": "Open Library"
+  },
+  "maus": {
+    "title": "Maus",
+    "matchedTitle": "Maus I",
+    "openLibraryWorkKey": "/works/OL2056818W",
+    "coverId": 10210168,
+    "coverUrl": "https://covers.openlibrary.org/b/id/10210168-L.jpg",
+    "source": "Open Library"
+  },
+  "v-for-vendetta": {
+    "title": "V for Vendetta",
+    "matchedTitle": "V for Vendetta",
+    "openLibraryWorkKey": "/works/OL2897797W",
+    "coverId": 12293384,
+    "coverUrl": "https://covers.openlibrary.org/b/id/12293384-L.jpg",
+    "source": "Open Library"
   }
 }

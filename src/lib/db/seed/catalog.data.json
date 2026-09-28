@@ -2276,5 +2276,1223 @@
    "Jim Gordon"
   ],
   "keeper": true
+ },
+ {
+  "id": "bp-nation",
+  "title": "Black Panther: A Nation Under Our Feet Vol. 1",
+  "lane": "marvelheroes",
+  "laneName": "Marvel solo heroes",
+  "universe": "main",
+  "order": 10,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "A political thriller take on Wakanda's king facing an uprising at home.",
+  "flag": null,
+  "fp": {
+   "tone": 0.45,
+   "violence": 0.45,
+   "scale": 0.35,
+   "complexity": 0.6,
+   "mystery": 0.4,
+   "pace": 0.4,
+   "artForward": 0.6,
+   "commitment": 0.35
+  },
+  "genres": [
+   "political",
+   "drama"
+  ],
+  "creators": [
+   "Ta-Nehisi Coates",
+   "Brian Stelfreeze"
+  ],
+  "characters": [
+   "Black Panther"
+  ],
+  "keeper": true
+ },
+ {
+  "id": "bp-who-is",
+  "title": "Black Panther: Who Is the Black Panther?",
+  "lane": "marvelheroes",
+  "laneName": "Marvel solo heroes",
+  "universe": "main",
+  "order": 20,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "An accessible origin-flavored introduction to T'Challa and Wakanda.",
+  "flag": null,
+  "fp": {
+   "tone": 0.4,
+   "violence": 0.4,
+   "scale": 0.3,
+   "complexity": 0.4,
+   "mystery": 0.3,
+   "pace": 0.5,
+   "artForward": 0.65,
+   "commitment": 0.25
+  },
+  "genres": [
+   "heroic",
+   "political"
+  ],
+  "creators": [
+   "Reginald Hudlin",
+   "John Romita Jr."
+  ],
+  "characters": [
+   "Black Panther"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "thor-god-butcher",
+  "title": "Thor: God of Thunder Vol. 1: The God Butcher",
+  "lane": "marvelheroes",
+  "laneName": "Marvel solo heroes",
+  "universe": "main",
+  "order": 30,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "A mythic, brutal three-timelines story of Thor hunting a god-killer.",
+  "flag": null,
+  "fp": {
+   "tone": 0.55,
+   "violence": 0.55,
+   "scale": 0.7,
+   "complexity": 0.45,
+   "mystery": 0.35,
+   "pace": 0.55,
+   "artForward": 0.7,
+   "commitment": 0.3
+  },
+  "genres": [
+   "mythic",
+   "cosmic"
+  ],
+  "creators": [
+   "Jason Aaron",
+   "Esad Ribic"
+  ],
+  "characters": [
+   "Thor"
+  ],
+  "keeper": true
+ },
+ {
+  "id": "thor-goddess",
+  "title": "Thor Vol. 1: The Goddess of Thunder",
+  "lane": "marvelheroes",
+  "laneName": "Marvel solo heroes",
+  "universe": "main",
+  "order": 40,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "A new, unnamed hero proves worthy of Mjolnir.",
+  "flag": null,
+  "fp": {
+   "tone": 0.4,
+   "violence": 0.4,
+   "scale": 0.6,
+   "complexity": 0.4,
+   "mystery": 0.45,
+   "pace": 0.5,
+   "artForward": 0.6,
+   "commitment": 0.3
+  },
+  "genres": [
+   "mythic",
+   "mystery"
+  ],
+  "creators": [
+   "Jason Aaron",
+   "Russell Dauterman"
+  ],
+  "characters": [
+   "Thor"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "asm-coming-home",
+  "title": "The Amazing Spider-Man: Coming Home",
+  "lane": "marvelheroes",
+  "laneName": "Marvel solo heroes",
+  "universe": "main",
+  "order": 50,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "A grounded relaunch balancing Peter Parker's life and a new mentor figure.",
+  "flag": null,
+  "fp": {
+   "tone": 0.35,
+   "violence": 0.35,
+   "scale": 0.25,
+   "complexity": 0.35,
+   "mystery": 0.3,
+   "pace": 0.55,
+   "artForward": 0.6,
+   "commitment": 0.25
+  },
+  "genres": [
+   "heroic",
+   "drama"
+  ],
+  "creators": [
+   "J. Michael Straczynski",
+   "John Romita Jr."
+  ],
+  "characters": [
+   "Spider-Man"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "spiderman-blue",
+  "title": "Spider-Man: Blue",
+  "lane": "marvelheroes",
+  "laneName": "Marvel solo heroes",
+  "universe": "main",
+  "order": 60,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "A wistful, romance-forward look back at Peter and Gwen.",
+  "flag": null,
+  "fp": {
+   "tone": 0.45,
+   "violence": 0.2,
+   "scale": 0.15,
+   "complexity": 0.3,
+   "mystery": 0.15,
+   "pace": 0.35,
+   "artForward": 0.7,
+   "commitment": 0.2
+  },
+  "genres": [
+   "drama"
+  ],
+  "creators": [
+   "Jeph Loeb",
+   "Tim Sale"
+  ],
+  "characters": [
+   "Spider-Man",
+   "Gwen Stacy"
+  ],
+  "keeper": true
+ },
+ {
+  "id": "usm-vol1",
+  "title": "Ultimate Spider-Man Vol. 1",
+  "lane": "marvelheroes",
+  "laneName": "Marvel solo heroes",
+  "universe": "main",
+  "order": 70,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "A modernized, decompressed retelling of Peter Parker's origin.",
+  "flag": null,
+  "fp": {
+   "tone": 0.3,
+   "violence": 0.3,
+   "scale": 0.2,
+   "complexity": 0.3,
+   "mystery": 0.25,
+   "pace": 0.55,
+   "artForward": 0.55,
+   "commitment": 0.3
+  },
+  "genres": [
+   "heroic",
+   "drama"
+  ],
+  "creators": [
+   "Brian Michael Bendis",
+   "Mark Bagley"
+  ],
+  "characters": [
+   "Spider-Man"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "xmen-god-loves",
+  "title": "X-Men: God Loves, Man Kills",
+  "lane": "marvelheroes",
+  "laneName": "Marvel solo heroes",
+  "universe": "main",
+  "order": 80,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "A prestige-format story confronting anti-mutant extremism head-on.",
+  "flag": null,
+  "fp": {
+   "tone": 0.6,
+   "violence": 0.45,
+   "scale": 0.35,
+   "complexity": 0.45,
+   "mystery": 0.2,
+   "pace": 0.45,
+   "artForward": 0.55,
+   "commitment": 0.2
+  },
+  "genres": [
+   "political",
+   "drama"
+  ],
+  "creators": [
+   "Chris Claremont",
+   "Brent Anderson"
+  ],
+  "characters": [
+   "X-Men"
+  ],
+  "keeper": true
+ },
+ {
+  "id": "hox-pox",
+  "title": "House of X / Powers of X",
+  "lane": "marvelheroes",
+  "laneName": "Marvel solo heroes",
+  "universe": "main",
+  "order": 90,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "A dense, timeline-spanning relaunch of the entire X-Men line.",
+  "flag": null,
+  "fp": {
+   "tone": 0.4,
+   "violence": 0.4,
+   "scale": 0.75,
+   "complexity": 0.75,
+   "mystery": 0.55,
+   "pace": 0.5,
+   "artForward": 0.65,
+   "commitment": 0.45
+  },
+  "genres": [
+   "cosmic",
+   "mystery",
+   "mind-bending"
+  ],
+  "creators": [
+   "Jonathan Hickman"
+  ],
+  "characters": [
+   "X-Men"
+  ],
+  "keeper": true
+ },
+ {
+  "id": "ms-marvel-no-normal",
+  "title": "Ms. Marvel Vol. 1: No Normal",
+  "lane": "marvelheroes",
+  "laneName": "Marvel solo heroes",
+  "universe": "main",
+  "order": 100,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "A warm, coming-of-age origin for Kamala Khan.",
+  "flag": null,
+  "fp": {
+   "tone": 0.25,
+   "violence": 0.15,
+   "scale": 0.15,
+   "complexity": 0.25,
+   "mystery": 0.15,
+   "pace": 0.5,
+   "artForward": 0.55,
+   "commitment": 0.2
+  },
+  "genres": [
+   "heroic",
+   "drama"
+  ],
+  "creators": [
+   "G. Willow Wilson",
+   "Adrian Alphona"
+  ],
+  "characters": [
+   "Ms. Marvel"
+  ],
+  "keeper": true
+ },
+ {
+  "id": "gl-rebirth",
+  "title": "Green Lantern: Rebirth",
+  "lane": "heroic",
+  "laneName": "Superman & heroic DC",
+  "universe": "main",
+  "order": 70,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "Hal Jordan's redemption and return to the Corps.",
+  "flag": null,
+  "fp": {
+   "tone": 0.4,
+   "violence": 0.4,
+   "scale": 0.55,
+   "complexity": 0.35,
+   "mystery": 0.3,
+   "pace": 0.6,
+   "artForward": 0.55,
+   "commitment": 0.2
+  },
+  "genres": [
+   "heroic",
+   "cosmic"
+  ],
+  "creators": [
+   "Geoff Johns",
+   "Ethan Van Sciver"
+  ],
+  "characters": [
+   "Green Lantern"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "flash-rebirth",
+  "title": "The Flash: Rebirth",
+  "lane": "heroic",
+  "laneName": "Superman & heroic DC",
+  "universe": "main",
+  "order": 80,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "Barry Allen's return to the modern DC Universe.",
+  "flag": null,
+  "fp": {
+   "tone": 0.35,
+   "violence": 0.35,
+   "scale": 0.35,
+   "complexity": 0.3,
+   "mystery": 0.2,
+   "pace": 0.65,
+   "artForward": 0.55,
+   "commitment": 0.2
+  },
+  "genres": [
+   "heroic"
+  ],
+  "creators": [
+   "Geoff Johns",
+   "Ethan Van Sciver"
+  ],
+  "characters": [
+   "The Flash"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "ww-hiketeia",
+  "title": "Wonder Woman: The Hiketeia",
+  "lane": "heroic",
+  "laneName": "Superman & heroic DC",
+  "universe": "main",
+  "order": 90,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "A tight, mythology-grounded standalone testing Diana's code of honor.",
+  "flag": null,
+  "fp": {
+   "tone": 0.5,
+   "violence": 0.4,
+   "scale": 0.2,
+   "complexity": 0.4,
+   "mystery": 0.25,
+   "pace": 0.4,
+   "artForward": 0.65,
+   "commitment": 0.15
+  },
+  "genres": [
+   "mythic",
+   "drama"
+  ],
+  "creators": [
+   "Greg Rucka",
+   "J.G. Jones"
+  ],
+  "characters": [
+   "Wonder Woman",
+   "Batman"
+  ],
+  "keeper": true
+ },
+ {
+  "id": "ww-gods-mortals",
+  "title": "Wonder Woman: Gods and Mortals",
+  "lane": "heroic",
+  "laneName": "Superman & heroic DC",
+  "universe": "main",
+  "order": 100,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "The classic post-Crisis origin reintroducing Diana and Themyscira.",
+  "flag": null,
+  "fp": {
+   "tone": 0.35,
+   "violence": 0.35,
+   "scale": 0.4,
+   "complexity": 0.3,
+   "mystery": 0.2,
+   "pace": 0.45,
+   "artForward": 0.55,
+   "commitment": 0.25
+  },
+  "genres": [
+   "mythic",
+   "heroic"
+  ],
+  "creators": [
+   "George P\u00e9rez"
+  ],
+  "characters": [
+   "Wonder Woman"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "gl-sinestro-corps",
+  "title": "Green Lantern: The Sinestro Corps War",
+  "lane": "heroic",
+  "laneName": "Superman & heroic DC",
+  "universe": "main",
+  "order": 110,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "A galaxy-spanning Corps-vs-Corps war epic.",
+  "flag": null,
+  "fp": {
+   "tone": 0.5,
+   "violence": 0.55,
+   "scale": 0.7,
+   "complexity": 0.4,
+   "mystery": 0.2,
+   "pace": 0.65,
+   "artForward": 0.6,
+   "commitment": 0.35
+  },
+  "genres": [
+   "cosmic",
+   "heroic"
+  ],
+  "creators": [
+   "Geoff Johns"
+  ],
+  "characters": [
+   "Green Lantern"
+  ],
+  "keeper": false
+ },
+ {
+  "id": "saga-vol1",
+  "title": "Saga Vol. 1",
+  "lane": "other",
+  "laneName": "Standalone & creator-owned",
+  "universe": "main",
+  "order": 10,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "A star-crossed family drama across a galaxy at war.",
+  "flag": null,
+  "fp": {
+   "tone": 0.5,
+   "violence": 0.5,
+   "scale": 0.6,
+   "complexity": 0.4,
+   "mystery": 0.3,
+   "pace": 0.5,
+   "artForward": 0.65,
+   "commitment": 0.3
+  },
+  "genres": [
+   "sci-fi",
+   "drama"
+  ],
+  "creators": [
+   "Brian K. Vaughan",
+   "Fiona Staples"
+  ],
+  "characters": [],
+  "keeper": true
+ },
+ {
+  "id": "sandman-preludes",
+  "title": "The Sandman Vol. 1: Preludes & Nocturnes",
+  "lane": "other",
+  "laneName": "Standalone & creator-owned",
+  "universe": "main",
+  "order": 20,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "Dream of the Endless is freed from decades of imprisonment.",
+  "flag": null,
+  "fp": {
+   "tone": 0.7,
+   "violence": 0.4,
+   "scale": 0.5,
+   "complexity": 0.5,
+   "mystery": 0.5,
+   "pace": 0.35,
+   "artForward": 0.6,
+   "commitment": 0.3
+  },
+  "genres": [
+   "horror",
+   "mythic",
+   "mystery"
+  ],
+  "creators": [
+   "Neil Gaiman"
+  ],
+  "characters": [
+   "Dream"
+  ],
+  "keeper": true
+ },
+ {
+  "id": "ytlm-unmanned",
+  "title": "Y: The Last Man Vol. 1: Unmanned",
+  "lane": "other",
+  "laneName": "Standalone & creator-owned",
+  "universe": "main",
+  "order": 30,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "The last man on Earth after every other male mammal dies.",
+  "flag": null,
+  "fp": {
+   "tone": 0.5,
+   "violence": 0.4,
+   "scale": 0.6,
+   "complexity": 0.4,
+   "mystery": 0.4,
+   "pace": 0.5,
+   "artForward": 0.5,
+   "commitment": 0.3
+  },
+  "genres": [
+   "sci-fi",
+   "drama"
+  ],
+  "creators": [
+   "Brian K. Vaughan",
+   "Pia Guerra"
+  ],
+  "characters": [],
+  "keeper": false
+ },
+ {
+  "id": "hellboy-seed",
+  "title": "Hellboy Vol. 1: Seed of Destruction",
+  "lane": "other",
+  "laneName": "Standalone & creator-owned",
+  "universe": "main",
+  "order": 40,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "A pulpy, folklore-soaked introduction to the demon investigator.",
+  "flag": null,
+  "fp": {
+   "tone": 0.65,
+   "violence": 0.5,
+   "scale": 0.4,
+   "complexity": 0.35,
+   "mystery": 0.45,
+   "pace": 0.5,
+   "artForward": 0.7,
+   "commitment": 0.2
+  },
+  "genres": [
+   "horror",
+   "supernatural"
+  ],
+  "creators": [
+   "Mike Mignola"
+  ],
+  "characters": [
+   "Hellboy"
+  ],
+  "keeper": true
+ },
+ {
+  "id": "invincible-vol1",
+  "title": "Invincible Vol. 1: Family Matters",
+  "lane": "other",
+  "laneName": "Standalone & creator-owned",
+  "universe": "main",
+  "order": 50,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "A teenage superhero origin that grows darker than it first looks.",
+  "flag": null,
+  "fp": {
+   "tone": 0.4,
+   "violence": 0.5,
+   "scale": 0.4,
+   "complexity": 0.3,
+   "mystery": 0.2,
+   "pace": 0.55,
+   "artForward": 0.5,
+   "commitment": 0.25
+  },
+  "genres": [
+   "heroic",
+   "drama"
+  ],
+  "creators": [
+   "Robert Kirkman",
+   "Cory Walker"
+  ],
+  "characters": [],
+  "keeper": false
+ },
+ {
+  "id": "locke-key-welcome",
+  "title": "Locke & Key Vol. 1: Welcome to Lovecraft",
+  "lane": "other",
+  "laneName": "Standalone & creator-owned",
+  "universe": "main",
+  "order": 60,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "A grieving family moves into a house full of magical, dangerous keys.",
+  "flag": null,
+  "fp": {
+   "tone": 0.7,
+   "violence": 0.5,
+   "scale": 0.3,
+   "complexity": 0.4,
+   "mystery": 0.6,
+   "pace": 0.45,
+   "artForward": 0.65,
+   "commitment": 0.3
+  },
+  "genres": [
+   "horror",
+   "mystery"
+  ],
+  "creators": [
+   "Joe Hill",
+   "Gabriel Rodriguez"
+  ],
+  "characters": [],
+  "keeper": true
+ },
+ {
+  "id": "paper-girls-vol1",
+  "title": "Paper Girls Vol. 1",
+  "lane": "other",
+  "laneName": "Standalone & creator-owned",
+  "universe": "main",
+  "order": 70,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "Four paper-route girls stumble into a time war the morning after Halloween.",
+  "flag": null,
+  "fp": {
+   "tone": 0.4,
+   "violence": 0.3,
+   "scale": 0.4,
+   "complexity": 0.4,
+   "mystery": 0.55,
+   "pace": 0.55,
+   "artForward": 0.6,
+   "commitment": 0.25
+  },
+  "genres": [
+   "sci-fi",
+   "mystery"
+  ],
+  "creators": [
+   "Brian K. Vaughan",
+   "Cliff Chiang"
+  ],
+  "characters": [],
+  "keeper": false
+ },
+ {
+  "id": "monstress-vol1",
+  "title": "Monstress Vol. 1: Awakening",
+  "lane": "other",
+  "laneName": "Standalone & creator-owned",
+  "universe": "main",
+  "order": 80,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "A richly painted, war-scarred world of monsters and magic.",
+  "flag": null,
+  "fp": {
+   "tone": 0.65,
+   "violence": 0.55,
+   "scale": 0.55,
+   "complexity": 0.55,
+   "mystery": 0.45,
+   "pace": 0.4,
+   "artForward": 0.8,
+   "commitment": 0.3
+  },
+  "genres": [
+   "horror",
+   "mythic"
+  ],
+  "creators": [
+   "Marjorie Liu",
+   "Sana Takeda"
+  ],
+  "characters": [],
+  "keeper": true
+ },
+ {
+  "id": "scott-pilgrim-vol1",
+  "title": "Scott Pilgrim Vol. 1",
+  "lane": "other",
+  "laneName": "Standalone & creator-owned",
+  "universe": "main",
+  "order": 90,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "A slacker's romance turns into a string of video-game-style duels.",
+  "flag": null,
+  "fp": {
+   "tone": 0.2,
+   "violence": 0.25,
+   "scale": 0.15,
+   "complexity": 0.2,
+   "mystery": 0.1,
+   "pace": 0.6,
+   "artForward": 0.55,
+   "commitment": 0.15
+  },
+  "genres": [
+   "comedy",
+   "drama"
+  ],
+  "creators": [
+   "Bryan Lee O'Malley"
+  ],
+  "characters": [],
+  "keeper": false
+ },
+ {
+  "id": "bone-out-boneville",
+  "title": "Bone: Out from Boneville",
+  "lane": "other",
+  "laneName": "Standalone & creator-owned",
+  "universe": "main",
+  "order": 100,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "Three cousins are lost in a valley full of danger and dragons.",
+  "flag": null,
+  "fp": {
+   "tone": 0.25,
+   "violence": 0.2,
+   "scale": 0.35,
+   "complexity": 0.25,
+   "mystery": 0.25,
+   "pace": 0.4,
+   "artForward": 0.6,
+   "commitment": 0.3
+  },
+  "genres": [
+   "comedy",
+   "mythic"
+  ],
+  "creators": [
+   "Jeff Smith"
+  ],
+  "characters": [],
+  "keeper": true
+ },
+ {
+  "id": "maus",
+  "title": "Maus",
+  "lane": "other",
+  "laneName": "Standalone & creator-owned",
+  "universe": "main",
+  "order": 110,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "A Holocaust survivor's story, told to his son, with mice standing in for Jews.",
+  "flag": null,
+  "fp": {
+   "tone": 0.85,
+   "violence": 0.4,
+   "scale": 0.4,
+   "complexity": 0.5,
+   "mystery": 0.15,
+   "pace": 0.3,
+   "artForward": 0.5,
+   "commitment": 0.35
+  },
+  "genres": [
+   "drama",
+   "war"
+  ],
+  "creators": [
+   "Art Spiegelman"
+  ],
+  "characters": [],
+  "keeper": true
+ },
+ {
+  "id": "v-for-vendetta",
+  "title": "V for Vendetta",
+  "lane": "other",
+  "laneName": "Standalone & creator-owned",
+  "universe": "main",
+  "order": 120,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "A masked anarchist wages war on a fascist near-future Britain.",
+  "flag": null,
+  "fp": {
+   "tone": 0.7,
+   "violence": 0.5,
+   "scale": 0.45,
+   "complexity": 0.5,
+   "mystery": 0.3,
+   "pace": 0.35,
+   "artForward": 0.55,
+   "commitment": 0.3
+  },
+  "genres": [
+   "political",
+   "dystopia"
+  ],
+  "creators": [
+   "Alan Moore",
+   "David Lloyd"
+  ],
+  "characters": [],
+  "keeper": true
+ },
+ {
+  "id": "transmet-back-street",
+  "title": "Transmetropolitan Vol. 1: Back on the Street",
+  "lane": "other",
+  "laneName": "Standalone & creator-owned",
+  "universe": "main",
+  "order": 130,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "A gonzo journalist is dragged back to work in a filthy future city.",
+  "flag": null,
+  "fp": {
+   "tone": 0.7,
+   "violence": 0.5,
+   "scale": 0.35,
+   "complexity": 0.4,
+   "mystery": 0.2,
+   "pace": 0.55,
+   "artForward": 0.55,
+   "commitment": 0.25
+  },
+  "genres": [
+   "sci-fi",
+   "satire"
+  ],
+  "creators": [
+   "Warren Ellis",
+   "Darick Robertson"
+  ],
+  "characters": [],
+  "keeper": false
+ },
+ {
+  "id": "east-of-west-promise",
+  "title": "East of West Vol. 1: The Promise",
+  "lane": "other",
+  "laneName": "Standalone & creator-owned",
+  "universe": "main",
+  "order": 140,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "An alternate-history apocalypse western with the Four Horsemen walking the Earth.",
+  "flag": null,
+  "fp": {
+   "tone": 0.6,
+   "violence": 0.55,
+   "scale": 0.6,
+   "complexity": 0.55,
+   "mystery": 0.4,
+   "pace": 0.4,
+   "artForward": 0.65,
+   "commitment": 0.3
+  },
+  "genres": [
+   "sci-fi",
+   "war"
+  ],
+  "creators": [
+   "Jonathan Hickman",
+   "Nick Dragotta"
+  ],
+  "characters": [],
+  "keeper": true
+ },
+ {
+  "id": "black-hammer-secret",
+  "title": "Black Hammer Vol. 1: Secret Origins",
+  "lane": "other",
+  "laneName": "Standalone & creator-owned",
+  "universe": "main",
+  "order": 150,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "Stranded superheroes live quiet, mysterious lives on a farm they can't leave.",
+  "flag": null,
+  "fp": {
+   "tone": 0.45,
+   "violence": 0.3,
+   "scale": 0.3,
+   "complexity": 0.4,
+   "mystery": 0.5,
+   "pace": 0.35,
+   "artForward": 0.55,
+   "commitment": 0.25
+  },
+  "genres": [
+   "mystery",
+   "drama"
+  ],
+  "creators": [
+   "Jeff Lemire",
+   "Dean Ormston"
+  ],
+  "characters": [],
+  "keeper": false
+ },
+ {
+  "id": "descender-tin-stars",
+  "title": "Descender Vol. 1: Tin Stars",
+  "lane": "other",
+  "laneName": "Standalone & creator-owned",
+  "universe": "main",
+  "order": 160,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "A boy robot searches a galaxy that has turned against all machines.",
+  "flag": null,
+  "fp": {
+   "tone": 0.4,
+   "violence": 0.35,
+   "scale": 0.6,
+   "complexity": 0.35,
+   "mystery": 0.4,
+   "pace": 0.4,
+   "artForward": 0.7,
+   "commitment": 0.25
+  },
+  "genres": [
+   "sci-fi",
+   "mystery"
+  ],
+  "creators": [
+   "Jeff Lemire",
+   "Dustin Nguyen"
+  ],
+  "characters": [],
+  "keeper": true
+ },
+ {
+  "id": "rat-queens-sass",
+  "title": "Rat Queens Vol. 1: Sass and Sorcery",
+  "lane": "other",
+  "laneName": "Standalone & creator-owned",
+  "universe": "main",
+  "order": 170,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "A foul-mouthed mercenary crew brawls through a fantasy town.",
+  "flag": null,
+  "fp": {
+   "tone": 0.35,
+   "violence": 0.4,
+   "scale": 0.25,
+   "complexity": 0.2,
+   "mystery": 0.15,
+   "pace": 0.6,
+   "artForward": 0.5,
+   "commitment": 0.2
+  },
+  "genres": [
+   "comedy",
+   "heroic"
+  ],
+  "creators": [
+   "Kurtis Wiebe",
+   "Roc Upchurch"
+  ],
+  "characters": [],
+  "keeper": false
+ },
+ {
+  "id": "sex-criminals-vol1",
+  "title": "Sex Criminals Vol. 1: One Weird Trick",
+  "lane": "other",
+  "laneName": "Standalone & creator-owned",
+  "universe": "main",
+  "order": 180,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "Two people discover they can stop time when they orgasm, and rob a bank.",
+  "flag": null,
+  "fp": {
+   "tone": 0.3,
+   "violence": 0.15,
+   "scale": 0.1,
+   "complexity": 0.25,
+   "mystery": 0.2,
+   "pace": 0.5,
+   "artForward": 0.5,
+   "commitment": 0.2
+  },
+  "genres": [
+   "comedy",
+   "drama"
+  ],
+  "creators": [
+   "Matt Fraction",
+   "Chip Zdarsky"
+  ],
+  "characters": [],
+  "keeper": false
+ },
+ {
+  "id": "southern-bastards-vol1",
+  "title": "Southern Bastards Vol. 1: Here Was a Man",
+  "lane": "other",
+  "laneName": "Standalone & creator-owned",
+  "universe": "main",
+  "order": 190,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "An old man returns to his small Alabama hometown and its buried violence.",
+  "flag": null,
+  "fp": {
+   "tone": 0.75,
+   "violence": 0.55,
+   "scale": 0.2,
+   "complexity": 0.3,
+   "mystery": 0.25,
+   "pace": 0.4,
+   "artForward": 0.6,
+   "commitment": 0.2
+  },
+  "genres": [
+   "crime",
+   "drama"
+  ],
+  "creators": [
+   "Jason Aaron",
+   "Jason Latour"
+  ],
+  "characters": [],
+  "keeper": false
+ },
+ {
+  "id": "wicdiv-faust",
+  "title": "The Wicked + The Divine Vol. 1: The Faust Act",
+  "lane": "other",
+  "laneName": "Standalone & creator-owned",
+  "universe": "main",
+  "order": 200,
+  "own": "none",
+  "status": "none",
+  "format": "digital",
+  "formatWhy": "",
+  "note": "Gods reincarnate as pop stars every 90 years, and die two years later.",
+  "flag": null,
+  "fp": {
+   "tone": 0.5,
+   "violence": 0.35,
+   "scale": 0.35,
+   "complexity": 0.4,
+   "mystery": 0.5,
+   "pace": 0.5,
+   "artForward": 0.7,
+   "commitment": 0.25
+  },
+  "genres": [
+   "mystery",
+   "drama"
+  ],
+  "creators": [
+   "Kieron Gillen",
+   "Jamie McKelvie"
+  ],
+  "characters": [],
+  "keeper": false
  }
 ]
