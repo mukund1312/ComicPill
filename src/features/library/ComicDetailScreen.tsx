@@ -55,11 +55,12 @@ export default function ComicDetailScreen() {
       <Detail item={item} detail={d} setStatus={library.setStatus} label={item.keeper ? 'collect' : item.formatVerdict === 'digital' ? 'digital_is_fine' : 'try_digital_first'} linkedBank={linkedBank} purchase={purchase} onSave={() => { setTargetText(String((purchase?.wherePaise ?? edition?.typicalPricePaise ?? 0) / 100)); setSaveOpen(true); }} onBuy={() => { if (edition) fund.addItemToCart(item.workId, edition.id); router.push('/wallet'); }} onAdd={() => setAddOpen(true)} />
     )} />
     {saveOpen ? <View style={styles.overlay}><Sheet title="Save for this comic"><Text style={styles.sheetCopy}>Start a virtual Piggy Bank for this exact edition. You’ll add savings manually whenever you choose.</Text><Text style={styles.sheetPrice}>{bestBuy ? `Current best price · ${formatPrice(bestBuy.totalPaise)}` : 'Price not available yet'}</Text><Input placeholder="Target in ₹" value={targetText} onChangeText={setTargetText} /><Button disabled={!edition || !targetPaise} style={{ marginTop: 14 }} onPress={() => { if (edition && targetPaise) { fund.startPiggyBank(item.workId, edition.id, item.title, targetPaise); setSaveOpen(false); } }}>Start saving</Button><Button kind="ghost" onPress={() => setSaveOpen(false)}>Cancel</Button></Sheet></View> : null}
-    {addOpen ? <View style={styles.overlay}><Sheet title="Add to your library"><Text style={styles.sheetCopy}>How do you have this one? This moves it out of Discover and into your collection.</Text>
+    {addOpen ? <View style={styles.overlay}><Sheet title={isAccessible(item.own) ? 'Edit ownership' : 'Add to your library'}><Text style={styles.sheetCopy}>{isAccessible(item.own) ? 'Change how you have this comic. Your reading status stays exactly as it is.' : 'How do you have this one? This moves it out of Discover and into your collection.'}</Text>
       <Button style={{ marginBottom: 10 }} onPress={() => { library.setOwnership(item.workId, 'physical'); setAddOpen(false); }}>Physical</Button>
       <Button kind="secondary" style={{ marginBottom: 10 }} onPress={() => { library.setOwnership(item.workId, 'digital'); setAddOpen(false); }}>Digital</Button>
       <Button kind="secondary" style={{ marginBottom: 10 }} onPress={() => { library.setOwnership(item.workId, 'both'); setAddOpen(false); }}>Both</Button>
       <Button kind="secondary" style={{ marginBottom: 10 }} onPress={() => { library.setOwnership(item.workId, 'wishlist'); setAddOpen(false); }}>Wishlist it instead</Button>
+      <Button kind="destructive" style={{ marginBottom: 10 }} onPress={() => { library.setOwnership(item.workId, 'none'); setAddOpen(false); }}>Neither · remove from library</Button>
       <Button kind="ghost" onPress={() => setAddOpen(false)}>Cancel</Button>
     </Sheet></View> : null}
   </>;
@@ -102,6 +103,9 @@ function Detail({ item, detail, setStatus, label, linkedBank, purchase, onSave, 
 
       {linkedBank ? <Pressable onPress={() => router.push({ pathname: '/wallet', params: { bankId: linkedBank.id } })} style={styles.walletBlock}><Eyebrow>Comic Wallet</Eyebrow><Text style={styles.walletTitle}>{linkedBank.name}</Text><Text style={styles.walletCopy}>{formatPrice(linkedBank.savedPaise)} saved of {formatPrice(linkedBank.targetPaise)} · {Math.round((linkedBank.targetPaise ? linkedBank.savedPaise / linkedBank.targetPaise : 0) * 100)}%</Text><Progress value={linkedBank.targetPaise ? linkedBank.savedPaise / linkedBank.targetPaise : 0} /><Text style={styles.walletAction}>Open goal →</Text></Pressable> : purchase ? <View style={styles.walletBlock}><Eyebrow>{purchase.action === 'owned' ? 'In your collection' : 'Should I buy this?'}</Eyebrow>{purchase.wherePaise != null ? <Text style={styles.walletPrice}>Best price {formatPrice(purchase.wherePaise)}{purchase.whereRetailerId ? ` · ${purchase.whereRetailerId.replace('retailer-', '')}` : ''}</Text> : null}<Text style={styles.walletCopy}>{purchase.action === 'wait' || purchase.action === 'skip' || purchase.action === 'owned' ? purchase.why : purchase.actionDetail}</Text>{purchase.action === 'buy' ? <Button style={{ marginTop: 12 }} onPress={onBuy}>Buy</Button> : purchase.action === 'save' ? <Button style={{ marginTop: 12 }} onPress={onSave}>Save for this</Button> : null}</View> : null}
 
+      <SectionHeader title="Ownership" action="Edit ownership" onAction={onAdd} />
+      <View style={styles.ownership}><OwnershipLine label="Physical" active={item.own === 'physical' || item.own === 'both'} /><OwnershipLine label="Digital" active={item.own === 'digital' || item.own === 'both' || item.own === 'subscription'} /><Text style={styles.ownershipNote}>{item.own === 'subscription' ? 'Available through subscription' : item.own === 'wishlist' ? 'On your wishlist' : item.own === 'ordered' ? 'Ordered · not in hand yet' : item.own === 'none' ? 'Not in your library' : 'Ownership can change without changing your reading history.'}</Text></View>
+
       <SectionHeader title="Editions" />
       {detail.editions.length ? (
         <View style={styles.editions}>{detail.editions.map((e) => <EditionRow key={e.id} edition={e} />)}</View>
@@ -113,7 +117,7 @@ function Detail({ item, detail, setStatus, label, linkedBank, purchase, onSave, 
       <View style={styles.statuses}>{(['none', 'reading', 'done', 'dropped'] as const).map((status) => <Pill key={status} label={status === 'none' ? 'Unread' : status} active={item.status === status} onPress={() => setStatus(item.workId, status)} />)}</View>
       {item.status === 'reading' ? <View style={{ marginTop: 16 }}><Progress value={0.45} /></View> : null}
       <Button style={{ marginTop: 24 }} onPress={() => item.status === 'reading' ? router.push(`/check-in/${item.workId}`) : !isAccessible(item.own) ? onAdd() : setStatus(item.workId, 'reading')}>{item.status === 'reading' ? 'Check in' : item.own === 'none' ? 'Add to library' : !isAccessible(item.own) ? 'Update ownership' : 'Start reading'}</Button>
-      <Button kind="secondary" style={{ marginTop: 10 }} onPress={() => router.push('/compare')}>Compare formats</Button>
+      <Button kind="secondary" style={{ marginTop: 10 }} onPress={() => router.push({ pathname: '/compare', params: { workId: item.workId } })}>Compare</Button>
 
       {detail.skip.affectedWorkIds.length > 0 ? (
         <View style={styles.skipBox}>
@@ -166,6 +170,10 @@ function EditionRow({ edition }: { edition: DetailEdition }) {
   );
 }
 
+function OwnershipLine({ label, active }: { label: string; active: boolean }) {
+  return <View style={styles.ownershipLine}><Text style={styles.ownershipLabel}>{label}</Text><Text style={[styles.ownershipValue, active ? styles.ownershipActive : styles.ownershipInactive]}>{active ? '✓' : '—'}</Text></View>;
+}
+
 // A minimal pressable text row — kept local since it's only used for the
 // previous/next path nav and the related-works list on this screen.
 function Pressable_({ onPress, label, align, full }: { onPress: () => void; label: string; align: 'left' | 'right'; full?: boolean }) {
@@ -188,6 +196,7 @@ const styles = StyleSheet.create({
   verdictTitle: { color: color.collectGold, fontFamily: font.display, fontSize: type.title, marginTop: 5 },
   verdictCopy: { color: color.muted, fontFamily: font.body, fontSize: type.caption, lineHeight: 18, marginTop: 5 },
   walletBlock: { marginTop: 18, backgroundColor: color.surface2, padding: space.md, borderRadius: radius.md, borderWidth: 1, borderColor: color.accentDeep + '88' }, walletTitle: { color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle, marginTop: 5 }, walletPrice: { color: color.collectGold, fontFamily: font.bodySemibold, fontSize: type.caption, marginTop: 5 }, walletCopy: { color: color.muted, fontFamily: font.body, fontSize: type.caption, lineHeight: 18, marginTop: 6 }, walletAction: { color: color.accent, fontFamily: font.bodySemibold, fontSize: type.caption, marginTop: 10 },
+  ownership: { backgroundColor: color.surface2, borderColor: color.border, borderWidth: 1, borderRadius: radius.md, padding: space.md, gap: 8 }, ownershipLine: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, ownershipLabel: { color: color.text, fontFamily: font.bodySemibold, fontSize: type.body }, ownershipValue: { fontFamily: font.bodySemibold, fontSize: type.body }, ownershipActive: { color: color.positive }, ownershipInactive: { color: color.faint }, ownershipNote: { color: color.muted, fontFamily: font.body, fontSize: type.caption, lineHeight: 18, marginTop: 2 },
   skipBox: { marginTop: 18, backgroundColor: color.surface2, borderRadius: radius.md, borderWidth: 1, borderColor: color.border, padding: space.md, gap: 6 },
   skipTitle: { color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle, marginTop: 4 },
   skipLine: { color: color.muted, fontFamily: font.body, fontSize: type.caption, lineHeight: 18 },
