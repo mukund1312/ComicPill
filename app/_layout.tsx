@@ -12,13 +12,16 @@ import {
 import {
   PlayfairDisplay_600SemiBold, PlayfairDisplay_700Bold,
 } from '@expo-google-fonts/playfair-display';
+import { BarlowCondensed_600SemiBold, BarlowCondensed_700Bold } from '@expo-google-fonts/barlow-condensed';
 import { initDatabase } from '../src/lib/db/client';
 import { color } from '../src/ui/tokens';
+import { AppearanceProvider, useAppearance } from '../src/ui/theme';
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     Inter_400Regular, Inter_500Medium, Inter_600SemiBold,
     PlayfairDisplay_600SemiBold, PlayfairDisplay_700Bold,
+    BarlowCondensed_600SemiBold, BarlowCondensed_700Bold,
   });
   const [dbReady] = useState(() => {
     initDatabase();
@@ -33,9 +36,11 @@ export default function RootLayout() {
     );
   }
 
-  return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: color.bg } }} />
-    </GestureHandlerRootView>
-  );
+  return <GestureHandlerRootView style={{ flex: 1 }}><AppearanceProvider><ThemedStack /></AppearanceProvider></GestureHandlerRootView>;
+}
+
+function ThemedStack() {
+  const { theme, ready } = useAppearance();
+  if (!ready) return <View style={{ flex: 1, backgroundColor: color.bg, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={color.accent} /></View>;
+  return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.colors.background } }} />;
 }

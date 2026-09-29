@@ -1,25 +1,27 @@
 import type { PropsWithChildren, ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View, type ViewStyle } from 'react-native';
 import { color, font, radius, space, type } from './tokens';
+import { useAppearance } from './theme';
 
 export function Wordmark({ small = false }: { small?: boolean }) {
-  return <Text style={[styles.wordmark, small && styles.wordmarkSmall]}>Comic<Text style={{ color: color.accent }}>Pill</Text></Text>;
+  const { theme, typography } = useAppearance(); return <Text style={[styles.wordmark, { color: theme.colors.textPrimary, fontFamily: typography.display }, small && styles.wordmarkSmall]}>Comic<Text style={{ color: theme.colors.primary }}>Pill</Text></Text>;
 }
 
 export function Eyebrow({ children }: PropsWithChildren) {
-  return <Text style={styles.eyebrow}>{children}</Text>;
+  const { theme, typography } = useAppearance(); return <Text style={[styles.eyebrow, { color: theme.colors.textSecondary, fontFamily: typography.bodySemibold }]}>{children}</Text>;
 }
 
 export function Button({ children, onPress, kind = 'primary', disabled = false, style }: { children: ReactNode; onPress?: () => void; kind?: 'primary' | 'secondary' | 'ghost' | 'destructive'; disabled?: boolean; style?: ViewStyle }) {
+  const { theme, typography } = useAppearance(); const c = theme.colors; const dynamic = kind === 'primary' ? { backgroundColor: c.primary, borderColor: c.primary } : kind === 'destructive' ? { backgroundColor: 'transparent', borderColor: c.destructive } : kind === 'secondary' ? { backgroundColor: c.surfaceRaised, borderColor: c.border } : { backgroundColor: 'transparent', borderColor: 'transparent' };
   return (
-    <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.button, styles[`button_${kind}`], disabled && styles.disabled, pressed && styles.pressed, style]}>
-      <Text style={[styles.buttonText, kind !== 'primary' && kind !== 'destructive' && styles.buttonTextSecondary]}>{children}</Text>
+    <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.button, styles[`button_${kind}`], dynamic, disabled && styles.disabled, pressed && styles.pressed, style]}>
+      <Text style={[styles.buttonText, { color: kind === 'primary' ? c.primaryForeground : c.textPrimary, fontFamily: typography.bodySemibold }]}>{children}</Text>
     </Pressable>
   );
 }
 
 export function Pill({ label, active = false, onPress }: { label: string; active?: boolean; onPress?: () => void }) {
-  return <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.pill, active && styles.pillActive, pressed && styles.pressed]}><Text style={[styles.pillText, active && styles.pillTextActive]}>{label}</Text></Pressable>;
+  const { theme, typography } = useAppearance(); const c = theme.colors; return <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.pill, { backgroundColor: active ? c.primary : c.surfaceRaised, borderColor: active ? c.primary : c.border }, pressed && styles.pressed]}><Text style={[styles.pillText, { color: active ? c.primaryForeground : c.textSecondary, fontFamily: typography.bodyMedium }]}>{label}</Text></Pressable>;
 }
 
 export function PurchaseBadge({ label }: { label: 'collect' | 'buy_on_sale' | 'digital_is_fine' | 'try_digital_first' | 'skip' }) {
@@ -32,19 +34,19 @@ export function PurchaseBadge({ label }: { label: 'collect' | 'buy_on_sale' | 'd
 }
 
 export function SectionHeader({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) {
-  return <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>{title}</Text>{action ? <Pressable onPress={onAction}><Text style={styles.sectionAction}>{action}</Text></Pressable> : null}</View>;
+  const { theme, typography } = useAppearance(); return <View style={styles.sectionHeader}><Text style={[styles.sectionTitle, { color: theme.colors.textPrimary, fontFamily: typography.displayMedium }]}>{title}</Text>{action ? <Pressable onPress={onAction}><Text style={[styles.sectionAction, { color: theme.colors.primary, fontFamily: typography.bodySemibold }]}>{action}</Text></Pressable> : null}</View>;
 }
 
 export function Progress({ value }: { value: number }) {
-  return <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${Math.max(0, Math.min(1, value)) * 100}%` }]} /></View>;
+  const { theme } = useAppearance(); return <View style={[styles.progressTrack, { backgroundColor: theme.colors.border }]}><View style={[styles.progressFill, { backgroundColor: theme.colors.progress, width: `${Math.max(0, Math.min(1, value)) * 100}%` }]} /></View>;
 }
 
 export function Sheet({ title, children }: PropsWithChildren<{ title?: string }>) {
-  return <View style={styles.sheet}><View style={styles.handle} />{title ? <Text style={styles.sheetTitle}>{title}</Text> : null}{children}</View>;
+  const { theme, typography } = useAppearance(); return <View style={[styles.sheet, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}><View style={[styles.handle, { backgroundColor: theme.colors.textMuted }]} />{title ? <Text style={[styles.sheetTitle, { color: theme.colors.textPrimary, fontFamily: typography.display }]}>{title}</Text> : null}{children}</View>;
 }
 
 export function Input({ placeholder, value, onChangeText, secureTextEntry = false }: { placeholder: string; value?: string; onChangeText?: (text: string) => void; secureTextEntry?: boolean }) {
-  return <TextInput accessibilityLabel={placeholder} placeholder={placeholder} placeholderTextColor={color.faint} value={value} onChangeText={onChangeText} secureTextEntry={secureTextEntry} style={styles.input} />;
+  const { theme, typography } = useAppearance(); return <TextInput accessibilityLabel={placeholder} placeholder={placeholder} placeholderTextColor={theme.colors.textMuted} value={value} onChangeText={onChangeText} secureTextEntry={secureTextEntry} style={[styles.input, { borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceRaised, color: theme.colors.textPrimary, fontFamily: typography.body }]} />;
 }
 
 export function EmptyState({ mark = '◇', title, copy, action, onAction }: { mark?: string; title: string; copy: string; action?: string; onAction?: () => void }) {
