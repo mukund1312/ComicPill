@@ -42,7 +42,10 @@ const styles = StyleSheet.create({
   content: { padding: space.lg, paddingBottom: 105 }, header: { marginBottom: 2 }, actions: { flexDirection: 'row', gap: 18 }, action: { color: color.text, fontSize: 25 }, count: { color: color.muted, fontFamily: font.body, fontSize: type.caption, marginTop: 8 }, playlistsLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: space.md, paddingHorizontal: space.md, minHeight: 48, borderWidth: 1, borderColor: color.border, borderRadius: radius.md, backgroundColor: color.surface2 }, playlistsLinkText: { color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle }, playlistsArrow: { color: color.accent, fontSize: 26 }, pills: { gap: 8, paddingVertical: space.lg },
   // The fixed title/status zone makes every three-column grid row start at
   // the same baseline, even when one comic has a much longer title.
-  gridItem: { width: '33.333%', minHeight: 229, paddingHorizontal: 2, paddingBottom: 18, alignItems: 'center' },
+  // FlashList assigns the three columns itself. Giving this child another
+  // one-third width created a nested three-column calculation, so the first
+  // cover overflowed off-screen and every title sat under the wrong column.
+  gridItem: { width: '100%', minHeight: 229, paddingHorizontal: 2, paddingBottom: 18, alignItems: 'center' },
   gridTitle: { width: 96, height: 45, color: color.text, fontFamily: font.displayMedium, fontSize: 12, lineHeight: 15, marginTop: 7, textAlign: 'center' },
   gridStatus: { width: 96, minHeight: 14, color: color.faint, fontFamily: font.bodyMedium, fontSize: 11, lineHeight: 14, marginTop: 3, textAlign: 'center', textTransform: 'capitalize' },
   overlay: { ...StyleSheet.absoluteFill, zIndex: 5, justifyContent: 'flex-end', backgroundColor: '#000000aa' }, filterHeading: { color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle, marginTop: 8, marginBottom: 10 }, sheetPills: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 16 }, apply: { minHeight: 50, borderRadius: radius.md, backgroundColor: color.accent, alignItems: 'center', justifyContent: 'center', marginTop: 8 }, applyText: { color: color.text, fontFamily: font.bodySemibold, fontSize: type.caption },
