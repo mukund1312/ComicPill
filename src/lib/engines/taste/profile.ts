@@ -115,8 +115,10 @@ export function applySignal(
     for (const c of work.creators) bumpAffinity(next.affinities.creator, c, w);
     for (const c of work.characters) bumpAffinity(next.affinities.character, c, w);
     bumpAffinity(next.affinities.bucket, work.bucket, w);
-  } else if (event.type === 'chip' && event.tag) {
+  } else if (event.type === 'chip' && event.tag && event.tag.kind !== 'note') {
     // Chips add ±0.5 extra weight on that specific dimension/tag only.
+    // 'note' (free-text reflection) has no affinity table to bump — it's
+    // qualitative commentary, stored for future reading, not scoring input.
     const w = baseWeight * decay;
     const table = next.affinities[event.tag.kind];
     bumpAffinity(table, event.tag.value, w);

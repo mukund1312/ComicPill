@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fundVerdict } from './verdict';
+import { fundVerdict, ownedVerdict } from './verdict';
 import type { PurchaseSignals } from '../purchase/signals';
 import type { BestBuy } from './price';
 import type { WalletSnapshot } from './wallet';
@@ -43,5 +43,23 @@ describe('fundVerdict', () => {
     const v = fundVerdict('w1', signals(), null, wallet(), null);
     expect(v.action).toBe('wait');
     expect(v.wherePaise).toBeNull();
+  });
+});
+
+describe('ownedVerdict', () => {
+  // Regression test for a real bug: getFundVerdict (wallet.ts) never checked
+  // ownership at all, so a comic already owned physically still showed
+  // "Best Buy in Print" with retailer prices. The query layer now
+  // short-circuits to this verdict before fundVerdict ever runs.
+  it('given a physical-owned comic, suppresses the buy CTA', () => {
+    const v = ownedVerdict('w1', 'physical');
+    expect(v.action).toBe('owned');
+    expect(v.wherePaise).toBeNull();
+    expect(v.whereRetailerId).toBeNull();
+  });
+
+  it('names the owned format in the reason', () => {
+    expect(ownedVerdict('w1', 'digital').why).toMatch(/digital/);
+    expect(ownedVerdict('w1', 'physical').why).toMatch(/physical/);
   });
 });

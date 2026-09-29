@@ -7,7 +7,19 @@ import type { PurchaseSignals } from '../purchase/signals';
 import type { BestBuy } from './price';
 import type { WalletSnapshot } from './wallet';
 
-export type FundAction = 'buy' | 'save' | 'wait' | 'skip';
+export type FundAction = 'buy' | 'save' | 'wait' | 'skip' | 'owned';
+
+/** Purchase signals/scoring never see ownership — they answer "is this worth
+ *  owning", not "does the reader already own it". This is the short-circuit
+ *  the query layer must apply before computing a real buy/save/wait verdict:
+ *  a representative edition already in hand must never surface as a "Best
+ *  Buy in Print" candidate for the exact copy already on the shelf. */
+export function ownedVerdict(workId: string, format: 'physical' | 'digital'): FundVerdict {
+  return {
+    workId, why: `Already in your collection (${format}).`, wherePaise: null, whereRetailerId: null,
+    canAffordNow: false, impactPaise: null, action: 'owned', actionDetail: 'No purchase needed.',
+  };
+}
 
 export interface FundVerdict {
   workId: string;

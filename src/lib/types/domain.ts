@@ -334,7 +334,9 @@ export interface TasteEvent {
   workId: string | null;
   type: SignalKind;
   dimension: Dim | null;
-  tag: { kind: 'genre' | 'creator' | 'character' | 'bucket'; value: string } | null;
+  // 'note' is free-text reflection commentary — it has no numeric affinity
+  // table (see profile.ts's applySignal), unlike the other three taxonomy tags.
+  tag: { kind: 'genre' | 'creator' | 'character' | 'bucket' | 'note'; value: string } | null;
   value: number | null; // e.g. swipe-up mini rating 1-3
   calibration: CalibrationAnswer | null; // set only when type === 'calibrate'
   appetite: AppetiteAnswer | null; // set only when type === 'appetite'

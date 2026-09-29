@@ -55,7 +55,7 @@ export function useCheckIn(workId: string, recentFinished: FinishedRead[]) {
     upsertLibraryEntry(workId, { status: 'dropped' });
   }
 
-  function answerChip(kind: 'genre' | 'creator' | 'character' | 'bucket', value: string) {
+  function answerChip(kind: 'genre' | 'creator' | 'character' | 'bucket' | 'note', value: string) {
     appendEvent({ workId, type: 'chip', ...EMPTY_EVENT_FIELDS, tag: { kind, value }, occurredAt: now.toISOString() });
   }
 
@@ -67,6 +67,13 @@ export function useCheckIn(workId: string, recentFinished: FinishedRead[]) {
   function answerAppetite(answer: AppetiteAnswer) {
     appendEvent({ workId, type: 'appetite', ...EMPTY_EVENT_FIELDS, appetite: answer, occurredAt: now.toISOString() });
     finish();
+    // 'appetite' is always the last card (see pickCheckInCards), so advancing
+    // past it makes cards[cardIndex] undefined and the screen falls through
+    // to the "Logged." done state. Previously this called finish() alone,
+    // which invalidates the taste profile but never moves cardIndex — the
+    // screen stayed on the same appetite question forever after answering,
+    // with no visible response to the tap.
+    setCardIndex((i) => i + 1);
   }
 
   function skip() {

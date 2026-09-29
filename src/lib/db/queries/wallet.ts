@@ -14,10 +14,11 @@ import { computeWalletSnapshot, type WalletSnapshot } from '../../engines/fund/w
 import { piggyBankReadiness, settlePiggyBank, type PiggyBankReadiness } from '../../engines/fund/piggybank';
 import { bestBuy, type BestBuy } from '../../engines/fund/price';
 import { optimizeCart, type CartCandidate, type CartOptimizerResult } from '../../engines/fund/cart';
-import { fundVerdict, type FundVerdict } from '../../engines/fund/verdict';
+import { fundVerdict, ownedVerdict, type FundVerdict } from '../../engines/fund/verdict';
 import { purchaseSignals } from '../../engines/purchase/signals';
 import { newId } from '../../util/id';
-import type { WalletConfig, PiggyBank, PiggyBankStatus, WalletLedgerEntry } from '../../types/domain';
+import { isFormatOwned } from '../../util/own';
+import type { WalletConfig, PiggyBank, PiggyBankStatus, WalletLedgerEntry, Own } from '../../types/domain';
 
 const ROW_ID = 1;
 
@@ -252,6 +253,14 @@ export function getFundVerdict(workId: string, now: Date): FundVerdict | null {
   if (!work || !ctx) return null;
 
   const edition = pickRepresentativeEdition(ctx);
+  const own = (ctx.library?.own ?? 'none') as Own;
+
+  // pickRepresentativeEdition already prefers whichever format is owned, so
+  // this check alone catches the "own physical" and "own digital" cases.
+  if (edition && isFormatOwned(own, edition.format as 'physical' | 'digital')) {
+    return ownedVerdict(workId, edition.format as 'physical' | 'digital');
+  }
+
   const profile = getProfile(now);
   const snapshot = getWalletSnapshot(now);
   const best = edition ? getBestBuyForEdition(edition.id) : null;
