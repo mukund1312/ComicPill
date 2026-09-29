@@ -12,6 +12,7 @@
     "drizzle-orm": "^0.45.3",
     "expo": "~57.0.25",
     "expo-camera": "~57.0.5",
+    "expo-clipboard": "~57.0.2",
     "expo-constants": "~57.0.19",
     "expo-crypto": "~57.0.3",
     "expo-font": "~57.0.4",
@@ -38,6 +39,8 @@
     "@types/react": "~19.2.2",
     "babel-plugin-inline-import": "^3.0.0",
     "drizzle-kit": "^0.31.11",
+    "eslint": "^9.0.0",
+    "eslint-config-expo": "~57.0.2",
     "react-native-dotenv": "^5.0.0",
     "typescript": "~6.0.3",
     "vite": "^7.3.6",
@@ -50,7 +53,8 @@
     "web": "expo start --web",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "lint": "expo lint"
   },
   "private": true,
   "allowScripts": {

@@ -1,7 +1,7 @@
 // Root layout — minimal on purpose. This wires the app's boot sequence
 // (fonts, gesture root, local db init) but leaves screen composition to the
 // frontend build (see /docs for the design blueprint and API surface).
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { View, ActivityIndicator } from 'react-native';
@@ -20,12 +20,10 @@ export default function RootLayout() {
     Inter_400Regular, Inter_500Medium, Inter_600SemiBold,
     PlayfairDisplay_600SemiBold, PlayfairDisplay_700Bold,
   });
-  const [dbReady, setDbReady] = useState(false);
-
-  useEffect(() => {
+  const [dbReady] = useState(() => {
     initDatabase();
-    setDbReady(true);
-  }, []);
+    return true;
+  });
 
   if (!fontsLoaded || !dbReady) {
     return (

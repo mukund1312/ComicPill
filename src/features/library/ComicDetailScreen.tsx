@@ -97,7 +97,7 @@ function Detail({ item, detail, setStatus }: { item: LibraryItem; detail: ComicD
               ? "You're caught up"
               : `${detail.seriesCommitment.volumesRemaining} volume${detail.seriesCommitment.volumesRemaining === 1 ? '' : 's'} left · ${formatCommitment(detail.seriesCommitment.estimatedRemainingCostPaise)}`}
           </Text>
-          {detail.seriesCommitment.isOpenEnded ? <Text style={styles.skipLine}>Ongoing series — no announced total yet, so this is only what's out so far.</Text> : null}
+          {detail.seriesCommitment.isOpenEnded ? <Text style={styles.skipLine}>Ongoing series — no announced total yet, so this is only what&apos;s out so far.</Text> : null}
         </View>
       ) : null}
 
