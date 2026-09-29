@@ -27,7 +27,11 @@ export function ComicCover({ title, workId, size = 'grid', status, onPress, recy
 }
 
 export function ComicRow({ title, workId, meta, status, label, onPress, recyclingKey }: { title: string; workId?: string; meta?: string; status?: string; label?: 'collect' | 'buy_on_sale' | 'digital_is_fine' | 'try_digital_first' | 'skip'; onPress?: () => void; recyclingKey?: string }) {
-  return <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && { opacity: 0.8 }]}><ComicCover title={title} workId={workId} size="list" recyclingKey={recyclingKey ?? title} /><View style={styles.rowBody}><Text style={styles.rowTitle}>{title}</Text>{meta ? <Text style={styles.rowMeta}>{meta}</Text> : null}{label ? <PurchaseBadge label={label} /> : status ? <Text style={styles.rowStatus}>{status}</Text> : null}</View><Text style={styles.chevron}>›</Text></Pressable>;
+  // numberOfLines is load-bearing here, not cosmetic: without it a long
+  // comic title grows this row taller than its neighbors, which is exactly
+  // the "rows don't line up" symptom — every list built on ComicRow
+  // (Paths, Compare, Playlists) inherits the fix from one place.
+  return <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && { opacity: 0.8 }]}><ComicCover title={title} workId={workId} size="list" recyclingKey={recyclingKey ?? title} /><View style={styles.rowBody}><Text numberOfLines={2} ellipsizeMode="tail" style={styles.rowTitle}>{title}</Text>{meta ? <Text numberOfLines={1} ellipsizeMode="tail" style={styles.rowMeta}>{meta}</Text> : null}{label ? <PurchaseBadge label={label} /> : status ? <Text numberOfLines={1} style={styles.rowStatus}>{status}</Text> : null}</View><Text style={styles.chevron}>›</Text></Pressable>;
 }
 
 const styles = StyleSheet.create({

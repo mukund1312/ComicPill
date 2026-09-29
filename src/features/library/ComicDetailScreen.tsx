@@ -7,6 +7,12 @@ import type { ComicDetail, DetailEdition } from '../../lib/db/queries/detail';
 import { ComicCover } from '../../ui/comic';
 import { Button, Eyebrow, Pill, Progress, PurchaseBadge, SectionHeader } from '../../ui/primitives';
 import { color, font, radius, space, type } from '../../ui/tokens';
+import { isAccessible } from '../../lib/util/own';
+
+function formatCommitment(paise: number | null): string {
+  if (paise == null) return 'price not on file for every remaining volume';
+  return `₹${(paise / 100).toLocaleString('en-IN')} to finish`;
+}
 
 const PRINTING_LABEL: Record<string, string> = {
   single_issue: 'Single issue', trade_paperback: 'Trade paperback', hardcover: 'Hardcover',
@@ -37,7 +43,7 @@ function Detail({ item, detail, setStatus }: { item: LibraryItem; detail: ComicD
         <ComicCover title={item.title} workId={item.workId} size="hero" recyclingKey={item.workId} />
         <View style={styles.heroInfo}>
           <Eyebrow>{item.bucket.replaceAll('_', ' ')}</Eyebrow>
-          <Text style={styles.title}>{item.title}</Text>
+          <Text numberOfLines={3} ellipsizeMode="tail" style={styles.title}>{item.title}</Text>
           <Text style={styles.meta}>{[detail.publisher, detail.pathName ? `#${detail.positionInPath ?? '?'} of ${detail.totalInPath ?? '?'} in ${detail.pathName}` : null].filter(Boolean).join(' · ') || 'A considered addition to your reading life.'}</Text>
           <PurchaseBadge label={label} />
         </View>
@@ -68,8 +74,32 @@ function Detail({ item, detail, setStatus }: { item: LibraryItem; detail: ComicD
       <SectionHeader title="Your reading" />
       <View style={styles.statuses}>{(['none', 'reading', 'done', 'dropped'] as const).map((status) => <Pill key={status} label={status === 'none' ? 'Unread' : status} active={item.status === status} onPress={() => setStatus(item.workId, status)} />)}</View>
       {item.status === 'reading' ? <View style={{ marginTop: 16 }}><Progress value={0.45} /></View> : null}
-      <Button style={{ marginTop: 24 }} onPress={() => item.status === 'reading' ? router.push(`/check-in/${item.workId}`) : setStatus(item.workId, 'reading')}>{item.status === 'reading' ? 'Check in' : item.own === 'none' ? 'Add to library' : 'Start reading'}</Button>
+      <Button style={{ marginTop: 24 }} onPress={() => item.status === 'reading' ? router.push(`/check-in/${item.workId}`) : setStatus(item.workId, 'reading')}>{item.status === 'reading' ? 'Check in' : !isAccessible(item.own) ? 'Add to library' : 'Start reading'}</Button>
       <Button kind="secondary" style={{ marginTop: 10 }} onPress={() => router.push('/compare')}>Compare formats</Button>
+
+      {detail.skip.affectedWorkIds.length > 0 ? (
+        <View style={styles.skipBox}>
+          <Eyebrow>Can I skip this?</Eyebrow>
+          <Text style={styles.skipTitle}>{detail.skip.canSkip ? 'You can skip it — with tradeoffs' : "Don't skip this one"}</Text>
+          {!detail.skip.canSkip ? <Text style={styles.skipLine}>• Something later requires having read this first.</Text> : null}
+          {detail.skip.mainStoryImpact !== 'none' ? <Text style={styles.skipLine}>• Main story impact: {detail.skip.mainStoryImpact}</Text> : null}
+          {detail.skip.characterContextImpact !== 'none' ? <Text style={styles.skipLine}>• Character context impact: {detail.skip.characterContextImpact}</Text> : null}
+          {detail.skip.futureContinuityImpact !== 'none' ? <Text style={styles.skipLine}>• Future continuity impact: {detail.skip.futureContinuityImpact}</Text> : null}
+          {detail.skip.completionistOnly ? <Text style={styles.skipLine}>Only affects completionist-level reading.</Text> : null}
+        </View>
+      ) : null}
+
+      {detail.seriesCommitment ? (
+        <View style={styles.skipBox}>
+          <Eyebrow>Finishing this series</Eyebrow>
+          <Text style={styles.skipTitle}>
+            {detail.seriesCommitment.volumesRemaining === 0
+              ? "You're caught up"
+              : `${detail.seriesCommitment.volumesRemaining} volume${detail.seriesCommitment.volumesRemaining === 1 ? '' : 's'} left · ${formatCommitment(detail.seriesCommitment.estimatedRemainingCostPaise)}`}
+          </Text>
+          {detail.seriesCommitment.isOpenEnded ? <Text style={styles.skipLine}>Ongoing series — no announced total yet, so this is only what's out so far.</Text> : null}
+        </View>
+      ) : null}
 
       {detail.related.length ? (
         <>
@@ -119,6 +149,9 @@ const styles = StyleSheet.create({
   verdict: { marginTop: 20, backgroundColor: color.surface, padding: space.lg, borderRadius: radius.lg, borderWidth: 1, borderColor: color.collectGold + '77' },
   verdictTitle: { color: color.collectGold, fontFamily: font.display, fontSize: type.title, marginTop: 5 },
   verdictCopy: { color: color.muted, fontFamily: font.body, fontSize: type.caption, lineHeight: 18, marginTop: 5 },
+  skipBox: { marginTop: 18, backgroundColor: color.surface2, borderRadius: radius.md, borderWidth: 1, borderColor: color.border, padding: space.md, gap: 6 },
+  skipTitle: { color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle, marginTop: 4 },
+  skipLine: { color: color.muted, fontFamily: font.body, fontSize: type.caption, lineHeight: 18 },
   editions: { gap: 8 },
   editionRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: color.surface, borderWidth: 1, borderColor: color.border, borderRadius: radius.md, padding: space.md },
   editionPrinting: { color: color.text, fontFamily: font.bodySemibold, fontSize: type.body },

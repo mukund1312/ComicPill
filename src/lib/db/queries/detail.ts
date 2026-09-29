@@ -6,7 +6,11 @@ import { db } from '../client';
 import { paths, pathItems, storyEdges, workIssues, issues, series } from '../schema';
 import { loadAllWorkContexts, loadAllEdges } from './library';
 import { expandPath } from '../../engines/graph/path';
-import type { ContextLevel, EdgeType, PrintingType } from '../../types/domain';
+import { skipImpact, type SkipImpact } from '../../engines/graph/skip';
+import { estimateSeriesCommitment, type SeriesCommitment, type SeriesVolume } from '../../engines/purchase/commitment';
+import { pickRepresentativeEdition } from '../map';
+import { isAccessible } from '../../util/own';
+import type { ContextLevel, EdgeType, PrintingType, SeriesStatus, Own } from '../../types/domain';
 
 export interface DetailEdition {
   id: string;
@@ -55,6 +59,12 @@ export interface ComicDetail {
   editions: DetailEdition[];
   issues: DetailIssue[]; // empty until real series/issue data is imported (e.g. from GCD)
   related: RelatedWork[];
+  // "Can I skip this?" (jobs #15/#16/#34/#35) — null only if there are no
+  // story edges at all touching this work (nothing to assess).
+  skip: SkipImpact;
+  // "How much left to finish this?" (job #19) — null when this work isn't
+  // part of a tracked series (primarySeriesId unset).
+  seriesCommitment: SeriesCommitment | null;
 }
 
 export function loadComicDetail(workId: string, contextLevel: ContextLevel = 'recommended'): ComicDetail | null {
@@ -114,6 +124,28 @@ export function loadComicDetail(workId: string, contextLevel: ContextLevel = 're
   }).filter((x): x is DetailIssue => x !== null);
 
   const allEdges = db.select().from(storyEdges).all();
+
+  const skip = skipImpact(workId, loadAllEdges());
+
+  let seriesCommitment: ComicDetail['seriesCommitment'] = null;
+  if (ctx.work.primarySeriesId) {
+    const seriesRow = db.select().from(series).where(eq(series.id, ctx.work.primarySeriesId)).get();
+    if (seriesRow) {
+      const volumes: SeriesVolume[] = contexts
+        .filter((c) => c.work.primarySeriesId === ctx.work.primarySeriesId)
+        .map((c) => ({
+          workId: c.work.id,
+          ownedOrRead: c.library?.status === 'done' || isAccessible((c.library?.own ?? 'none') as Own),
+          typicalPricePaise: pickRepresentativeEdition(c)?.typicalPricePaise ?? null,
+        }));
+      seriesCommitment = estimateSeriesCommitment(
+        volumes,
+        seriesRow.status as SeriesStatus,
+        seriesRow.plannedVolumeCount,
+      );
+    }
+  }
+
   const related: RelatedWork[] = [
     ...allEdges.filter((e) => e.toWork === workId).map((e) => ({
       workId: e.fromWork, title: titleById.get(e.fromWork) ?? e.fromWork,
@@ -130,6 +162,6 @@ export function loadComicDetail(workId: string, contextLevel: ContextLevel = 're
     universe: ctx.work.universe, keeper: ctx.work.keeperFlag, genres: ctx.work.genres,
     creators: ctx.work.creators, characters: ctx.work.characters, bucket: ctx.bucket,
     pathName, positionInPath, totalInPath, previousInPath, nextInPath,
-    editions, issues: detailIssues, related,
+    editions, issues: detailIssues, related, skip, seriesCommitment,
   };
 }
