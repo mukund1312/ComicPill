@@ -233,6 +233,17 @@ export const cartItems = sqliteTable('cart_items', {
   addedAt: text('added_at').notNull(),
 });
 
+// A local issue log — see the FeedbackEntry domain type for why this has no
+// server sync: there's no backend to send it to, so "feedback" means "keep
+// it somewhere the user can copy out and hand to the dev directly."
+export const feedback = sqliteTable('feedback', {
+  id: text('id').primaryKey(),
+  category: text('category').notNull().default('bug'), // bug|idea|other
+  message: text('message').notNull(),
+  screen: text('screen'),
+  createdAt: text('created_at').notNull(),
+});
+
 export const userLibrary = sqliteTable('user_library', {
   workId: text('work_id').primaryKey(),
   own: text('own').notNull().default('none'), // physical|digital|both|wishlist|ordered|subscription|none

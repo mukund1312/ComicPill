@@ -287,6 +287,19 @@ export interface CartItem {
   addedAt: string;
 }
 
+// A local, self-contained issue log — no backend to send to, so "send
+// feedback" means "write it down where it's easy to find and hand to the
+// dev directly" (a Copy-all action), not a network request.
+export type FeedbackCategory = 'bug' | 'idea' | 'other';
+
+export interface FeedbackEntry {
+  id: string;
+  category: FeedbackCategory;
+  message: string;
+  screen: string | null; // which screen the user was on, if they told us
+  createdAt: string;
+}
+
 export interface LibraryEntry {
   workId: string;
   own: Own;

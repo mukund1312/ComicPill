@@ -131,6 +131,12 @@ CREATE TABLE IF NOT EXISTS cart_items (
   id TEXT PRIMARY KEY, work_id TEXT NOT NULL, edition_id TEXT NOT NULL, added_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS feedback (
+  id TEXT PRIMARY KEY, category TEXT NOT NULL DEFAULT 'bug', message TEXT NOT NULL,
+  screen TEXT, created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS feedback_created_at ON feedback(created_at);
+
 CREATE TABLE IF NOT EXISTS user_library (
   work_id TEXT PRIMARY KEY, own TEXT NOT NULL DEFAULT 'none', owned_edition_id TEXT,
   status TEXT NOT NULL DEFAULT 'none',
