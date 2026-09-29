@@ -5,6 +5,7 @@ import { getProfile, invalidateProfile } from '../../lib/db/queries/profile';
 import { buildDeck } from '../../lib/engines/recommend/deck';
 import { essentialCollection, type EssentialPick } from '../../lib/engines/recommend/essential';
 import { EMPTY_COMIC_FILTERS, hasActiveFilters, matchesFilters, type ComicFilters, type FilterableComic } from '../../lib/util/comicFilters';
+import type { Own } from '../../lib/types/domain';
 
 const EMPTY = { dimension: null, tag: null, value: null, calibration: null, appetite: null, exploreGoodOrBetter: null } as const;
 
@@ -30,6 +31,18 @@ export function useDiscover() {
     return m;
   }, [contexts]);
   const publisherByWorkId = useMemo(() => new Map(contexts.map((c) => [c.work.id, c.work.publisher])), [contexts]);
+  // Discover owns the global catalog browse surface. Keep this in the hook
+  // beside deck/essentials filtering so every Discover mode agrees on the
+  // publisher, creator, and character constraints currently selected.
+  const catalog = useMemo(() => contexts
+    .filter((c) => matchesFilters(filterableByWorkId.get(c.work.id) ?? { publisher: null, creators: [], characters: [] }, filters))
+    .map((c) => ({
+      workId: c.work.id,
+      title: c.work.title,
+      coverPath: c.work.coverPath,
+      publisher: c.work.publisher,
+      own: (c.library?.own ?? 'none') as Own,
+    })), [contexts, filterableByWorkId, filters]);
   const deck = useMemo(() => {
     const finishedOrDropped = new Set(
       contexts.filter((c) => c.library?.status === 'done' || c.library?.status === 'dropped').map((c) => c.work.id),
@@ -56,7 +69,7 @@ export function useDiscover() {
     invalidateProfile(new Date()); setIndex((i) => i + 1);
   }, [current]);
   return {
-    deck, current, index, essentials, filters, filtersActive: hasActiveFilters(filters),
+    deck, current, index, essentials, catalog, filters, filtersActive: hasActiveFilters(filters),
     setFilters: (f: ComicFilters) => { setFilters(f); setIndex(0); },
     pass: () => signal('swipe_left'), read: () => signal('swipe_right'), rate: (value: 1 | 2 | 3) => signal('swipe_up', value), reset: () => setIndex(0),
   };
