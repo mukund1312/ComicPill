@@ -1,11 +1,13 @@
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useLibrary, type LibraryItem } from './useLibrary';
 import { useComicDetail } from './useComicDetail';
+import { useComicFund } from '../wallet/useComicFund';
 import type { ComicDetail, DetailEdition } from '../../lib/db/queries/detail';
 import { ComicCover } from '../../ui/comic';
-import { Button, Eyebrow, Pill, Progress, PurchaseBadge, SectionHeader } from '../../ui/primitives';
+import { Button, Eyebrow, Input, Pill, Progress, PurchaseBadge, SectionHeader, Sheet } from '../../ui/primitives';
 import { color, font, radius, space, type } from '../../ui/tokens';
 import { isAccessible } from '../../lib/util/own';
 
@@ -36,6 +38,14 @@ export default function ComicDetailScreen() {
 
 function Detail({ item, detail, setStatus }: { item: LibraryItem; detail: ComicDetail; setStatus: ReturnType<typeof useLibrary>['setStatus'] }) {
   const label = item.keeper ? 'collect' : item.formatVerdict === 'digital' ? 'digital_is_fine' : 'try_digital_first';
+  const fund = useComicFund();
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [targetText, setTargetText] = useState('');
+  const edition = detail.editions[0] ?? null;
+  const bestBuy = edition ? fund.bestBuyFor(edition.id) : null;
+  const purchase = fund.verdictFor(item.workId);
+  const linkedBank = fund.piggyBanks.find((bank) => bank.workId === item.workId && (bank.status === 'saving' || bank.status === 'ready')) ?? null;
+  const targetPaise = Math.max(0, Math.round(Number(targetText.replace(/[^0-9.]/g, '')) * 100)) || bestBuy?.totalPaise || edition?.typicalPricePaise || 0;
   return (
     <>
       <Text onPress={() => router.back()} style={styles.back}>‹ Back</Text>
@@ -63,6 +73,8 @@ function Detail({ item, detail, setStatus }: { item: LibraryItem; detail: ComicD
         <Text style={styles.verdictTitle}>{item.keeper ? 'Best in print' : item.formatVerdict === 'digital' ? 'Digital is fine' : 'Try digital first'}</Text>
         <Text style={styles.verdictCopy}>{item.keeper ? 'The artwork and keeper value make shelf space worthwhile.' : 'A strong read, but save physical space for the stories you love most.'}</Text>
       </View>
+
+      {linkedBank ? <Pressable onPress={() => router.push({ pathname: '/wallet', params: { bankId: linkedBank.id } })} style={styles.walletBlock}><Eyebrow>Comic Wallet</Eyebrow><Text style={styles.walletTitle}>{linkedBank.name}</Text><Text style={styles.walletCopy}>{formatPrice(linkedBank.savedPaise)} saved of {formatPrice(linkedBank.targetPaise)} · {Math.round((linkedBank.targetPaise ? linkedBank.savedPaise / linkedBank.targetPaise : 0) * 100)}%</Text><Progress value={linkedBank.targetPaise ? linkedBank.savedPaise / linkedBank.targetPaise : 0} /><Text style={styles.walletAction}>Open goal →</Text></Pressable> : purchase ? <View style={styles.walletBlock}><Eyebrow>Should I buy this?</Eyebrow>{purchase.wherePaise != null ? <Text style={styles.walletPrice}>Best price {formatPrice(purchase.wherePaise)}{purchase.whereRetailerId ? ` · ${purchase.whereRetailerId.replace('retailer-', '')}` : ''}</Text> : null}<Text style={styles.walletCopy}>{purchase.action === 'wait' || purchase.action === 'skip' ? purchase.why : purchase.actionDetail}</Text>{purchase.action === 'buy' ? <Button style={{ marginTop: 12 }} onPress={() => { if (edition) fund.addItemToCart(item.workId, edition.id); router.push('/wallet'); }}>Buy</Button> : purchase.action === 'save' ? <Button style={{ marginTop: 12 }} onPress={() => { setTargetText(String((purchase.wherePaise ?? edition?.typicalPricePaise ?? 0) / 100)); setSaveOpen(true); }}>Save for this</Button> : null}</View> : null}
 
       <SectionHeader title="Editions" />
       {detail.editions.length ? (
@@ -112,6 +124,7 @@ function Detail({ item, detail, setStatus }: { item: LibraryItem; detail: ComicD
 
       <SectionHeader title="Personal notes" />
       <View style={styles.notes}><Text style={styles.noteText}>A private place for what stayed with you.</Text></View>
+      {saveOpen ? <View style={styles.overlay}><Sheet title="Save for this comic"><Text style={styles.sheetCopy}>Start a virtual Piggy Bank for this exact edition. You’ll add savings manually whenever you choose.</Text><Text style={styles.sheetPrice}>{bestBuy ? `Current best price · ${formatPrice(bestBuy.totalPaise)}` : 'Price not available yet'}</Text><Input placeholder="Target in ₹" value={targetText} onChangeText={setTargetText} /><Button disabled={!edition || !targetPaise} style={{ marginTop: 14 }} onPress={() => { if (edition && targetPaise) { fund.startPiggyBank(item.workId, edition.id, item.title, targetPaise); setSaveOpen(false); } }}>Start saving</Button><Button kind="ghost" onPress={() => setSaveOpen(false)}>Cancel</Button></Sheet></View> : null}
     </>
   );
 }
@@ -149,6 +162,7 @@ const styles = StyleSheet.create({
   verdict: { marginTop: 20, backgroundColor: color.surface, padding: space.lg, borderRadius: radius.lg, borderWidth: 1, borderColor: color.collectGold + '77' },
   verdictTitle: { color: color.collectGold, fontFamily: font.display, fontSize: type.title, marginTop: 5 },
   verdictCopy: { color: color.muted, fontFamily: font.body, fontSize: type.caption, lineHeight: 18, marginTop: 5 },
+  walletBlock: { marginTop: 18, backgroundColor: color.surface2, padding: space.md, borderRadius: radius.md, borderWidth: 1, borderColor: color.accentDeep + '88' }, walletTitle: { color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle, marginTop: 5 }, walletPrice: { color: color.collectGold, fontFamily: font.bodySemibold, fontSize: type.caption, marginTop: 5 }, walletCopy: { color: color.muted, fontFamily: font.body, fontSize: type.caption, lineHeight: 18, marginTop: 6 }, walletAction: { color: color.accent, fontFamily: font.bodySemibold, fontSize: type.caption, marginTop: 10 },
   skipBox: { marginTop: 18, backgroundColor: color.surface2, borderRadius: radius.md, borderWidth: 1, borderColor: color.border, padding: space.md, gap: 6 },
   skipTitle: { color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle, marginTop: 4 },
   skipLine: { color: color.muted, fontFamily: font.body, fontSize: type.caption, lineHeight: 18 },
@@ -163,4 +177,5 @@ const styles = StyleSheet.create({
   noteText: { color: color.faint, fontFamily: font.body, fontSize: type.caption },
   missing: { flex: 1, backgroundColor: color.bg, alignItems: 'center', justifyContent: 'center' },
   missingText: { color: color.muted, fontFamily: font.body },
+  overlay: { ...StyleSheet.absoluteFill, zIndex: 10, justifyContent: 'flex-end', backgroundColor: '#000000aa', margin: -space.lg }, sheetCopy: { color: color.muted, fontFamily: font.body, fontSize: type.body, lineHeight: 22, marginBottom: 12 }, sheetPrice: { color: color.collectGold, fontFamily: font.bodySemibold, fontSize: type.caption, marginBottom: 12 },
 });
