@@ -1,5 +1,6 @@
-// The 173-book seed catalog: the original Longbox curation plus a vetted
-// essentials expansion, fingerprinted once (see catalog.data.json).
+// The 273-book seed catalog: the original Longbox curation plus two vetted
+// essentials expansions, fingerprinted once (see catalog.data.json and
+// catalog.popular.data.json).
 //
 // IMPORTANT — the catalog/library split (fixing a real bug caught before it
 // shipped, see the plan's "Bug caught before it shipped" note): this file
@@ -11,6 +12,7 @@
 //     from the prototype) and must NEVER be applied to a new user's library.
 //     It is gated behind isDevSeedUser() at the call site.
 import raw from './catalog.data.json';
+import popularRaw from './catalog.popular.data.json';
 import type { Dim, Own, PrintingType, ReadStatus, Universe } from '../../types/domain';
 
 interface RawRow {
@@ -20,7 +22,29 @@ interface RawRow {
   fp: Record<Dim, number>; genres: string[]; creators: string[]; characters: string[]; keeper: boolean;
 }
 
-const ROWS = raw as RawRow[];
+// The popular expansion intentionally contains only globally true catalog
+// facts. Normalize its omitted personal-library fields here so every source
+// still produces the one RawRow shape used by the seed outputs below.
+const POPULAR_LANE_NAMES: Record<string, string> = {
+  'dc-popular': 'Popular DC picks',
+  'marvel-popular': 'Popular Marvel picks',
+  'indie-popular': 'Popular indie & graphic novels',
+  'manga-popular': 'Popular manga',
+};
+
+const popularRows: RawRow[] = (popularRaw as Array<Omit<RawRow, 'laneName' | 'own' | 'status' | 'format' | 'formatWhy' | 'note' | 'flag'>>)
+  .map((row) => ({
+    ...row,
+    laneName: POPULAR_LANE_NAMES[row.lane] ?? 'Popular comics',
+    own: 'none',
+    status: 'none',
+    format: 'physical',
+    formatWhy: 'A physical edition suits this collection-worthy read.',
+    note: '',
+    flag: null,
+  }));
+
+const ROWS = [...(raw as RawRow[]), ...popularRows];
 export const FINGERPRINT_PROMPT_VERSION = 1;
 
 export interface CatalogWork {
@@ -120,7 +144,15 @@ const LANE_KEYS = [...new Set(ROWS.map((r) => r.lane))];
 // These three lanes are discovery shelves, not literal sequential runs. A
 // `same_run` edge would wrongly tell the reading-order engine that a reader
 // must move from one unrelated classic to the next.
-const NON_SEQUENTIAL_LANES = new Set(['dc-essentials', 'marvel-essentials', 'graphic-novel-canon']);
+const NON_SEQUENTIAL_LANES = new Set([
+  'dc-essentials',
+  'marvel-essentials',
+  'graphic-novel-canon',
+  'dc-popular',
+  'marvel-popular',
+  'indie-popular',
+  'manga-popular',
+]);
 export const CATALOG_PATHS: CatalogPath[] = LANE_KEYS.map((key) => {
   const sample = ROWS.find((r) => r.lane === key)!;
   return { id: `path-${key}`, name: sample.laneName, pathKey: key };
