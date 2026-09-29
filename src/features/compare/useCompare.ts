@@ -2,11 +2,21 @@ import { useMemo, useState } from 'react';
 import { loadAllScorableWorks, loadAllWorkContexts } from '../../lib/db/queries/library';
 import { getProfile } from '../../lib/db/queries/profile';
 import { fillBasket, pickOneForMe, type Candidate } from '../../lib/engines/purchase/basket';
-import { labelFor, suggestedMaxPricePaise } from '../../lib/engines/purchase/label';
+import { labelFor, suggestedMaxPricePaise, type PurchaseLabel } from '../../lib/engines/purchase/label';
 import { purchaseSignals } from '../../lib/engines/purchase/signals';
 
 export type FormatPrice = { format: 'physical' | 'digital'; pricePaise: number };
 export type CompareCandidate = Candidate & { formatPrices: FormatPrice[] };
+
+function labelAvailableFormat(label: PurchaseLabel, formatPrices: FormatPrice[]): PurchaseLabel {
+  if (formatPrices.some((edition) => edition.format === 'digital')) return label;
+  // These labels describe a digital action. If that action is impossible, use
+  // an honest physical-buying judgement instead of telling a reader to try a
+  // format that is not in the catalog.
+  if (label === 'try_digital_first') return 'buy_on_sale';
+  if (label === 'digital_is_fine') return 'skip';
+  return label;
+}
 
 export function useCompare() {
   const [budgetPaise, setBudgetPaise] = useState(250000);
@@ -32,7 +42,7 @@ export function useCompare() {
     }).filter((work) => Number.isFinite(work.pricePaise)).slice(0, 12);
   }, []);
   const labelled = candidates.map((candidate) => {
-    const label = labelFor(candidate.signals);
+    const label = labelAvailableFormat(labelFor(candidate.signals), candidate.formatPrices);
     return { ...candidate, label, waitForPricePaise: suggestedMaxPricePaise(label, candidate.pricePaise) };
   });
   const basket = fillBasket(candidates, budgetPaise); const pick = pickOneForMe(candidates);
