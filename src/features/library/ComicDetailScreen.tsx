@@ -32,20 +32,38 @@ export default function ComicDetailScreen() {
   const library = useLibrary();
   const { detail } = useComicDetail(id);
   const item = library.items.find((entry) => entry.workId === id);
-  if (!item || !detail) return <View style={styles.missing}><Text style={styles.missingText}>This comic is not in the catalog.</Text></View>;
-  return <FlashList style={styles.page} contentContainerStyle={styles.content} data={[detail]} keyExtractor={(entry) => entry.workId} getItemType={() => 'comic-detail'} renderItem={({ item: d }) => <Detail item={item} detail={d} setStatus={library.setStatus} />} />;
-}
-
-function Detail({ item, detail, setStatus }: { item: LibraryItem; detail: ComicDetail; setStatus: ReturnType<typeof useLibrary>['setStatus'] }) {
-  const label = item.keeper ? 'collect' : item.formatVerdict === 'digital' ? 'digital_is_fine' : 'try_digital_first';
   const fund = useComicFund();
   const [saveOpen, setSaveOpen] = useState(false);
   const [targetText, setTargetText] = useState('');
+  if (!item || !detail) return <View style={styles.missing}><Text style={styles.missingText}>This comic is not in the catalog.</Text></View>;
+
   const edition = detail.editions[0] ?? null;
   const bestBuy = edition ? fund.bestBuyFor(edition.id) : null;
   const purchase = fund.verdictFor(item.workId);
   const linkedBank = fund.piggyBanks.find((bank) => bank.workId === item.workId && (bank.status === 'saving' || bank.status === 'ready')) ?? null;
   const targetPaise = Math.max(0, Math.round(Number(targetText.replace(/[^0-9.]/g, '')) * 100)) || bestBuy?.totalPaise || edition?.typicalPricePaise || 0;
+
+  // A plain ScrollView, not FlashList — this screen only ever shows exactly
+  // one item, so virtualization buys nothing, and (the actual reason for
+  // the change) a Sheet overlay rendered *inside* a FlashList's renderItem
+  // sits inside its virtualized scroll content, where position:absolute
+  // doesn't reliably fill the real viewport — the same class of bug fixed
+  // on TodayScreen. The overlay is now a sibling of the scroll view instead.
+  return <>
+    <FlashList style={styles.page} contentContainerStyle={styles.content} data={[detail]} keyExtractor={(entry) => entry.workId} getItemType={() => 'comic-detail'} renderItem={({ item: d }) => (
+      <Detail item={item} detail={d} setStatus={library.setStatus} label={item.keeper ? 'collect' : item.formatVerdict === 'digital' ? 'digital_is_fine' : 'try_digital_first'} linkedBank={linkedBank} purchase={purchase} onSave={() => { setTargetText(String((purchase?.wherePaise ?? edition?.typicalPricePaise ?? 0) / 100)); setSaveOpen(true); }} onBuy={() => { if (edition) fund.addItemToCart(item.workId, edition.id); router.push('/wallet'); }} />
+    )} />
+    {saveOpen ? <View style={styles.overlay}><Sheet title="Save for this comic"><Text style={styles.sheetCopy}>Start a virtual Piggy Bank for this exact edition. You’ll add savings manually whenever you choose.</Text><Text style={styles.sheetPrice}>{bestBuy ? `Current best price · ${formatPrice(bestBuy.totalPaise)}` : 'Price not available yet'}</Text><Input placeholder="Target in ₹" value={targetText} onChangeText={setTargetText} /><Button disabled={!edition || !targetPaise} style={{ marginTop: 14 }} onPress={() => { if (edition && targetPaise) { fund.startPiggyBank(item.workId, edition.id, item.title, targetPaise); setSaveOpen(false); } }}>Start saving</Button><Button kind="ghost" onPress={() => setSaveOpen(false)}>Cancel</Button></Sheet></View> : null}
+  </>;
+}
+
+function Detail({ item, detail, setStatus, label, linkedBank, purchase, onSave, onBuy }: {
+  item: LibraryItem; detail: ComicDetail; setStatus: ReturnType<typeof useLibrary>['setStatus'];
+  label: 'collect' | 'digital_is_fine' | 'try_digital_first';
+  linkedBank: ReturnType<typeof useComicFund>['piggyBanks'][number] | null;
+  purchase: ReturnType<typeof useComicFund>['verdictFor'] extends (...args: never[]) => infer R ? R : never;
+  onSave: () => void; onBuy: () => void;
+}) {
   return (
     <>
       <Text onPress={() => router.back()} style={styles.back}>‹ Back</Text>
@@ -74,7 +92,7 @@ function Detail({ item, detail, setStatus }: { item: LibraryItem; detail: ComicD
         <Text style={styles.verdictCopy}>{item.keeper ? 'The artwork and keeper value make shelf space worthwhile.' : 'A strong read, but save physical space for the stories you love most.'}</Text>
       </View>
 
-      {linkedBank ? <Pressable onPress={() => router.push({ pathname: '/wallet', params: { bankId: linkedBank.id } })} style={styles.walletBlock}><Eyebrow>Comic Wallet</Eyebrow><Text style={styles.walletTitle}>{linkedBank.name}</Text><Text style={styles.walletCopy}>{formatPrice(linkedBank.savedPaise)} saved of {formatPrice(linkedBank.targetPaise)} · {Math.round((linkedBank.targetPaise ? linkedBank.savedPaise / linkedBank.targetPaise : 0) * 100)}%</Text><Progress value={linkedBank.targetPaise ? linkedBank.savedPaise / linkedBank.targetPaise : 0} /><Text style={styles.walletAction}>Open goal →</Text></Pressable> : purchase ? <View style={styles.walletBlock}><Eyebrow>Should I buy this?</Eyebrow>{purchase.wherePaise != null ? <Text style={styles.walletPrice}>Best price {formatPrice(purchase.wherePaise)}{purchase.whereRetailerId ? ` · ${purchase.whereRetailerId.replace('retailer-', '')}` : ''}</Text> : null}<Text style={styles.walletCopy}>{purchase.action === 'wait' || purchase.action === 'skip' ? purchase.why : purchase.actionDetail}</Text>{purchase.action === 'buy' ? <Button style={{ marginTop: 12 }} onPress={() => { if (edition) fund.addItemToCart(item.workId, edition.id); router.push('/wallet'); }}>Buy</Button> : purchase.action === 'save' ? <Button style={{ marginTop: 12 }} onPress={() => { setTargetText(String((purchase.wherePaise ?? edition?.typicalPricePaise ?? 0) / 100)); setSaveOpen(true); }}>Save for this</Button> : null}</View> : null}
+      {linkedBank ? <Pressable onPress={() => router.push({ pathname: '/wallet', params: { bankId: linkedBank.id } })} style={styles.walletBlock}><Eyebrow>Comic Wallet</Eyebrow><Text style={styles.walletTitle}>{linkedBank.name}</Text><Text style={styles.walletCopy}>{formatPrice(linkedBank.savedPaise)} saved of {formatPrice(linkedBank.targetPaise)} · {Math.round((linkedBank.targetPaise ? linkedBank.savedPaise / linkedBank.targetPaise : 0) * 100)}%</Text><Progress value={linkedBank.targetPaise ? linkedBank.savedPaise / linkedBank.targetPaise : 0} /><Text style={styles.walletAction}>Open goal →</Text></Pressable> : purchase ? <View style={styles.walletBlock}><Eyebrow>Should I buy this?</Eyebrow>{purchase.wherePaise != null ? <Text style={styles.walletPrice}>Best price {formatPrice(purchase.wherePaise)}{purchase.whereRetailerId ? ` · ${purchase.whereRetailerId.replace('retailer-', '')}` : ''}</Text> : null}<Text style={styles.walletCopy}>{purchase.action === 'wait' || purchase.action === 'skip' ? purchase.why : purchase.actionDetail}</Text>{purchase.action === 'buy' ? <Button style={{ marginTop: 12 }} onPress={onBuy}>Buy</Button> : purchase.action === 'save' ? <Button style={{ marginTop: 12 }} onPress={onSave}>Save for this</Button> : null}</View> : null}
 
       <SectionHeader title="Editions" />
       {detail.editions.length ? (
@@ -124,7 +142,6 @@ function Detail({ item, detail, setStatus }: { item: LibraryItem; detail: ComicD
 
       <SectionHeader title="Personal notes" />
       <View style={styles.notes}><Text style={styles.noteText}>A private place for what stayed with you.</Text></View>
-      {saveOpen ? <View style={styles.overlay}><Sheet title="Save for this comic"><Text style={styles.sheetCopy}>Start a virtual Piggy Bank for this exact edition. You’ll add savings manually whenever you choose.</Text><Text style={styles.sheetPrice}>{bestBuy ? `Current best price · ${formatPrice(bestBuy.totalPaise)}` : 'Price not available yet'}</Text><Input placeholder="Target in ₹" value={targetText} onChangeText={setTargetText} /><Button disabled={!edition || !targetPaise} style={{ marginTop: 14 }} onPress={() => { if (edition && targetPaise) { fund.startPiggyBank(item.workId, edition.id, item.title, targetPaise); setSaveOpen(false); } }}>Start saving</Button><Button kind="ghost" onPress={() => setSaveOpen(false)}>Cancel</Button></Sheet></View> : null}
     </>
   );
 }
@@ -177,5 +194,5 @@ const styles = StyleSheet.create({
   noteText: { color: color.faint, fontFamily: font.body, fontSize: type.caption },
   missing: { flex: 1, backgroundColor: color.bg, alignItems: 'center', justifyContent: 'center' },
   missingText: { color: color.muted, fontFamily: font.body },
-  overlay: { ...StyleSheet.absoluteFill, zIndex: 10, justifyContent: 'flex-end', backgroundColor: '#000000aa', margin: -space.lg }, sheetCopy: { color: color.muted, fontFamily: font.body, fontSize: type.body, lineHeight: 22, marginBottom: 12 }, sheetPrice: { color: color.collectGold, fontFamily: font.bodySemibold, fontSize: type.caption, marginBottom: 12 },
+  overlay: { ...StyleSheet.absoluteFill, zIndex: 10, justifyContent: 'flex-end', backgroundColor: '#000000aa' }, sheetCopy: { color: color.muted, fontFamily: font.body, fontSize: type.body, lineHeight: 22, marginBottom: 12 }, sheetPrice: { color: color.collectGold, fontFamily: font.bodySemibold, fontSize: type.caption, marginBottom: 12 },
 });
