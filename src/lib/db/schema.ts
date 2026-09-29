@@ -159,6 +159,80 @@ export const playlistItems = sqliteTable('playlist_items', {
   addedAt: text('added_at').notNull(),
 });
 
+// ---------------------------------------------------------------------------
+// Comic Wallet + Piggy Bank + Smart Purchase System — virtual ledger only.
+// See the plan's "Comic Wallet..." section: no payment-provider fields
+// anywhere here by design; `wallet_ledger.note`/future `reference` column is
+// where a real provider transaction id would go once V1.5/V2 exists.
+// ---------------------------------------------------------------------------
+export const walletConfig = sqliteTable('wallet_config', {
+  id: integer('id').primaryKey({ autoIncrement: true }), // single row, id=1
+  monthlyBudgetPaise: integer('monthly_budget_paise').notNull().default(0),
+  budgetResetDay: integer('budget_reset_day').notNull().default(1),
+  rolloverEnabled: integer('rollover_enabled', { mode: 'boolean' }).notNull().default(false),
+  savingsCountsTowardBudget: integer('savings_counts_toward_budget', { mode: 'boolean' }).notNull().default(true),
+});
+
+export const walletLedger = sqliteTable('wallet_ledger', {
+  id: text('id').primaryKey(),
+  type: text('type').notNull(), // 'top_up' | 'purchase' | 'piggy_contribution' | 'piggy_refund'
+  amountPaise: integer('amount_paise').notNull(),
+  piggyBankId: text('piggy_bank_id'),
+  workId: text('work_id'),
+  note: text('note'),
+  occurredAt: text('occurred_at').notNull(),
+});
+
+export const piggyBanks = sqliteTable('piggy_banks', {
+  id: text('id').primaryKey(),
+  workId: text('work_id').notNull(),
+  editionId: text('edition_id'),
+  name: text('name').notNull(),
+  targetPaise: integer('target_paise').notNull(),
+  savedPaise: integer('saved_paise').notNull().default(0),
+  status: text('status').notNull().default('saving'), // saving|ready|purchased|cancelled
+  priority: integer('priority').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+});
+
+export const savingRules = sqliteTable('saving_rules', {
+  id: text('id').primaryKey(),
+  piggyBankId: text('piggy_bank_id').notNull(),
+  amountPaise: integer('amount_paise').notNull(),
+  frequency: text('frequency').notNull(), // daily|weekly|monthly|custom|manual
+  customEveryDays: integer('custom_every_days'),
+});
+
+export const retailers = sqliteTable('retailers', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+});
+
+export const comicPrices = sqliteTable('comic_prices', {
+  id: text('id').primaryKey(),
+  editionId: text('edition_id').notNull(),
+  retailerId: text('retailer_id').notNull(),
+  pricePaise: integer('price_paise').notNull(),
+  shippingPaise: integer('shipping_paise').notNull().default(0),
+  url: text('url'),
+  capturedAt: text('captured_at').notNull(),
+});
+
+export const priceAlerts = sqliteTable('price_alerts', {
+  id: text('id').primaryKey(),
+  workId: text('work_id').notNull(),
+  editionId: text('edition_id').notNull(),
+  targetPricePaise: integer('target_price_paise').notNull(),
+  active: integer('active', { mode: 'boolean' }).notNull().default(true),
+});
+
+export const cartItems = sqliteTable('cart_items', {
+  id: text('id').primaryKey(),
+  workId: text('work_id').notNull(),
+  editionId: text('edition_id').notNull(),
+  addedAt: text('added_at').notNull(),
+});
+
 export const userLibrary = sqliteTable('user_library', {
   workId: text('work_id').primaryKey(),
   own: text('own').notNull().default('none'), // physical|digital|both|wishlist|ordered|subscription|none

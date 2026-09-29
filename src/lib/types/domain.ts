@@ -201,6 +201,92 @@ export interface PlaylistItem {
   addedAt: string;
 }
 
+// ---------------------------------------------------------------------------
+// Comic Wallet + Piggy Bank + Smart Purchase System (virtual ledger only —
+// see the plan's "Comic Wallet..." section: V1 never holds or moves real
+// money; every entry here is a user-declared amount, same trust model as a
+// spreadsheet, not a payments product).
+// ---------------------------------------------------------------------------
+export type SavingFrequency = 'daily' | 'weekly' | 'monthly' | 'custom' | 'manual';
+
+export interface WalletConfig {
+  monthlyBudgetPaise: number;
+  budgetResetDay: number; // 1-28, day of month the cycle rolls over
+  rolloverEnabled: boolean;
+  // Default true: a ₹1,000 Piggy Bank contribution counts as ₹1,000 of this
+  // month's comic allocation, so a reader can't quietly hide spending by
+  // moving money into a savings goal instead of spending it directly.
+  savingsCountsTowardBudget: boolean;
+}
+
+// Amounts are always stored as a positive magnitude; `type` carries the
+// sign semantics (top_up/piggy_refund = money into "available",
+// purchase/piggy_contribution = money out of "available") — this matches
+// how the ledger reads in the UI ("+₹500" / "-₹50"), not raw signed ints.
+export type LedgerEntryType = 'top_up' | 'purchase' | 'piggy_contribution' | 'piggy_refund';
+
+export interface WalletLedgerEntry {
+  id: string;
+  type: LedgerEntryType;
+  amountPaise: number;
+  piggyBankId: string | null;
+  workId: string | null;
+  note: string | null;
+  occurredAt: string;
+}
+
+export type PiggyBankStatus = 'saving' | 'ready' | 'purchased' | 'cancelled';
+
+export interface PiggyBank {
+  id: string;
+  workId: string;
+  editionId: string | null; // saving for a specific printing, where known
+  name: string;
+  targetPaise: number;
+  savedPaise: number;
+  status: PiggyBankStatus;
+  priority: number; // lower = higher priority; user-orderable
+  createdAt: string;
+}
+
+export interface SavingRule {
+  id: string;
+  piggyBankId: string;
+  amountPaise: number;
+  frequency: SavingFrequency;
+  customEveryDays: number | null; // only meaningful when frequency === 'custom'
+}
+
+export interface Retailer {
+  id: string;
+  name: string;
+}
+
+export interface ComicPrice {
+  id: string;
+  editionId: string;
+  retailerId: string;
+  pricePaise: number;
+  shippingPaise: number;
+  url: string | null;
+  capturedAt: string;
+}
+
+export interface PriceAlert {
+  id: string;
+  workId: string;
+  editionId: string;
+  targetPricePaise: number;
+  active: boolean;
+}
+
+export interface CartItem {
+  id: string;
+  workId: string;
+  editionId: string;
+  addedAt: string;
+}
+
 export interface LibraryEntry {
   workId: string;
   own: Own;

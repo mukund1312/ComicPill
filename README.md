@@ -63,6 +63,7 @@ a screen (app/**/*.tsx)
 | `useLibrary()` | `src/features/library/useLibrary.ts` | `items: LibraryItem[]` (title, bucket, own, status, rating, keeper, formatVerdict), `setOwnership`, `setStatus`, `refresh()` |
 | `useComicDetail(workId, contextLevel?)` | `src/features/library/useComicDetail.ts` | `detail: ComicDetail \| null` — summary, **all** editions of the work (for the format/price comparison), position in its path with `previousInPath`/`nextInPath`, `related` works from the story graph, `issues` (empty until real issue data is imported — see the data model section), `refresh()` |
 | `usePlaylists()` | `src/features/playlists/usePlaylists.ts` | `playlists: PlaylistWithItems[]`, `selected`, `select(id)`, `create(name)`, `generateForMe(name, mood?, seedName?, count?)`, `generateJourney(name, characterName, count?)`, `rename(id, name)`, `remove(id)`, `addItem(playlistId, workId)`, `removeItem(playlistId, workId)`, `reorder(playlistId, orderedWorkIds)`, `share(playlistId) → code \| null`, `importFromCode(code) → {playlist, resolvedCount, unresolvedTitles}`, `query`/`setQuery`, `searchResults` (title/creator/character matches), `characterSuggestions` (known character names matching the query, shortest/most-likely first — drives "Build their journey") |
+| `useComicFund()` | `src/features/wallet/useComicFund.ts` | Comic Wallet + Piggy Bank + Smart Purchase System (see "Comic Wallet..." below): `config`/`updateConfig`, `snapshot: WalletSnapshot` (available/reserved/spent-this-cycle/budget-remaining — four distinct numbers, never one balance), `ledger`, `topUp(amountPaise, note?)`, `piggyBanks`, `startPiggyBank(workId, editionId, name, targetPaise)`, `contribute(id, amountPaise)`, `cancel(id)`, `allocateLumpSum(amountPaise)` (auto-distributes across active goals), `settle(id, actualPricePaise) → leftoverPaise`, `settleLeftoverToWallet`/`settleLeftoverToPiggyBank`, `readiness(id)` (re-checks against current price before "ready to buy"), `bestBuyFor(editionId)`, `verdictFor(workId)` (the unified WHAT/WHY/WHERE/WHEN/CAN-AFFORD/IMPACT/ACTION answer), `cart`/`cartPlan` (buy-now/postpone/wait, each with a reason, can legitimately be "buy nothing"), `addItemToCart`/`removeItemFromCart` |
 
 None of these exist yet for Compare or Discover — the engines they'd
 call (`engines/purchase`, `engines/recommend/deck.ts`) are
@@ -88,6 +89,11 @@ query → engine → plain result object.
 | `graph/rabbithole.ts` | `rabbitHole(from, edges, works, profile)` | Walks forward up to 6 steps for the "Rabbit Hole" feature. |
 | `playlist/generate.ts` | `generatePlaylist(candidates, profile, options)` | Ranks candidates by `tasteFit`, boosted by mood-genre match and/or a `seedName` (character/creator), diversifies by creator/character unless a seed was given (a seed playlist is *supposed* to overlap on that person). Powers "the app can make it for him". |
 | `playlist/journey.ts` | `characterJourney(candidates, positionByWorkId, characterName, count)` | "Type a character's name, get their journey": selects up to `count` (default 12) keeper/accessible-weighted matches, then **orders them by lane position, not by score** — a linear reading path, not a ranked list. See the file's header comment for why lane position (not story_edges) is the honest ordering signal with today's seed data. |
+| `fund/wallet.ts` | `computeWalletSnapshot(config, ledger, piggyBanks, now)`, `cycleStart(now, resetDay)` | The Comic Wallet's four numbers (available/reserved/spent-this-cycle/budget-remaining), derived from an append-only ledger — never a mutable balance. |
+| `fund/piggybank.ts` | `dailyEquivalent`, `projectCompletionDate`, `savingsPlanSummary`, `autoAllocate`, `piggyBankReadiness`, `settlePiggyBank` | Saving-schedule math, the "you'll reach your goal around DATE" projection, the non-blocking "X% of your budget goes to savings" warning, lump-sum distribution across goals, and re-checking a matured goal against the *current* price rather than assuming it's ready to buy. |
+| `fund/price.ts` | `bestBuy(prices)`, `priceHistory(prices)`, `checkPriceAlerts(alerts, currentByEdition)` | Ranks by landed cost (price + shipping, not sticker price), a buy/wait verdict from current vs. typical vs. lowest-ever price, and target-price alert matching. Always takes prices pre-filtered to one exact `edition_id` — the app must never compare a Compact against a Deluxe. |
+| `fund/cart.ts` | `cartOverflow`, `optimizeCart(items, budgetPaise)` | "You're ₹X over budget" framing (never "insufficient balance"), and the Cart Optimizer: buy-now/postpone/wait per item with a reason, reusing `purchase/basket.ts`'s greedy fill rather than re-deriving purchase-worthiness — can legitimately return "buy nothing this month". |
+| `fund/verdict.ts` | `fundVerdict(workId, signals, bestBuy, walletSnapshot, dailySavingRate)` | The capstone: one answer combining WHAT/WHY (existing purchase engine), WHERE (price engine), and WHEN/CAN-AFFORD/IMPACT (wallet) — `action` is `buy \| save \| wait \| skip`. |
 
 `src/lib/util/playlistShare.ts` (not an engine — deliberately outside
 `engines/` since it's encoding, not scoring — but just as pure) has the
@@ -158,6 +164,27 @@ No Supabase/auth/sync yet — that's the next milestone. Tables:
   see the plan doc's success metrics).
 - `not_tonight` — timestamps of "not tonight" taps, feeding the 3-day
   re-suppression rule and the small −0.05 mood nudge.
+
+### Comic Wallet + Piggy Bank + Smart Purchase System
+
+A financial-planning layer, **V1 is virtual-only** — no card numbers, no
+bank credentials, no real money movement of any kind. Every ledger row is a
+user-declared amount, same trust model as a spreadsheet. See the plan's
+"Comic Wallet..." section for the full 36-feature spec and build-status
+table (what's built now vs. explicitly deferred to a later, separate
+payments milestone).
+
+Tables (all local-only, no `user_id` — same single-implicit-user model as
+`user_library`): `wallet_config` (single row, like `taste_profiles`),
+`wallet_ledger` (append-only, like `events`), `piggy_banks`, `saving_rules`,
+`retailers`, `comic_prices` (seeded from each edition's `typicalPricePaise`
+— no live price-feed access in this environment, same constraint as the
+catalog build), `price_alerts`, `cart_items`.
+
+Query layer: `src/lib/db/queries/wallet.ts` — wallet/ledger CRUD, Piggy Bank
+lifecycle (create → contribute → settle → route the leftover), price
+lookup + seeding, cart + optimizer assembly, and `getFundVerdict()` (feature
+#36's unified answer). Hook: `useComicFund()` (see the hooks table above).
 
 ### Sharing playlists (local-only, by design)
 
@@ -268,7 +295,7 @@ always be **one more event type**, handled in `applySignal`
 npm test
 ```
 
-67 tests across 8 files. The one worth reading first is
+112 tests across 13 files. The one worth reading first is
 `src/lib/engines/__tests__/twoWeeks.spec.ts` — it replays the taste-engine
 blueprint's own worked example (Dark Victory → ... → Fantastic Four: Solve
 Everything) end to end through the real engines, and is the acceptance test

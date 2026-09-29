@@ -87,6 +87,50 @@ CREATE TABLE IF NOT EXISTS playlist_items (
 );
 CREATE INDEX IF NOT EXISTS playlist_items_playlist_id ON playlist_items(playlist_id, position);
 
+CREATE TABLE IF NOT EXISTS wallet_config (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, monthly_budget_paise INTEGER NOT NULL DEFAULT 0,
+  budget_reset_day INTEGER NOT NULL DEFAULT 1, rollover_enabled INTEGER NOT NULL DEFAULT 0,
+  savings_counts_toward_budget INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS wallet_ledger (
+  id TEXT PRIMARY KEY, type TEXT NOT NULL, amount_paise INTEGER NOT NULL,
+  piggy_bank_id TEXT, work_id TEXT, note TEXT, occurred_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS wallet_ledger_occurred_at ON wallet_ledger(occurred_at);
+
+CREATE TABLE IF NOT EXISTS piggy_banks (
+  id TEXT PRIMARY KEY, work_id TEXT NOT NULL, edition_id TEXT, name TEXT NOT NULL,
+  target_paise INTEGER NOT NULL, saved_paise INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'saving', priority INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS saving_rules (
+  id TEXT PRIMARY KEY, piggy_bank_id TEXT NOT NULL, amount_paise INTEGER NOT NULL,
+  frequency TEXT NOT NULL, custom_every_days INTEGER
+);
+CREATE INDEX IF NOT EXISTS saving_rules_piggy_bank_id ON saving_rules(piggy_bank_id);
+
+CREATE TABLE IF NOT EXISTS retailers (
+  id TEXT PRIMARY KEY, name TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS comic_prices (
+  id TEXT PRIMARY KEY, edition_id TEXT NOT NULL, retailer_id TEXT NOT NULL,
+  price_paise INTEGER NOT NULL, shipping_paise INTEGER NOT NULL DEFAULT 0,
+  url TEXT, captured_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS comic_prices_edition_id ON comic_prices(edition_id, captured_at);
+
+CREATE TABLE IF NOT EXISTS price_alerts (
+  id TEXT PRIMARY KEY, work_id TEXT NOT NULL, edition_id TEXT NOT NULL,
+  target_price_paise INTEGER NOT NULL, active INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS cart_items (
+  id TEXT PRIMARY KEY, work_id TEXT NOT NULL, edition_id TEXT NOT NULL, added_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS user_library (
   work_id TEXT PRIMARY KEY, own TEXT NOT NULL DEFAULT 'none', owned_edition_id TEXT,
   status TEXT NOT NULL DEFAULT 'none',
@@ -144,5 +188,8 @@ export function resetDatabase(): void {
     DELETE FROM path_items; DELETE FROM playlists; DELETE FROM playlist_items;
     DELETE FROM user_library; DELETE FROM events; DELETE FROM taste_profiles;
     DELETE FROM shown; DELETE FROM not_tonight;
+    DELETE FROM wallet_config; DELETE FROM wallet_ledger; DELETE FROM piggy_banks;
+    DELETE FROM saving_rules; DELETE FROM retailers; DELETE FROM comic_prices;
+    DELETE FROM price_alerts; DELETE FROM cart_items;
   `);
 }
