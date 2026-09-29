@@ -4,10 +4,12 @@
 // what "fast, quick, crisp" cashes out to as an actual, checked number.
 import { describe, expect, it } from 'vitest';
 import { pickToday } from '../recommend/slots';
+import { rankForRead } from '../compare/verdict';
 import { emptyProfile } from '../taste/profile';
 import { DEFAULT_ENGINE_CONFIG } from '../../types/engine-io';
 import type { Dim, Genre } from '../../types/domain';
 import type { ScorableWork, TodayInput } from '../../types/engine-io';
+import type { CompareWorkInput } from '../compare/dimensions';
 
 const DIMENSIONS: Dim[] = ['tone', 'violence', 'scale', 'complexity', 'mystery', 'pace', 'artForward', 'commitment'];
 const BUCKETS = ['batman', 'street', 'heroic', 'dark', 'dccosmic', 'marvelcosmic', 'elseworld', 'other'];
@@ -99,5 +101,28 @@ describe('performance budget', () => {
     // A 10x catalog should cost well under a 10x hit if this is O(n) or O(n log n);
     // a real O(n^2) regression would blow way past this.
     expect(t1000).toBeLessThan(t100 * 15 + 5); // +5ms floor guards against noise at tiny t100
+  });
+});
+
+describe('Compare performance budget', () => {
+  // compareWorks() (db/queries/compare.ts) scans the whole catalog once to
+  // find a "you already own a better option" challenge candidate — same
+  // shape of cost as pickToday scanning every candidate, so it needs the
+  // same kind of budget test. The catalog has already grown past 500 books
+  // once this session (popular-comics expansions); 1000 is a safety margin.
+  it('rankForRead over 1000 candidates stays comfortably fast', () => {
+    const works = buildWorks(1000);
+    const inputs: CompareWorkInput[] = works.map((w) => ({ work: w, isReady: true, blockedByTitles: [], pathStanding: 'none' }));
+    const ctx = { profile: emptyProfile(), mood: 'dark', recentFinished: [] };
+
+    for (let i = 0; i < 3; i++) rankForRead(inputs, ctx); // warm up
+    const runs = 20;
+    const start = performance.now();
+    for (let i = 0; i < runs; i++) rankForRead(inputs, ctx);
+    const avgMs = (performance.now() - start) / runs;
+
+    // eslint-disable-next-line no-console
+    console.log(`rankForRead: ${avgMs.toFixed(3)}ms avg over ${runs} runs, 1000 candidates`);
+    expect(avgMs).toBeLessThan(16);
   });
 });
