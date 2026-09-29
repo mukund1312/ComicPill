@@ -62,9 +62,10 @@ a screen (app/**/*.tsx)
 | `useCheckIn(workId, recentFinished)` | `src/features/checkin/useCheckIn.ts` | `cards` (≤4, from `pickCheckInCards`), `currentCard`, `appetitePreset`/`appetiteLine` (pre-set thumb + one-liner), `answerRating(1-5)`, `answerDropped()`, `answerChip(kind, value)`, `answerCalibration(dim, answer)`, `answerAppetite(answer)`, `skip()` |
 | `useLibrary()` | `src/features/library/useLibrary.ts` | `items: LibraryItem[]` (title, bucket, own, status, rating, keeper, formatVerdict), `setOwnership`, `setStatus`, `refresh()` |
 | `useComicDetail(workId, contextLevel?)` | `src/features/library/useComicDetail.ts` | `detail: ComicDetail \| null` — summary, **all** editions of the work (for the format/price comparison), position in its path with `previousInPath`/`nextInPath`, `related` works from the story graph, `issues` (empty until real issue data is imported — see the data model section), `refresh()` |
+| `usePlaylists()` | `src/features/playlists/usePlaylists.ts` | `playlists: PlaylistWithItems[]`, `selected`, `select(id)`, `create(name)`, `generateForMe(name, mood?, seedName?, count?)`, `rename(id, name)`, `remove(id)`, `addItem(playlistId, workId)`, `removeItem(playlistId, workId)`, `reorder(playlistId, orderedWorkIds)`, `share(playlistId) → code \| null`, `importFromCode(code) → {playlist, resolvedCount, unresolvedTitles}` |
 
-None of these exist yet for Paths, Compare, or Discover — the engines they'd
-call (`engines/graph`, `engines/purchase`, `engines/recommend/deck.ts`) are
+None of these exist yet for Compare or Discover — the engines they'd
+call (`engines/purchase`, `engines/recommend/deck.ts`) are
 built and tested; only the hook layer is missing. Follow the same pattern:
 query → engine → plain result object.
 
@@ -85,6 +86,14 @@ query → engine → plain result object.
 | `purchase/basket.ts` | `fillBasket(candidates, budgetPaise)`, `pickOneForMe(candidates)` | Budget-mode basket filling and "Pick one for me". |
 | `graph/path.ts` | `expandPath`, `nextInPath`, `readyToRead`, `pathReadiness` | Reading-order expansion by context level (Simple/Recommended/Completionist), and the `P` score component. |
 | `graph/rabbithole.ts` | `rabbitHole(from, edges, works, profile)` | Walks forward up to 6 steps for the "Rabbit Hole" feature. |
+| `playlist/generate.ts` | `generatePlaylist(candidates, profile, options)` | Ranks candidates by `tasteFit`, boosted by mood-genre match and/or a `seedName` (character/creator), diversifies by creator/character unless a seed was given (a seed playlist is *supposed* to overlap on that person). Powers "the app can make it for him". |
+
+`src/lib/util/playlistShare.ts` (not an engine — deliberately outside
+`engines/` since it's encoding, not scoring — but just as pure) has the
+share-code codec: `encodePlaylistShare`/`decodePlaylistShare` (a
+dependency-free base64 JSON codec, no `btoa`/`atob` — not guaranteed under
+Hermes) and `resolveSharedItems` (matches a decoded payload against the
+local catalog by id first, title-loosely second).
 
 **Currency note:** the blueprint's screens show ₹ prices; `pricePaise` fields
 throughout are integer paise (₹1 = 100 paise) to avoid float rounding on
@@ -125,7 +134,18 @@ No Supabase/auth/sync yet — that's the next milestone. Tables:
   `optional_context`, `same_run`, `same_event`, `alternate_universe`,
   `similar_tone`), each `confirmed` or not.
 - `paths` / `path_items` — a path is a bucket/reading lane (e.g. "Batman:
-  Gotham & crime"); `path_items` orders works within it.
+  Gotham & crime"); `path_items` orders works within it. **Catalog-owned**:
+  seeded once, the same for every install, expanded via the story graph.
+- `playlists` / `playlist_items` — a playlist is the **personal, editable**
+  counterpart to a path: same "ordered list of works" shape, but user-owned
+  (`created_by: 'user' | 'app'`), never graph-expanded, freely
+  add/remove/reorder-able. `source_hint` records what an app-generated
+  playlist was built from (a mood, a character/creator name, or `'shared'`
+  for an imported one), shown back as "why this playlist". Reading progress
+  is **not** stored here — same as paths, it's derived from
+  `user_library.status` per work, so there's one source of truth app-wide.
+  Sharing is local-only for now (see "Sharing playlists" below) — there's no
+  backend yet for real account-to-account delivery.
 - `user_library` — **the only per-user table in this pass**: `own`
   (physical/digital/both/none), `status` (none/reading/done/dropped),
   `rating` (1–5, mapping to Not for me..Loved it), `finishedAt`.
@@ -137,6 +157,25 @@ No Supabase/auth/sync yet — that's the next milestone. Tables:
   see the plan doc's success metrics).
 - `not_tonight` — timestamps of "not tonight" taps, feeding the 3-day
   re-suppression rule and the small −0.05 mood nudge.
+
+### Sharing playlists (local-only, by design)
+
+There's no Supabase project, no accounts, and no cloud sync anywhere in this
+app yet — so "share a playlist with someone else" can't mean real
+account-to-account delivery today. What it means instead: `share(playlistId)`
+produces a compact `PILL1:...` code encoding the playlist's name and its
+works (id + title, both — see below); `importFromCode(code)` decodes it and
+creates a new local playlist on the receiving device from whatever resolves.
+
+This works **today, with zero backend**, because the seed catalog
+(`catalog.data.json`) ships byte-identical `work.id`s to every install — an
+id match is authoritative. Once the catalog scales past the hand-seeded 100
+and installs can be on different app/catalog versions, `resolveSharedItems`
+already has the fallback: a loose title match, and anything that still can't
+be resolved is reported back (`unresolvedTitles`), never silently dropped.
+The transport (paste a code today; a deep link or QR is a thin wrapper
+around the same string) can be swapped for a real backend later without
+touching this format.
 
 ### The catalog: 65 real, fingerprinted books, ready on day one
 
@@ -212,7 +251,7 @@ always be **one more event type**, handled in `applySignal`
 npm test
 ```
 
-50 tests across 5 files. The one worth reading first is
+62 tests across 7 files. The one worth reading first is
 `src/lib/engines/__tests__/twoWeeks.spec.ts` — it replays the taste-engine
 blueprint's own worked example (Dark Victory → ... → Fantastic Four: Solve
 Everything) end to end through the real engines, and is the acceptance test

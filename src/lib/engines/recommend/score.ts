@@ -13,7 +13,7 @@ import type {
 // directly against work.genres was always an approximation, and became a
 // type error once Genre stopped being a bare string. This mapping is the
 // real fix: each mood pulls in the genres that actually express it.
-const MOOD_GENRES: Record<string, Genre[]> = {
+export const MOOD_GENRES: Record<string, Genre[]> = {
   dark: ['horror', 'crime', 'dystopia', 'reality_warping'],
   mysterious: ['mystery', 'detective', 'supernatural'],
   epic: ['cosmic', 'war', 'mythic', 'multiverse', 'gods', 'apocalypse'],

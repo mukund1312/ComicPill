@@ -139,6 +139,26 @@ export const pathItems = sqliteTable('path_items', {
   position: real('position').notNull(),
 });
 
+// A playlist is a personal, editable reading list — reuses the same
+// "ordered works" shape as paths/path_items but is user-owned and never
+// graph-expanded. Progress is derived from user_library.status, same as
+// paths, so there's no separate progress column here.
+export const playlists = sqliteTable('playlists', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  createdBy: text('created_by').notNull().default('user'), // 'user' | 'app'
+  sourceHint: text('source_hint'), // mood/character/seed, if app-made
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const playlistItems = sqliteTable('playlist_items', {
+  playlistId: text('playlist_id').notNull(),
+  workId: text('work_id').notNull(),
+  position: real('position').notNull(),
+  addedAt: text('added_at').notNull(),
+});
+
 export const userLibrary = sqliteTable('user_library', {
   workId: text('work_id').primaryKey(),
   own: text('own').notNull().default('none'), // physical|digital|both|wishlist|ordered|subscription|none

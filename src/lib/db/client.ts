@@ -77,6 +77,16 @@ CREATE TABLE IF NOT EXISTS path_items (
 );
 CREATE INDEX IF NOT EXISTS path_items_path_id ON path_items(path_id, position);
 
+CREATE TABLE IF NOT EXISTS playlists (
+  id TEXT PRIMARY KEY, name TEXT NOT NULL, created_by TEXT NOT NULL DEFAULT 'user',
+  source_hint TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS playlist_items (
+  playlist_id TEXT NOT NULL, work_id TEXT NOT NULL, position REAL NOT NULL, added_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS playlist_items_playlist_id ON playlist_items(playlist_id, position);
+
 CREATE TABLE IF NOT EXISTS user_library (
   work_id TEXT PRIMARY KEY, own TEXT NOT NULL DEFAULT 'none', owned_edition_id TEXT,
   status TEXT NOT NULL DEFAULT 'none',
@@ -131,7 +141,8 @@ export function resetDatabase(): void {
     DELETE FROM works; DELETE FROM work_issues;
     DELETE FROM editions; DELETE FROM edition_works; DELETE FROM edition_issues;
     DELETE FROM story_edges; DELETE FROM paths;
-    DELETE FROM path_items; DELETE FROM user_library; DELETE FROM events; DELETE FROM taste_profiles;
+    DELETE FROM path_items; DELETE FROM playlists; DELETE FROM playlist_items;
+    DELETE FROM user_library; DELETE FROM events; DELETE FROM taste_profiles;
     DELETE FROM shown; DELETE FROM not_tonight;
   `);
 }

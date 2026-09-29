@@ -171,6 +171,36 @@ export interface PathItem {
   position: number;
 }
 
+// A playlist is a personal, editable reading list — the same "ordered works
+// you move through" idea as a Path, but user-owned instead of catalog-curated:
+// a reader (or the app, on their behalf) builds it, can reorder/add/remove
+// freely, and it carries no story-graph expansion (a Path expands via
+// story_edges to a context level; a playlist is exactly the works put in it).
+// Reading progress is NOT stored here — same as Paths, it's derived from
+// user_library.status per work, so there's one source of truth for "have I
+// read this" everywhere in the app.
+export type PlaylistOrigin = 'user' | 'app';
+
+export interface Playlist {
+  id: string;
+  name: string;
+  createdBy: PlaylistOrigin;
+  // What the app used to generate this, if createdBy === 'app' (a mood id,
+  // a character name, a "surprise me" seed) — shown back to the reader as
+  // "Why this playlist" and useful for regenerating/refining later. Null for
+  // hand-built playlists.
+  sourceHint: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PlaylistItem {
+  playlistId: string;
+  workId: string;
+  position: number;
+  addedAt: string;
+}
+
 export interface LibraryEntry {
   workId: string;
   own: Own;
