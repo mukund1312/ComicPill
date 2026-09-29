@@ -6,6 +6,7 @@
 // that also copied own/status into every new signup would hand user #2
 // someone else's shelf. DEV_LIBRARY_ENTRIES is never applied unless
 // isDevSeedUser() says so.
+import { eq, isNull } from 'drizzle-orm';
 import { db } from '../client';
 import { works, editions, editionWorks, paths, pathItems, storyEdges, userLibrary } from '../schema';
 import {
@@ -36,7 +37,7 @@ export function seedCatalogIfEmpty(): void {
     newWorks.map((w) => ({
       id: w.id, title: w.title, sortTitle: w.sortTitle, matchKey: w.matchKey,
       universe: w.universe, fingerprint: w.fingerprint, genres: w.genres,
-      creators: w.creators, characters: w.characters, keeperFlag: w.keeperFlag,
+      creators: w.creators, characters: w.characters, publisher: w.publisher, keeperFlag: w.keeperFlag,
       contextNeeded: 'none', summary: w.summary,
       fingerprintPromptVersion: FINGERPRINT_PROMPT_VERSION,
     })),
@@ -71,6 +72,24 @@ export function seedCatalogIfEmpty(): void {
   }
 }
 
+/** publisher was added to the catalog after this app's first seed passes
+ *  shipped, so a device seeded earlier has every work's publisher stuck at
+ *  its schema default (null) forever — seedCatalogIfEmpty() only ever
+ *  INSERTs genuinely new work ids, it never revisits existing rows. The
+ *  cheap check (one SELECT) runs every bootstrap; the actual ~270-row
+ *  backfill only runs once per device, the first time it finds any null.
+ *  (A future correction to inferPublisher() won't retroactively reach an
+ *  already-backfilled device — same as any other seed-data fix — but 273
+ *  synchronous UPDATEs on every single cold start would work against the
+ *  app's own "fast, quick, crisp" startup budget for a case this rare.) */
+export function backfillPublishers(): void {
+  const anyMissing = db.select({ id: works.id }).from(works).where(isNull(works.publisher)).limit(1).all();
+  if (anyMissing.length === 0) return;
+  for (const w of CATALOG_WORKS) {
+    db.update(works).set({ publisher: w.publisher }).where(eq(works.id, w.id)).run();
+  }
+}
+
 export function claimDevLibraryIfEmpty(): void {
   if (!isDevSeedUser()) return;
   const existing = db.select().from(userLibrary).limit(1).all();
@@ -87,5 +106,6 @@ export function claimDevLibraryIfEmpty(): void {
 
 export function bootstrap(): void {
   seedCatalogIfEmpty();
+  backfillPublishers();
   claimDevLibraryIfEmpty();
 }

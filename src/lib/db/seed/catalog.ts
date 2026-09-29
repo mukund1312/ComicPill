@@ -22,6 +22,35 @@ interface RawRow {
   fp: Record<Dim, number>; genres: string[]; creators: string[]; characters: string[]; keeper: boolean;
 }
 
+// Filtering by publisher (feature: Explore/Library filters) needs a real
+// value here — every book had publisher: null until this, since no seed
+// source ever set it. Lane is a reliable signal for the great majority of
+// rows (each lane is single-publisher by construction); PUBLISHER_OVERRIDES
+// exists only for lanes that deliberately mix publishers — "dark" holds both
+// DC/Vertigo (Watchmen, Preacher, Hellblazer, Swamp Thing, The Authority —
+// Wildstorm, DC-owned since 2005) and genuine indie (The Boys is Dynamite,
+// Something is Killing the Children is BOOM!); "other" mostly holds
+// creator-owned Image/Dark Horse/IDW/etc. work but also three Vertigo/DC
+// titles (Sandman, Y: The Last Man, Transmetropolitan); "graphic-novel-canon"
+// is otherwise all-indie literary graphic novels except Akira, which reads
+// better in the Manga bucket than lumped into "Indie".
+const DC_LANES = new Set(['batman', 'heroic', 'dccosmic', 'elseworld', 'dc-essentials', 'dc-popular']);
+const MARVEL_LANES = new Set(['marvelheroes', 'marvelcosmic', 'street', 'marvel-essentials', 'marvel-popular']);
+const MANGA_LANES = new Set(['manga-popular']);
+const PUBLISHER_OVERRIDES: Record<string, string> = {
+  watchmen: 'DC', 'swamp-thing': 'DC', hellblazer: 'DC', 'preacher-1': 'DC', 'preacher-more': 'DC', authority: 'DC',
+  'sandman-preludes': 'DC', 'ytlm-unmanned': 'DC', 'transmet-back-street': 'DC',
+  'akira-vol1': 'Manga',
+};
+
+function inferPublisher(row: RawRow): string {
+  if (PUBLISHER_OVERRIDES[row.id]) return PUBLISHER_OVERRIDES[row.id];
+  if (DC_LANES.has(row.lane)) return 'DC';
+  if (MARVEL_LANES.has(row.lane)) return 'Marvel';
+  if (MANGA_LANES.has(row.lane)) return 'Manga';
+  return 'Indie'; // "dark" / "other" / "indie-popular" / "graphic-novel-canon" default
+}
+
 // The popular expansion intentionally contains only globally true catalog
 // facts. Normalize its omitted personal-library fields here so every source
 // still produces the one RawRow shape used by the seed outputs below.
@@ -50,7 +79,7 @@ export const FINGERPRINT_PROMPT_VERSION = 1;
 export interface CatalogWork {
   id: string; title: string; sortTitle: string; matchKey: string;
   universe: Universe; fingerprint: Record<Dim, number>;
-  genres: string[]; creators: string[]; characters: string[];
+  genres: string[]; creators: string[]; characters: string[]; publisher: string;
   keeperFlag: boolean; summary: string | null;
 }
 export interface CatalogEdition {
@@ -116,6 +145,7 @@ export const CATALOG_WORKS: CatalogWork[] = ROWS.map((r) => ({
   genres: r.genres,
   creators: r.creators,
   characters: r.characters,
+  publisher: inferPublisher(r),
   keeperFlag: r.keeper,
   summary: r.note || null,
 }));

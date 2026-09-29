@@ -16,6 +16,9 @@ export interface LibraryItem {
   keeper: boolean;
   formatVerdict: 'physical' | 'digital';
   coverPath: string | null;
+  publisher: string | null;
+  creators: string[];
+  characters: string[];
 }
 
 export function useLibrary() {
@@ -32,6 +35,9 @@ export function useLibrary() {
       keeper: ctx.work.keeperFlag,
       formatVerdict: (pickRepresentativeEdition(ctx)?.format ?? 'digital') as 'physical' | 'digital',
       coverPath: ctx.work.coverPath,
+      publisher: ctx.work.publisher,
+      creators: ctx.work.creators,
+      characters: ctx.work.characters,
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tick]);
