@@ -1,9 +1,11 @@
 import { useMemo, useState, type PropsWithChildren } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
+import { router } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { usePlaylists } from './usePlaylists';
 import type { ImportResult } from '../../lib/db/queries/playlists';
+import type { SearchWorkResult } from '../../lib/db/queries/search';
 import { AppShell } from '../../ui/AppShell';
 import { ComicCover, ComicRow } from '../../ui/comic';
 import { Button, EmptyState, Eyebrow, Input, Pill, Progress, SectionHeader, Sheet } from '../../ui/primitives';
@@ -16,6 +18,11 @@ const moods = [
 
 type Playlist = ReturnType<typeof usePlaylists>['playlists'][number];
 type ImportOutcome = ImportResult;
+type BrowseItem = Playlist | SearchWorkResult;
+
+function isSearchWork(item: BrowseItem): item is SearchWorkResult {
+  return 'workId' in item;
+}
 
 export default function PlaylistsScreen() {
   const state = usePlaylists();
@@ -32,7 +39,10 @@ export default function PlaylistsScreen() {
   const [count, setCount] = useState(8);
   const [importCodeText, setImportCodeText] = useState('');
   const [importResult, setImportResult] = useState<ImportOutcome | null>(null);
+  const [journeyCharacter, setJourneyCharacter] = useState<string | null>(null);
+  const [journeyName, setJourneyName] = useState('');
   const selected = state.selected;
+  const searching = Boolean(state.query.trim());
 
   const create = () => {
     const name = newName.trim();
@@ -54,6 +64,16 @@ export default function PlaylistsScreen() {
     if (!code) return;
     setImportResult(state.importFromCode(code));
   };
+  const startJourney = (characterName: string) => {
+    setJourneyCharacter(characterName);
+    setJourneyName(`${characterName}’s Journey`);
+  };
+  const generateJourney = () => {
+    if (!journeyCharacter) return;
+    state.generateJourney(journeyName.trim() || `${journeyCharacter}’s Journey`, journeyCharacter);
+    state.setQuery('');
+    setJourneyCharacter(null);
+  };
 
   if (selected) {
     return <PlaylistDetail
@@ -62,7 +82,7 @@ export default function PlaylistsScreen() {
       searchResults={state.searchResults}
       onQuery={state.setQuery}
       onBack={() => state.select(null)}
-      onAdd={() => setPickerOpen(true)}
+      onAdd={() => { state.setQuery(''); setPickerOpen(true); }}
       onRemoveItem={(workId) => state.removeItem(selected.id, workId)}
       onReorder={(orderedWorkIds) => state.reorder(selected.id, orderedWorkIds)}
       onShare={() => { setCopied(false); setShareCode(state.share(selected.id)); }}
@@ -78,25 +98,28 @@ export default function PlaylistsScreen() {
   }
 
   return <AppShell active="library" title="Playlists">
-    <FlashList
-      data={state.playlists}
-      keyExtractor={(item) => item.id}
-      getItemType={() => 'playlist-row'}
-      renderItem={({ item }) => <PlaylistRow playlist={item} onPress={() => state.select(item.id)} />}
+    <FlashList<BrowseItem>
+      data={searching ? state.searchResults : state.playlists}
+      keyExtractor={(item) => isSearchWork(item) ? item.workId : item.id}
+      getItemType={(item) => isSearchWork(item) ? 'playlist-search-row' : 'playlist-row'}
+      renderItem={({ item }) => isSearchWork(item)
+        ? <ComicRow title={item.title} workId={item.workId} recyclingKey={item.workId} meta={item.creators[0] ?? item.characters[0] ?? 'ComicPill catalog'} status="View comic" onPress={() => router.push(`/comic/${item.workId}`)} />
+        : <PlaylistRow playlist={item} onPress={() => state.select(item.id)} />}
       contentContainerStyle={styles.content}
-      ListHeaderComponent={<PlaylistListHeader onNew={() => setNewOpen(true)} onGenerate={() => setGenerateOpen(true)} onImport={() => { setImportResult(null); setImportOpen(true); }} />}
-      ListEmptyComponent={<EmptyState mark="☷" title="No playlists yet" copy="Keep a reading run, a character journey, or the stories you want to return to." action="Make a playlist" onAction={() => setNewOpen(true)} />}
+      ListHeaderComponent={<PlaylistListHeader query={state.query} onQuery={state.setQuery} searching={searching} characters={state.characterSuggestions} onJourney={startJourney} onNew={() => setNewOpen(true)} onGenerate={() => setGenerateOpen(true)} onImport={() => { setImportResult(null); setImportOpen(true); }} />}
+      ListEmptyComponent={<EmptyState mark={searching ? '⌕' : '☷'} title={searching ? 'No matching comics' : 'No playlists yet'} copy={searching ? 'Try a title, creator, or character.' : 'Keep a reading run, a character journey, or the stories you want to return to.'} action={!searching ? 'Make a playlist' : undefined} onAction={!searching ? () => setNewOpen(true) : undefined} />}
     />
     {newOpen ? <SheetOverlay title="New playlist"><Input placeholder="Playlist name" value={newName} onChangeText={setNewName} /><Button disabled={!newName.trim()} style={styles.sheetButton} onPress={create}>Create playlist</Button><Button kind="ghost" onPress={() => setNewOpen(false)}>Cancel</Button></SheetOverlay> : null}
     {generateOpen ? <SheetOverlay title="Ask ComicPill"><Text style={styles.sheetCopy}>A small, editable list built around your taste. Choose a mood or name a creator or character.</Text><Input placeholder="Name this playlist (optional)" value={generatedName} onChangeText={setGeneratedName} /><Text style={styles.sheetLabel}>Mood</Text><View style={styles.sheetPills}>{moods.map(([id, label]) => <Pill key={id} label={label} active={mood === id} onPress={() => setMood(mood === id ? null : id)} />)}</View><Input placeholder="Creator or character (optional)" value={seedName} onChangeText={setSeedName} /><CountStepper value={count} onChange={setCount} /><Button style={styles.sheetButton} onPress={generate}>Build my playlist</Button><Button kind="ghost" onPress={() => setGenerateOpen(false)}>Cancel</Button></SheetOverlay> : null}
     {importOpen ? <SheetOverlay title="Import a playlist"><Text style={styles.sheetCopy}>Paste a code someone sent you directly. It stays on this device; nothing posts or syncs automatically.</Text><Input placeholder="Paste playlist code" value={importCodeText} onChangeText={(value) => { setImportCodeText(value); setImportResult(null); }} /><Button disabled={!importCodeText.trim()} style={styles.sheetButton} onPress={importPlaylist}>Import playlist</Button>{importResult ? <ImportMessage result={importResult} /> : null}<Button kind="ghost" onPress={() => setImportOpen(false)}>Close</Button></SheetOverlay> : null}
+    {journeyCharacter ? <SheetOverlay title="Build a character journey"><Text style={styles.sheetCopy}>A clear, ordered route through the essential books we have for {journeyCharacter}. It may be short today, and it will grow as the catalog does.</Text><Input placeholder="Playlist name" value={journeyName} onChangeText={setJourneyName} /><Button disabled={!journeyName.trim()} style={styles.sheetButton} onPress={generateJourney}>Build journey</Button><Button kind="ghost" onPress={() => setJourneyCharacter(null)}>Cancel</Button></SheetOverlay> : null}
   </AppShell>;
 }
 
 function importCodeValue(value: string) { return value.trim(); }
 
-function PlaylistListHeader({ onNew, onGenerate, onImport }: { onNew: () => void; onGenerate: () => void; onImport: () => void }) {
-  return <View><Text style={styles.intro}>A few intentional lists, ready when a path or a mood calls for one.</Text><View style={styles.actions}><Button style={styles.actionButton} onPress={onNew}>+ New playlist</Button><Button kind="secondary" style={styles.actionButton} onPress={onGenerate}>Ask ComicPill</Button></View><Pressable accessibilityRole="button" onPress={onImport} style={styles.importLink}><Text style={styles.importLinkText}>Import a shared code</Text><Text style={styles.importArrow}>›</Text></Pressable><SectionHeader title="Your playlists" /></View>;
+function PlaylistListHeader({ query, onQuery, searching, characters, onJourney, onNew, onGenerate, onImport }: { query: string; onQuery: (query: string) => void; searching: boolean; characters: string[]; onJourney: (character: string) => void; onNew: () => void; onGenerate: () => void; onImport: () => void }) {
+  return <View><Input placeholder="Search comics, creators, characters" value={query} onChangeText={onQuery} />{searching ? <>{characters.length ? <View style={styles.journeySuggestions}>{characters.map((character) => <Pressable key={character} accessibilityRole="button" onPress={() => onJourney(character)} style={styles.journeySuggestion}><Text style={styles.journeySuggestionText}>Build {character}’s journey</Text><Text style={styles.journeySuggestionArrow}>›</Text></Pressable>)}</View> : null}<SectionHeader title="Search results" /></> : <><Text style={styles.intro}>A few intentional lists, ready when a path or a mood calls for one.</Text><View style={styles.actions}><Button style={styles.actionButton} onPress={onNew}>+ New playlist</Button><Button kind="secondary" style={styles.actionButton} onPress={onGenerate}>Ask ComicPill</Button></View><Pressable accessibilityRole="button" onPress={onImport} style={styles.importLink}><Text style={styles.importLinkText}>Import a shared code</Text><Text style={styles.importArrow}>›</Text></Pressable><SectionHeader title="Your playlists" /></>}</View>;
 }
 
 function PlaylistRow({ playlist, onPress }: { playlist: Playlist; onPress: () => void }) {
@@ -133,7 +156,7 @@ function PlaylistDetail({ playlist, query, searchResults, onQuery, onBack, onAdd
 }
 
 function PlaylistTimelineItem({ item, index, length, onRemove, onMove }: { item: Playlist['items'][number]; index: number; length: number; onRemove: () => void; onMove: (direction: -1 | 1) => void }) {
-  return <View style={styles.timelineItem}><View style={[styles.node, item.status === 'done' && styles.nodeDone]}><Text style={styles.nodeText}>{item.status === 'done' ? '✓' : index + 1}</Text></View><View style={styles.line} /><ComicCover title={item.title} workId={item.workId} size="tiny" recyclingKey={item.workId} /><View style={styles.itemBody}><Text numberOfLines={2} ellipsizeMode="tail" style={styles.itemTitle}>{item.title}</Text><Text style={styles.itemMeta}>{item.status === 'done' ? 'Completed' : item.status === 'reading' ? 'Reading' : 'Unread'}</Text></View><View style={styles.itemControls}><Pressable accessibilityLabel={`Move ${item.title} up`} disabled={index === 0} onPress={() => onMove(-1)} style={[styles.orderButton, index === 0 && styles.disabled]}><Text style={styles.orderText}>↑</Text></Pressable><Pressable accessibilityLabel={`Move ${item.title} down`} disabled={index === length - 1} onPress={() => onMove(1)} style={[styles.orderButton, index === length - 1 && styles.disabled]}><Text style={styles.orderText}>↓</Text></Pressable><Pressable accessibilityLabel={`Remove ${item.title}`} onPress={onRemove} style={styles.removeButton}><Text style={styles.removeText}>×</Text></Pressable></View></View>;
+  return <View style={styles.timelineItem}><View style={[styles.node, item.status === 'done' && styles.nodeDone]}><Text style={styles.nodeText}>{item.status === 'done' ? '✓' : index + 1}</Text></View>{index < length - 1 ? <View style={styles.line} /> : null}<ComicCover title={item.title} workId={item.workId} size="tiny" recyclingKey={item.workId} /><View style={styles.itemBody}><Text numberOfLines={2} ellipsizeMode="tail" style={styles.itemTitle}>{item.title}</Text><Text style={styles.itemMeta}>{item.status === 'done' ? 'Completed' : item.status === 'reading' ? 'Reading' : 'Unread'}</Text></View><View style={styles.itemControls}><Pressable accessibilityLabel={`Move ${item.title} up`} disabled={index === 0} onPress={() => onMove(-1)} style={[styles.orderButton, index === 0 && styles.disabled]}><Text style={styles.orderText}>↑</Text></Pressable><Pressable accessibilityLabel={`Move ${item.title} down`} disabled={index === length - 1} onPress={() => onMove(1)} style={[styles.orderButton, index === length - 1 && styles.disabled]}><Text style={styles.orderText}>↓</Text></Pressable><Pressable accessibilityLabel={`Remove ${item.title}`} onPress={onRemove} style={styles.removeButton}><Text style={styles.removeText}>×</Text></Pressable></View></View>;
 }
 
 function PickerOverlay({ query, results, existing, onQuery, onAdd, onClose }: { query: string; results: ReturnType<typeof usePlaylists>['searchResults']; existing: Set<string>; onQuery: (query: string) => void; onAdd: (workId: string) => void; onClose: () => void }) {
@@ -157,6 +180,7 @@ function SheetOverlay({ title, children }: PropsWithChildren<{ title: string }>)
 const styles = StyleSheet.create({
   content: { padding: space.lg, paddingBottom: 105 },
   intro: { color: color.text, fontFamily: font.display, fontSize: 27, lineHeight: 34, maxWidth: 324 },
+  journeySuggestions: { gap: space.sm, marginTop: space.md }, journeySuggestion: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space.md, borderRadius: radius.md, borderWidth: 1, borderColor: color.accentDeep, backgroundColor: color.surface2 }, journeySuggestionText: { color: color.text, fontFamily: font.bodySemibold, fontSize: type.caption }, journeySuggestionArrow: { color: color.accent, fontSize: 24 },
   actions: { flexDirection: 'row', gap: space.sm, marginTop: space.lg }, actionButton: { flex: 1, paddingHorizontal: space.sm },
   importLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 46, marginTop: space.md, paddingHorizontal: space.md, borderWidth: 1, borderRadius: radius.md, borderColor: color.border, backgroundColor: color.surface2 },
   importLinkText: { color: color.muted, fontFamily: font.bodyMedium, fontSize: type.caption }, importArrow: { color: color.accent, fontSize: 25 }, playlistRow: { minHeight: 104 },
