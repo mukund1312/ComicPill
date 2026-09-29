@@ -22,11 +22,18 @@ export function isDevSeedUser(): boolean {
 }
 
 export function seedCatalogIfEmpty(): void {
-  const existing = db.select().from(works).limit(1).all();
-  if (existing.length > 0) return;
+  // Catalog additions must reach devices that already have an older seed.
+  // Only rows for genuinely new work ids are inserted, so the function stays
+  // safe to call at every bootstrap without duplicating joins or path items.
+  const existingWorkIds = new Set(db.select({ id: works.id }).from(works).all().map((work) => work.id));
+  const newWorks = CATALOG_WORKS.filter((work) => !existingWorkIds.has(work.id));
+  if (!newWorks.length) return;
+  const newWorkIds = new Set(newWorks.map((work) => work.id));
+  const newEditionWorks = CATALOG_EDITION_WORKS.filter((editionWork) => newWorkIds.has(editionWork.workId));
+  const newEditionIds = new Set(newEditionWorks.map((editionWork) => editionWork.editionId));
 
   db.insert(works).values(
-    CATALOG_WORKS.map((w) => ({
+    newWorks.map((w) => ({
       id: w.id, title: w.title, sortTitle: w.sortTitle, matchKey: w.matchKey,
       universe: w.universe, fingerprint: w.fingerprint, genres: w.genres,
       creators: w.creators, characters: w.characters, keeperFlag: w.keeperFlag,
@@ -36,24 +43,30 @@ export function seedCatalogIfEmpty(): void {
   ).run();
 
   db.insert(editions).values(
-    CATALOG_EDITIONS.map((e) => ({ id: e.id, format: e.format, printing: e.printing, formatNote: e.formatNote, typicalPricePaise: e.typicalPricePaise })),
+    CATALOG_EDITIONS.filter((edition) => newEditionIds.has(edition.id))
+      .map((e) => ({ id: e.id, format: e.format, printing: e.printing, formatNote: e.formatNote, typicalPricePaise: e.typicalPricePaise })),
   ).run();
 
   db.insert(editionWorks).values(
-    CATALOG_EDITION_WORKS.map((ew) => ({ editionId: ew.editionId, workId: ew.workId, position: ew.position })),
+    newEditionWorks
+      .map((ew) => ({ editionId: ew.editionId, workId: ew.workId, position: ew.position })),
   ).run();
 
+  const existingPathIds = new Set(db.select({ id: paths.id }).from(paths).all().map((path) => path.id));
   db.insert(paths).values(
-    CATALOG_PATHS.map((p) => ({ id: p.id, name: p.name, pathKey: p.pathKey, contextLevel: 'recommended' })),
+    CATALOG_PATHS.filter((path) => !existingPathIds.has(path.id))
+      .map((p) => ({ id: p.id, name: p.name, pathKey: p.pathKey, contextLevel: 'recommended' })),
   ).run();
 
   db.insert(pathItems).values(
-    CATALOG_PATH_ITEMS.map((pi) => ({ pathId: pi.pathId, workId: pi.workId, position: pi.position })),
+    CATALOG_PATH_ITEMS.filter((pathItem) => newWorkIds.has(pathItem.workId))
+      .map((pi) => ({ pathId: pi.pathId, workId: pi.workId, position: pi.position })),
   ).run();
 
-  if (CATALOG_EDGES.length) {
+  const newEdges = CATALOG_EDGES.filter((edge) => newWorkIds.has(edge.fromWork) || newWorkIds.has(edge.toWork));
+  if (newEdges.length) {
     db.insert(storyEdges).values(
-      CATALOG_EDGES.map((e) => ({ id: newId(), fromWork: e.fromWork, toWork: e.toWork, type: e.type, confirmed: e.confirmed, source: 'seed' })),
+      newEdges.map((e) => ({ id: newId(), fromWork: e.fromWork, toWork: e.toWork, type: e.type, confirmed: e.confirmed, source: 'seed' })),
     ).run();
   }
 }

@@ -1,5 +1,5 @@
-// The 65-book seed catalog, sourced from the Longbox prototype's curated
-// library and fingerprinted once (see catalog.data.json / build_catalog.py).
+// The 173-book seed catalog: the original Longbox curation plus a vetted
+// essentials expansion, fingerprinted once (see catalog.data.json).
 //
 // IMPORTANT — the catalog/library split (fixing a real bug caught before it
 // shipped, see the plan's "Bug caught before it shipped" note): this file
@@ -117,6 +117,10 @@ export const CATALOG_EDITION_WORKS: CatalogEditionWork[] = ROWS.map((r) => ({
 }));
 
 const LANE_KEYS = [...new Set(ROWS.map((r) => r.lane))];
+// These three lanes are discovery shelves, not literal sequential runs. A
+// `same_run` edge would wrongly tell the reading-order engine that a reader
+// must move from one unrelated classic to the next.
+const NON_SEQUENTIAL_LANES = new Set(['dc-essentials', 'marvel-essentials', 'graphic-novel-canon']);
 export const CATALOG_PATHS: CatalogPath[] = LANE_KEYS.map((key) => {
   const sample = ROWS.find((r) => r.lane === key)!;
   return { id: `path-${key}`, name: sample.laneName, pathKey: key };
@@ -134,6 +138,7 @@ export const CATALOG_PATH_ITEMS: CatalogPathItem[] = ROWS.map((r) => ({
 // of these books, even though their own library starts empty.
 export const CATALOG_EDGES: CatalogEdge[] = [];
 for (const lane of LANE_KEYS) {
+  if (NON_SEQUENTIAL_LANES.has(lane)) continue;
   const items = ROWS.filter((r) => r.lane === lane).sort((a, b) => a.order - b.order);
   for (let i = 0; i < items.length - 1; i++) {
     CATALOG_EDGES.push({ fromWork: items[i].id, toWork: items[i + 1].id, type: 'same_run', confirmed: true });
