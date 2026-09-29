@@ -1,4 +1,4 @@
-// The 273-book seed catalog: the original Longbox curation plus two vetted
+// The 600-book seed catalog: the original Longbox curation plus three vetted
 // essentials expansions, fingerprinted once (see catalog.data.json and
 // catalog.popular.data.json).
 //
@@ -13,6 +13,7 @@
 //     It is gated behind isDevSeedUser() at the call site.
 import raw from './catalog.data.json';
 import popularRaw from './catalog.popular.data.json';
+import { MORE_POPULAR_ROWS } from './catalog.more';
 import type { Dim, Own, PrintingType, ReadStatus, Universe } from '../../types/domain';
 
 interface RawRow {
@@ -73,7 +74,7 @@ const popularRows: RawRow[] = (popularRaw as Array<Omit<RawRow, 'laneName' | 'ow
     flag: null,
   }));
 
-const ROWS = [...(raw as RawRow[]), ...popularRows];
+const ROWS = [...(raw as RawRow[]), ...popularRows, ...(MORE_POPULAR_ROWS as RawRow[])];
 export const FINGERPRINT_PROMPT_VERSION = 1;
 
 export interface CatalogWork {
