@@ -1,9 +1,10 @@
 import { and, eq } from 'drizzle-orm';
 import { db } from '../client';
-import { playlists, playlistItems } from '../schema';
+import { playlists, playlistItems, paths, pathItems } from '../schema';
 import { loadAllScorableWorks, loadAllWorkContexts } from './library';
 import { getProfile } from './profile';
 import { generatePlaylist, type GeneratePlaylistOptions } from '../../engines/playlist/generate';
+import { characterJourney, type LanePosition } from '../../engines/playlist/journey';
 import { encodePlaylistShare, decodePlaylistShare, resolveSharedItems } from '../../util/playlistShare';
 import { newId } from '../../util/id';
 import type { Playlist, PlaylistOrigin } from '../../types/domain';
@@ -96,6 +97,34 @@ export function generateAppPlaylist(name: string, options: GeneratePlaylistOptio
   const picks = generatePlaylist(works, profile, options);
   const sourceHint = options.seedName ?? options.mood ?? null;
   const playlist = createPlaylist(name, 'app', sourceHint);
+  picks.forEach((pick, i) => {
+    db.insert(playlistItems).values({
+      playlistId: playlist.id, workId: pick.work.id, position: i, addedAt: playlist.createdAt,
+    }).run();
+  });
+  return playlist;
+}
+
+function loadLanePositions(): Map<string, LanePosition> {
+  const allPaths = db.select().from(paths).all();
+  const allPathItems = db.select().from(pathItems).all();
+  const pathKeyById = new Map(allPaths.map((p) => [p.id, p.pathKey]));
+  const out = new Map<string, LanePosition>();
+  for (const pi of allPathItems) {
+    out.set(pi.workId, { bucket: pathKeyById.get(pi.pathId) ?? 'other', position: pi.position });
+  }
+  return out;
+}
+
+/** "Type a character's name, get their journey" — a linear, curated reading
+ *  order through that character's essential books (see journey.ts for why
+ *  this orders by lane position rather than by taste/score). Persisted
+ *  immediately, same as any other playlist, so it's editable right away. */
+export function generateCharacterJourneyPlaylist(name: string, characterName: string, count = 12): Playlist {
+  const works = [...loadAllScorableWorks().values()];
+  const positions = loadLanePositions();
+  const picks = characterJourney(works, positions, characterName, count);
+  const playlist = createPlaylist(name, 'app', characterName);
   picks.forEach((pick, i) => {
     db.insert(playlistItems).values({
       playlistId: playlist.id, workId: pick.work.id, position: i, addedAt: playlist.createdAt,

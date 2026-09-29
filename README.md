@@ -62,7 +62,7 @@ a screen (app/**/*.tsx)
 | `useCheckIn(workId, recentFinished)` | `src/features/checkin/useCheckIn.ts` | `cards` (≤4, from `pickCheckInCards`), `currentCard`, `appetitePreset`/`appetiteLine` (pre-set thumb + one-liner), `answerRating(1-5)`, `answerDropped()`, `answerChip(kind, value)`, `answerCalibration(dim, answer)`, `answerAppetite(answer)`, `skip()` |
 | `useLibrary()` | `src/features/library/useLibrary.ts` | `items: LibraryItem[]` (title, bucket, own, status, rating, keeper, formatVerdict), `setOwnership`, `setStatus`, `refresh()` |
 | `useComicDetail(workId, contextLevel?)` | `src/features/library/useComicDetail.ts` | `detail: ComicDetail \| null` — summary, **all** editions of the work (for the format/price comparison), position in its path with `previousInPath`/`nextInPath`, `related` works from the story graph, `issues` (empty until real issue data is imported — see the data model section), `refresh()` |
-| `usePlaylists()` | `src/features/playlists/usePlaylists.ts` | `playlists: PlaylistWithItems[]`, `selected`, `select(id)`, `create(name)`, `generateForMe(name, mood?, seedName?, count?)`, `rename(id, name)`, `remove(id)`, `addItem(playlistId, workId)`, `removeItem(playlistId, workId)`, `reorder(playlistId, orderedWorkIds)`, `share(playlistId) → code \| null`, `importFromCode(code) → {playlist, resolvedCount, unresolvedTitles}` |
+| `usePlaylists()` | `src/features/playlists/usePlaylists.ts` | `playlists: PlaylistWithItems[]`, `selected`, `select(id)`, `create(name)`, `generateForMe(name, mood?, seedName?, count?)`, `generateJourney(name, characterName, count?)`, `rename(id, name)`, `remove(id)`, `addItem(playlistId, workId)`, `removeItem(playlistId, workId)`, `reorder(playlistId, orderedWorkIds)`, `share(playlistId) → code \| null`, `importFromCode(code) → {playlist, resolvedCount, unresolvedTitles}`, `query`/`setQuery`, `searchResults` (title/creator/character matches), `characterSuggestions` (known character names matching the query, shortest/most-likely first — drives "Build their journey") |
 
 None of these exist yet for Compare or Discover — the engines they'd
 call (`engines/purchase`, `engines/recommend/deck.ts`) are
@@ -87,6 +87,7 @@ query → engine → plain result object.
 | `graph/path.ts` | `expandPath`, `nextInPath`, `readyToRead`, `pathReadiness` | Reading-order expansion by context level (Simple/Recommended/Completionist), and the `P` score component. |
 | `graph/rabbithole.ts` | `rabbitHole(from, edges, works, profile)` | Walks forward up to 6 steps for the "Rabbit Hole" feature. |
 | `playlist/generate.ts` | `generatePlaylist(candidates, profile, options)` | Ranks candidates by `tasteFit`, boosted by mood-genre match and/or a `seedName` (character/creator), diversifies by creator/character unless a seed was given (a seed playlist is *supposed* to overlap on that person). Powers "the app can make it for him". |
+| `playlist/journey.ts` | `characterJourney(candidates, positionByWorkId, characterName, count)` | "Type a character's name, get their journey": selects up to `count` (default 12) keeper/accessible-weighted matches, then **orders them by lane position, not by score** — a linear reading path, not a ranked list. See the file's header comment for why lane position (not story_edges) is the honest ordering signal with today's seed data. |
 
 `src/lib/util/playlistShare.ts` (not an engine — deliberately outside
 `engines/` since it's encoding, not scoring — but just as pure) has the
@@ -177,6 +178,22 @@ The transport (paste a code today; a deep link or QR is a thin wrapper
 around the same string) can be swapped for a real backend later without
 touching this format.
 
+### Search + character journeys
+
+`src/lib/db/queries/search.ts` backs the playlist search bar:
+`searchWorks(query)` (title/creator/character substring match, title matches
+ranked first) and `searchCharacters(query)` (distinct known character names
+matching the query, shortest first) — the latter is what lets the UI detect
+"you typed a character name" and offer to build their journey instead of (or
+alongside) plain search results.
+
+**Honest data-scale caveat:** with the current ~100-book seed catalog, most
+characters have 1–3 books, not the 10–15 a "journey" implies at full scale —
+e.g. Iron Man has exactly one seed entry right now, and Martian Manhunter has
+none. `characterJourney()` still does the right thing (returns what exists,
+correctly ordered, or nothing if the character isn't in the catalog yet) —
+this gets visibly better as the catalog scales, it isn't a bug to fix now.
+
 ### The catalog: 65 real, fingerprinted books, ready on day one
 
 `src/lib/db/seed/catalog.data.json` + `catalog.ts` hold 65 real comics (from
@@ -251,7 +268,7 @@ always be **one more event type**, handled in `applySignal`
 npm test
 ```
 
-62 tests across 7 files. The one worth reading first is
+67 tests across 8 files. The one worth reading first is
 `src/lib/engines/__tests__/twoWeeks.spec.ts` — it replays the taste-engine
 blueprint's own worked example (Dark Victory → ... → Fantastic Four: Solve
 Everything) end to end through the real engines, and is the acceptance test
