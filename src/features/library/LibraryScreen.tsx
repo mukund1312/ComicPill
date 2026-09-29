@@ -7,14 +7,22 @@ import { AppShell } from '../../ui/AppShell';
 import { ComicCover } from '../../ui/comic';
 import { EmptyState, Input, Pill, Sheet } from '../../ui/primitives';
 import { color, font, radius, space, type } from '../../ui/tokens';
-import { isAccessible } from '../../lib/util/own';
+import { isAccessible, isFormatOwned } from '../../lib/util/own';
+import { useTravelMode } from '../../lib/state/travelMode';
 
 type Filter = 'all' | 'owned' | 'reading' | 'read' | 'wishlist';
 const filters: Array<[Filter, string]> = [['all', 'All'], ['owned', 'Owned'], ['reading', 'Reading'], ['read', 'Read'], ['wishlist', 'Wishlist']];
 
 export default function LibraryScreen() {
   const library = useLibrary(); const [filter, setFilter] = useState<Filter>('all'); const [query, setQuery] = useState(''); const [filtersOpen, setFiltersOpen] = useState(false);
-  const items = useMemo(() => library.items.filter((item) => (
+  const digitalOnly = useTravelMode((s) => s.digitalOnly);
+  // Library is your collection, not the catalog — only books you've actually
+  // added (own !== 'none') show up here at all. The full catalog, owned or
+  // not, lives in Discover. A fresh install starts with an empty library;
+  // books move in only via "Add to library" on a comic's detail page (or,
+  // later, the Scan pipeline) — never automatically.
+  const inLibrary = useMemo(() => library.items.filter((item) => item.own !== 'none'), [library.items]);
+  const items = useMemo(() => inLibrary.filter((item) => (
     filter === 'all'
     || (filter === 'owned' && isAccessible(item.own))
     || (filter === 'reading' && item.status === 'reading')
@@ -22,8 +30,11 @@ export default function LibraryScreen() {
     // Ordered books are paid for but not yet available to read, so they stay
     // with the buy queue rather than the owned/reading collection.
     || (filter === 'wishlist' && (item.own === 'wishlist' || item.own === 'ordered'))
-  ) && item.title.toLowerCase().includes(query.toLowerCase())), [library.items, filter, query]);
-  const ownedCount = useMemo(() => library.items.filter((item) => isAccessible(item.own)).length, [library.items]);
+  )
+    // Travel mode: only what's actually reachable without a physical shelf.
+    && (!digitalOnly || isFormatOwned(item.own, 'digital'))
+    && item.title.toLowerCase().includes(query.toLowerCase())), [inLibrary, filter, query, digitalOnly]);
+  const ownedCount = useMemo(() => inLibrary.filter((item) => isAccessible(item.own)).length, [inLibrary]);
   return <AppShell active="library" title="My Library" right={<View style={styles.actions}><Pressable onPress={() => setQuery(query ? '' : 'a')}><Text style={styles.action}>⌕</Text></Pressable><Pressable onPress={() => setFiltersOpen(true)}><Text style={styles.action}>☷</Text></Pressable></View>}>
     <FlashList data={items} numColumns={3} keyExtractor={(item) => item.workId} getItemType={() => 'cover-grid'} renderItem={({ item }) => <LibraryCell item={item} />} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} ListHeaderComponent={<><View style={styles.header}>{query ? <Input placeholder="Search titles, creators, characters" value={query} onChangeText={setQuery} /> : null}<Text style={styles.count}>{ownedCount} comics · your collection</Text><Pressable accessibilityRole="button" onPress={() => router.push('/playlists')} style={styles.playlistsLink}><Text style={styles.playlistsLinkText}>Playlists</Text><Text style={styles.playlistsArrow}>›</Text></Pressable><Pressable accessibilityRole="button" onPress={() => router.push('/wallet')} style={styles.playlistsLink}><Text style={styles.playlistsLinkText}>Comic Wallet</Text><Text style={styles.playlistsArrow}>›</Text></Pressable><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pills}>{filters.map(([id, label]) => <Pill key={id} label={label} active={filter === id} onPress={() => setFilter(id)} />)}</ScrollView></View></>} ListEmptyComponent={<EmptyState title="Nothing here yet" copy={query ? 'Try a title, creator, or character.' : 'Your collection is ready for its first great comic.'} action={!query ? 'Browse catalog' : undefined} onAction={!query ? () => router.push('/discover') : undefined} />}/>
     {filtersOpen ? <View style={styles.overlay}><Sheet title="Filter library"><Text style={styles.filterHeading}>Ownership</Text><View style={styles.sheetPills}>{['Owned', 'Physical', 'Digital', 'Both', 'Not owned'].map((label) => <Pill key={label} label={label} />)}</View><Text style={styles.filterHeading}>Reading status</Text><View style={styles.sheetPills}>{['Unread', 'Reading', 'Finished', 'Dropped', 'Wishlist'].map((label) => <Pill key={label} label={label} />)}</View><Pressable onPress={() => setFiltersOpen(false)} style={styles.apply}><Text style={styles.applyText}>Apply filters</Text></Pressable></Sheet></View> : null}

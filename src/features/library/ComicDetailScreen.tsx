@@ -35,6 +35,7 @@ export default function ComicDetailScreen() {
   const fund = useComicFund();
   const [saveOpen, setSaveOpen] = useState(false);
   const [targetText, setTargetText] = useState('');
+  const [addOpen, setAddOpen] = useState(false);
   if (!item || !detail) return <View style={styles.missing}><Text style={styles.missingText}>This comic is not in the catalog.</Text></View>;
 
   const edition = detail.editions[0] ?? null;
@@ -51,18 +52,25 @@ export default function ComicDetailScreen() {
   // on TodayScreen. The overlay is now a sibling of the scroll view instead.
   return <>
     <FlashList style={styles.page} contentContainerStyle={styles.content} data={[detail]} keyExtractor={(entry) => entry.workId} getItemType={() => 'comic-detail'} renderItem={({ item: d }) => (
-      <Detail item={item} detail={d} setStatus={library.setStatus} label={item.keeper ? 'collect' : item.formatVerdict === 'digital' ? 'digital_is_fine' : 'try_digital_first'} linkedBank={linkedBank} purchase={purchase} onSave={() => { setTargetText(String((purchase?.wherePaise ?? edition?.typicalPricePaise ?? 0) / 100)); setSaveOpen(true); }} onBuy={() => { if (edition) fund.addItemToCart(item.workId, edition.id); router.push('/wallet'); }} />
+      <Detail item={item} detail={d} setStatus={library.setStatus} label={item.keeper ? 'collect' : item.formatVerdict === 'digital' ? 'digital_is_fine' : 'try_digital_first'} linkedBank={linkedBank} purchase={purchase} onSave={() => { setTargetText(String((purchase?.wherePaise ?? edition?.typicalPricePaise ?? 0) / 100)); setSaveOpen(true); }} onBuy={() => { if (edition) fund.addItemToCart(item.workId, edition.id); router.push('/wallet'); }} onAdd={() => setAddOpen(true)} />
     )} />
     {saveOpen ? <View style={styles.overlay}><Sheet title="Save for this comic"><Text style={styles.sheetCopy}>Start a virtual Piggy Bank for this exact edition. You’ll add savings manually whenever you choose.</Text><Text style={styles.sheetPrice}>{bestBuy ? `Current best price · ${formatPrice(bestBuy.totalPaise)}` : 'Price not available yet'}</Text><Input placeholder="Target in ₹" value={targetText} onChangeText={setTargetText} /><Button disabled={!edition || !targetPaise} style={{ marginTop: 14 }} onPress={() => { if (edition && targetPaise) { fund.startPiggyBank(item.workId, edition.id, item.title, targetPaise); setSaveOpen(false); } }}>Start saving</Button><Button kind="ghost" onPress={() => setSaveOpen(false)}>Cancel</Button></Sheet></View> : null}
+    {addOpen ? <View style={styles.overlay}><Sheet title="Add to your library"><Text style={styles.sheetCopy}>How do you have this one? This moves it out of Discover and into your collection.</Text>
+      <Button style={{ marginBottom: 10 }} onPress={() => { library.setOwnership(item.workId, 'physical'); setAddOpen(false); }}>Physical</Button>
+      <Button kind="secondary" style={{ marginBottom: 10 }} onPress={() => { library.setOwnership(item.workId, 'digital'); setAddOpen(false); }}>Digital</Button>
+      <Button kind="secondary" style={{ marginBottom: 10 }} onPress={() => { library.setOwnership(item.workId, 'both'); setAddOpen(false); }}>Both</Button>
+      <Button kind="secondary" style={{ marginBottom: 10 }} onPress={() => { library.setOwnership(item.workId, 'wishlist'); setAddOpen(false); }}>Wishlist it instead</Button>
+      <Button kind="ghost" onPress={() => setAddOpen(false)}>Cancel</Button>
+    </Sheet></View> : null}
   </>;
 }
 
-function Detail({ item, detail, setStatus, label, linkedBank, purchase, onSave, onBuy }: {
+function Detail({ item, detail, setStatus, label, linkedBank, purchase, onSave, onBuy, onAdd }: {
   item: LibraryItem; detail: ComicDetail; setStatus: ReturnType<typeof useLibrary>['setStatus'];
   label: 'collect' | 'digital_is_fine' | 'try_digital_first';
   linkedBank: ReturnType<typeof useComicFund>['piggyBanks'][number] | null;
   purchase: ReturnType<typeof useComicFund>['verdictFor'] extends (...args: never[]) => infer R ? R : never;
-  onSave: () => void; onBuy: () => void;
+  onSave: () => void; onBuy: () => void; onAdd: () => void;
 }) {
   return (
     <>
@@ -104,7 +112,7 @@ function Detail({ item, detail, setStatus, label, linkedBank, purchase, onSave, 
       <SectionHeader title="Your reading" />
       <View style={styles.statuses}>{(['none', 'reading', 'done', 'dropped'] as const).map((status) => <Pill key={status} label={status === 'none' ? 'Unread' : status} active={item.status === status} onPress={() => setStatus(item.workId, status)} />)}</View>
       {item.status === 'reading' ? <View style={{ marginTop: 16 }}><Progress value={0.45} /></View> : null}
-      <Button style={{ marginTop: 24 }} onPress={() => item.status === 'reading' ? router.push(`/check-in/${item.workId}`) : setStatus(item.workId, 'reading')}>{item.status === 'reading' ? 'Check in' : !isAccessible(item.own) ? 'Add to library' : 'Start reading'}</Button>
+      <Button style={{ marginTop: 24 }} onPress={() => item.status === 'reading' ? router.push(`/check-in/${item.workId}`) : !isAccessible(item.own) ? onAdd() : setStatus(item.workId, 'reading')}>{item.status === 'reading' ? 'Check in' : item.own === 'none' ? 'Add to library' : !isAccessible(item.own) ? 'Update ownership' : 'Start reading'}</Button>
       <Button kind="secondary" style={{ marginTop: 10 }} onPress={() => router.push('/compare')}>Compare formats</Button>
 
       {detail.skip.affectedWorkIds.length > 0 ? (

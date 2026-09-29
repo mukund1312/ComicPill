@@ -10,6 +10,7 @@ import { loadAllWorkContexts } from '../../lib/db/queries/library';
 import { pickToday } from '../../lib/engines/recommend/slots';
 import { reasonsFor } from '../../lib/engines/recommend/reasons';
 import { isAccessible } from '../../lib/util/own';
+import { useTravelMode } from '../../lib/state/travelMode';
 import { DEFAULT_ENGINE_CONFIG } from '../../lib/types/engine-io';
 import type { TodaySlots } from '../../lib/types/engine-io';
 import type { Own } from '../../lib/types/domain';
@@ -61,7 +62,12 @@ function toCard(slot: TodaySlots['continueSlot'], titleById: Map<string, { title
 export function useToday(): TodayResult {
   const [mood, setMood] = useState<string | null>(null);
   const [ownedOnly, setOwnedOnly] = useState(false);
-  const [formatFilter, setFormatFilter] = useState<'any' | 'physical' | 'digital'>('any');
+  // Global — see src/lib/state/travelMode.ts. Toggling this here also
+  // narrows Library's grid to digitally-accessible books.
+  const digitalOnly = useTravelMode((s) => s.digitalOnly);
+  const setDigitalOnly = useTravelMode((s) => s.setDigitalOnly);
+  const formatFilter: 'any' | 'physical' | 'digital' = digitalOnly ? 'digital' : 'any';
+  const setFormatFilter = (v: 'any' | 'physical' | 'digital') => setDigitalOnly(v === 'digital');
   const [tick, setTick] = useState(0); // bump to force a recompute after a write
 
   const slots = useMemo(() => {
