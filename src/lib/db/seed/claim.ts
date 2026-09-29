@@ -36,7 +36,7 @@ export function seedCatalogIfEmpty(): void {
   ).run();
 
   db.insert(editions).values(
-    CATALOG_EDITIONS.map((e) => ({ id: e.id, format: e.format, printing: e.printing, formatNote: e.formatNote })),
+    CATALOG_EDITIONS.map((e) => ({ id: e.id, format: e.format, printing: e.printing, formatNote: e.formatNote, typicalPricePaise: e.typicalPricePaise })),
   ).run();
 
   db.insert(editionWorks).values(

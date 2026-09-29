@@ -31,6 +31,7 @@ export interface CatalogWork {
 }
 export interface CatalogEdition {
   id: string; format: 'physical' | 'digital'; printing: PrintingType; formatNote: string | null;
+  typicalPricePaise: number;
 }
 export interface CatalogEditionWork { editionId: string; workId: string; position: number }
 export interface CatalogPath { id: string; name: string; pathKey: string }
@@ -62,6 +63,25 @@ function inferPrinting(title: string, format: 'physical' | 'digital'): PrintingT
   return 'trade_paperback';
 }
 
+// Typical Indian-market street price by printing type, in paise. Estimated
+// from real ballpark pricing for imported single-issue/collected US comics
+// sold in India — not scraped, not per-book precise (same honest-placeholder
+// spirit as the Comic Wallet's seedPricesForEdition) — but WITHOUT this,
+// every edition's typicalPricePaise was null/undefined, which silently broke
+// Compare (its candidate filter requires a non-null price) and every Wallet
+// price feature for the entire catalog. A reasonable estimate beats a
+// structural zero.
+const TYPICAL_PRICE_PAISE_BY_PRINTING: Record<PrintingType, number> = {
+  single_issue: 20000, // ~₹200
+  digital: 35000, // ~₹350
+  compact: 60000, // ~₹600
+  trade_paperback: 75000, // ~₹750
+  hardcover: 150000, // ~₹1,500
+  deluxe: 300000, // ~₹3,000
+  omnibus: 550000, // ~₹5,500
+  absolute: 650000, // ~₹6,500
+};
+
 export const CATALOG_WORKS: CatalogWork[] = ROWS.map((r) => ({
   id: r.id,
   title: r.title,
@@ -76,12 +96,16 @@ export const CATALOG_WORKS: CatalogWork[] = ROWS.map((r) => ({
   summary: r.note || null,
 }));
 
-export const CATALOG_EDITIONS: CatalogEdition[] = ROWS.map((r) => ({
-  id: `${r.id}-ed`,
-  format: r.format as 'physical' | 'digital',
-  printing: inferPrinting(r.title, r.format as 'physical' | 'digital'),
-  formatNote: r.formatWhy || null,
-}));
+export const CATALOG_EDITIONS: CatalogEdition[] = ROWS.map((r) => {
+  const printing = inferPrinting(r.title, r.format as 'physical' | 'digital');
+  return {
+    id: `${r.id}-ed`,
+    format: r.format as 'physical' | 'digital',
+    printing,
+    formatNote: r.formatWhy || null,
+    typicalPricePaise: TYPICAL_PRICE_PAISE_BY_PRINTING[printing],
+  };
+});
 
 // One edition-to-work link per seed row (a 1:1 case — the seed data has no
 // multi-work omnibuses yet). A real omnibus spanning several works would add
