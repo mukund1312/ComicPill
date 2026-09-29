@@ -12,7 +12,11 @@ import type { ReadStatus } from '../../types/domain';
 
 const SIXTY_DAYS_MS = 60 * 24 * 60 * 60 * 1000;
 
-export function loadTodayInput(now: Date, ownedOnly: boolean): TodayInput {
+export function loadTodayInput(
+  now: Date,
+  ownedOnly: boolean,
+  formatFilter: TodayInput['formatFilter'] = 'any', // 'digital' = travel mode
+): TodayInput {
   const worksById = loadAllScorableWorks();
   const works = [...worksById.values()];
   const edges = loadAllEdges();
@@ -64,7 +68,7 @@ export function loadTodayInput(now: Date, ownedOnly: boolean): TodayInput {
   }
 
   return {
-    works, edges, profile, pathStatus, nextWorkIdByBucket, ownedOnly,
+    works, edges, profile, pathStatus, nextWorkIdByBucket, ownedOnly, formatFilter,
     recentFinished, recentNotTonight, excludedWorkIds,
   };
 }

@@ -1,6 +1,6 @@
 // The engine boundary: plain-object inputs/outputs only.
 // Nothing here imports react, react-native, expo, or the db layer.
-import type { Dim, EdgeType, ContextLevel, Own, FormatVerdict } from './domain';
+import type { Dim, EdgeType, EdgeStrength, ContextLevel, Own, FormatVerdict, Genre } from './domain';
 
 export type SweetSpots = Record<Dim, { value: number; confidence: number }>;
 export type Affinity = { score: number; seen: number }; // score -1..1
@@ -26,7 +26,7 @@ export interface ScorableWork {
   bucket: string; // path key
   universe: string;
   fingerprint: Record<Dim, number> | null;
-  genres: string[];
+  genres: Genre[];
   creators: string[];
   characters: string[];
   contextNeeded: 'none' | 'helpful' | 'required';
@@ -53,6 +53,13 @@ export interface StoryEdge {
   fromWork: string;
   toWork: string;
   type: EdgeType;
+  // Separate from `type`: how strongly this relationship should push a
+  // reader, distinct from what KIND of relationship it is. Answers "can I
+  // skip this?" and "what am I missing?" with more than a binary — a
+  // required_context edge is always 'required'; a same_event or
+  // optional_context edge can be anywhere from 'strongly_recommended' down
+  // to 'tie_in' depending on how central it actually is.
+  strength: EdgeStrength;
   confirmed: boolean;
 }
 
@@ -115,6 +122,12 @@ export interface TodayInput {
    *  so P rewards only that one work, never every unread book in the bucket. */
   nextWorkIdByBucket: Record<string, string | null>;
   ownedOnly: boolean;
+  /** "Travel mode": recommend only from what's actually reachable right now.
+   *  'digital' when the reader is away from their physical shelf, 'physical'
+   *  is available for symmetry though rarely used. Independent of
+   *  ownedOnly — a 'digital' filter still requires ownership; it does not
+   *  imply it (see filterCandidates). */
+  formatFilter: 'any' | 'physical' | 'digital';
   recentFinished: FinishedRead[]; // most recent first
   recentNotTonight: NotTonight[];
   excludedWorkIds: Set<string>; // finished, dropped, swiped-left <60d

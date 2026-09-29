@@ -6,11 +6,15 @@ import { describe, expect, it } from 'vitest';
 import { pickToday } from '../recommend/slots';
 import { emptyProfile } from '../taste/profile';
 import { DEFAULT_ENGINE_CONFIG } from '../../types/engine-io';
-import type { Dim } from '../../types/domain';
+import type { Dim, Genre } from '../../types/domain';
 import type { ScorableWork, TodayInput } from '../../types/engine-io';
 
 const DIMENSIONS: Dim[] = ['tone', 'violence', 'scale', 'complexity', 'mystery', 'pace', 'artForward', 'commitment'];
 const BUCKETS = ['batman', 'street', 'heroic', 'dark', 'dccosmic', 'marvelcosmic', 'elseworld', 'other'];
+const GENRE_POOL: Genre[] = [
+  'detective', 'mystery', 'crime', 'horror', 'sci-fi', 'mythic',
+  'satire', 'war', 'supernatural', 'drama', 'heroic', 'comedy',
+];
 
 // Deterministic pseudo-random so the benchmark is reproducible run to run.
 function prand(seed: number): number {
@@ -29,7 +33,7 @@ function buildWorks(count: number): ScorableWork[] {
       bucket: BUCKETS[i % BUCKETS.length],
       universe: 'main',
       fingerprint,
-      genres: [`genre-${i % 12}`],
+      genres: [GENRE_POOL[i % GENRE_POOL.length]],
       creators: [`creator-${i % 20}`],
       characters: [`character-${i % 30}`],
       contextNeeded: 'none',
@@ -53,7 +57,7 @@ function buildInput(works: ScorableWork[]): TodayInput {
   });
   return {
     works, edges: [], profile: emptyProfile(), pathStatus, nextWorkIdByBucket,
-    ownedOnly: false, recentFinished: [], recentNotTonight: [], excludedWorkIds: new Set(),
+    ownedOnly: false, formatFilter: 'any', recentFinished: [], recentNotTonight: [], excludedWorkIds: new Set(),
   };
 }
 

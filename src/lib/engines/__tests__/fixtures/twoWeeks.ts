@@ -47,7 +47,7 @@ export const theCult = work({
 export const manWithoutFear = work({
   id: 'man-without-fear', bucket: 'street',
   fingerprint: fp({ tone: 0.6, mystery: 0.3, violence: 0.6, artForward: 0.6 }),
-  genres: ['crime', 'street-level'], creators: [], characters: ['Daredevil'],
+  genres: ['crime', 'street_level'], creators: [], characters: ['Daredevil'],
 });
 export const bornAgain = work({
   id: 'born-again', bucket: 'street',
@@ -55,7 +55,7 @@ export const bornAgain = work({
   // No genre overlap with Dark Victory's own tags — the point of this fixture is
   // to show BUCKET affinity (not genre affinity) rising once Man Without Fear,
   // its own bucket-mate, is finished.
-  genres: ['street-level'], creators: [], characters: ['Daredevil'],
+  genres: ['street_level'], creators: [], characters: ['Daredevil'],
   keeper: true,
   // Real reading order: Born Again follows Man Without Fear, so it stays out of
   // contention until that parent is finished.
@@ -97,10 +97,10 @@ export const ALL_WORKS: ScorableWork[] = [
 export const WORKS_BY_ID = new Map(ALL_WORKS.map((w) => [w.id, w]));
 
 export const EDGES: StoryEdge[] = [
-  { fromWork: darkVictory.id, toWork: underRedHood.id, type: 'same_run', confirmed: true },
-  { fromWork: underRedHood.id, toWork: blackMirror.id, type: 'same_run', confirmed: true },
-  { fromWork: blackMirror.id, toWork: theCult.id, type: 'same_run', confirmed: true },
-  { fromWork: manWithoutFear.id, toWork: bornAgain.id, type: 'direct_sequel', confirmed: true },
+  { fromWork: darkVictory.id, toWork: underRedHood.id, type: 'same_run', strength: 'strongly_recommended', confirmed: true },
+  { fromWork: underRedHood.id, toWork: blackMirror.id, type: 'same_run', strength: 'strongly_recommended', confirmed: true },
+  { fromWork: blackMirror.id, toWork: theCult.id, type: 'same_run', strength: 'strongly_recommended', confirmed: true },
+  { fromWork: manWithoutFear.id, toWork: bornAgain.id, type: 'direct_sequel', strength: 'required', confirmed: true },
 ];
 
 const DATE_KEY = '2026-09-01';
@@ -119,6 +119,7 @@ export function buildInput(overrides: Partial<TodayInput> = {}): TodayInput {
       marvelcosmic: ffSolve.id, heroic: heroicFiller.id, dccosmic: cosmicFiller.id,
     },
     ownedOnly: false,
+    formatFilter: 'any',
     recentFinished: [],
     recentNotTonight: [],
     excludedWorkIds: new Set(),

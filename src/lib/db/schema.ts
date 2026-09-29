@@ -18,6 +18,9 @@ export const series = sqliteTable('series', {
   volumeLabel: text('volume_label'), // e.g. "Vol. 2", "(2011)"
   startYear: integer('start_year'),
   endYear: integer('end_year'), // null if ongoing
+  status: text('status').notNull().default('ongoing'), // 'ongoing' | 'complete' | 'hiatus'
+  releasedVolumeCount: integer('released_volume_count'), // how many collected volumes exist so far
+  plannedVolumeCount: integer('planned_volume_count'), // only meaningful for an announced fixed run
 });
 
 // An `issue` is one periodical chapter. `sortPosition` (not `issueNumber`)
@@ -62,6 +65,7 @@ export const works = sqliteTable('works', {
   characters: text('characters', { mode: 'json' }).$type<string[]>().notNull().default([]),
   keeperFlag: integer('keeper_flag', { mode: 'boolean' }).notNull().default(false),
   contextNeeded: text('context_needed').notNull().default('none'),
+  completeness: text('completeness').notNull().default('complete'), // 'complete' | 'ongoing' | 'part_of_n'
   summary: text('summary'),
   coverPath: text('cover_path'),
   fingerprintPromptVersion: integer('fingerprint_prompt_version').notNull().default(0),
@@ -116,6 +120,8 @@ export const storyEdges = sqliteTable('story_edges', {
   fromWork: text('from_work').notNull(),
   toWork: text('to_work').notNull(),
   type: text('type').notNull(),
+  // 'required' | 'strongly_recommended' | 'useful_context' | 'optional' | 'tie_in'
+  strength: text('strength').notNull().default('optional'),
   confirmed: integer('confirmed', { mode: 'boolean' }).notNull().default(true),
   source: text('source').notNull().default('seed'),
 });
@@ -135,11 +141,15 @@ export const pathItems = sqliteTable('path_items', {
 
 export const userLibrary = sqliteTable('user_library', {
   workId: text('work_id').primaryKey(),
-  own: text('own').notNull().default('none'),
+  own: text('own').notNull().default('none'), // physical|digital|both|wishlist|ordered|subscription|none
+  ownedEditionId: text('owned_edition_id'), // which specific edition, for "should I upgrade the edition" decisions
   status: text('status').notNull().default('none'),
   rating: integer('rating'), // 1..5, Not for me..Loved it
   finishedAt: text('finished_at'),
   notInterested: integer('not_interested', { mode: 'boolean' }).notNull().default(false),
+  pricePaidPaise: integer('price_paid_paise'),
+  purchasedAt: text('purchased_at'),
+  store: text('store'),
   updatedAt: text('updated_at').notNull(),
 });
 

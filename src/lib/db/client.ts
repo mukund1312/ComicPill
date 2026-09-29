@@ -13,7 +13,8 @@ export const db = drizzle(sqlite, { schema });
 const BOOTSTRAP_SQL = `
 CREATE TABLE IF NOT EXISTS series (
   id TEXT PRIMARY KEY, name TEXT NOT NULL, publisher TEXT, universe TEXT NOT NULL DEFAULT 'main',
-  volume_label TEXT, start_year INTEGER, end_year INTEGER
+  volume_label TEXT, start_year INTEGER, end_year INTEGER,
+  status TEXT NOT NULL DEFAULT 'ongoing', released_volume_count INTEGER, planned_volume_count INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS issues (
@@ -32,6 +33,7 @@ CREATE TABLE IF NOT EXISTS works (
   publisher TEXT, universe TEXT NOT NULL DEFAULT 'main', primary_series_id TEXT, fingerprint TEXT,
   genres TEXT NOT NULL DEFAULT '[]', creators TEXT NOT NULL DEFAULT '[]', characters TEXT NOT NULL DEFAULT '[]',
   keeper_flag INTEGER NOT NULL DEFAULT 0, context_needed TEXT NOT NULL DEFAULT 'none',
+  completeness TEXT NOT NULL DEFAULT 'complete',
   summary TEXT, cover_path TEXT, fingerprint_prompt_version INTEGER NOT NULL DEFAULT 0
 );
 CREATE UNIQUE INDEX IF NOT EXISTS works_match_key ON works(match_key);
@@ -60,6 +62,7 @@ CREATE INDEX IF NOT EXISTS edition_issues_edition_id ON edition_issues(edition_i
 
 CREATE TABLE IF NOT EXISTS story_edges (
   id TEXT PRIMARY KEY, from_work TEXT NOT NULL, to_work TEXT NOT NULL, type TEXT NOT NULL,
+  strength TEXT NOT NULL DEFAULT 'optional',
   confirmed INTEGER NOT NULL DEFAULT 1, source TEXT NOT NULL DEFAULT 'seed'
 );
 CREATE INDEX IF NOT EXISTS story_edges_from ON story_edges(from_work);
@@ -75,8 +78,11 @@ CREATE TABLE IF NOT EXISTS path_items (
 CREATE INDEX IF NOT EXISTS path_items_path_id ON path_items(path_id, position);
 
 CREATE TABLE IF NOT EXISTS user_library (
-  work_id TEXT PRIMARY KEY, own TEXT NOT NULL DEFAULT 'none', status TEXT NOT NULL DEFAULT 'none',
-  rating INTEGER, finished_at TEXT, not_interested INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL
+  work_id TEXT PRIMARY KEY, own TEXT NOT NULL DEFAULT 'none', owned_edition_id TEXT,
+  status TEXT NOT NULL DEFAULT 'none',
+  rating INTEGER, finished_at TEXT, not_interested INTEGER NOT NULL DEFAULT 0,
+  price_paid_paise INTEGER, purchased_at TEXT, store TEXT,
+  updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS user_library_status ON user_library(status);
 

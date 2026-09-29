@@ -1,9 +1,26 @@
 import { tasteFit } from '../taste/fit';
 import { fatiguePenalty, currentStreak } from '../taste/fatigue';
 import { noveltyBonus, distanceFromRecentAverage } from './novelty';
+import { isAccessible } from '../../util/own';
+import type { Genre } from '../../types/domain';
 import type {
   EngineConfig, ScorableWork, ScoreParts, TodayInput, TodayOptions,
 } from '../../types/engine-io';
+
+// Mood pills (from the blueprint's Today screen: Dark, Mysterious, Epic,
+// Character-driven, Fun, Emotional, Surprise Me) are a reader-facing
+// vocabulary, not the same thing as the Genre enum — matching a mood pill id
+// directly against work.genres was always an approximation, and became a
+// type error once Genre stopped being a bare string. This mapping is the
+// real fix: each mood pulls in the genres that actually express it.
+const MOOD_GENRES: Record<string, Genre[]> = {
+  dark: ['horror', 'crime', 'dystopia', 'reality_warping'],
+  mysterious: ['mystery', 'detective', 'supernatural'],
+  epic: ['cosmic', 'war', 'mythic', 'multiverse', 'gods', 'apocalypse'],
+  'character-driven': ['drama', 'political'],
+  fun: ['comedy', 'satire', 'heroic'],
+  emotional: ['drama', 'war'],
+};
 
 /** A deterministic 0..1 pseudo-random value from a string seed — the "tie-breaker
  *  seeded by today's date" that keeps Today stable within an evening but fresh
@@ -29,7 +46,9 @@ export function scoreWork(
   let M: number;
 
   if (options.mood) {
-    M = work.genres.includes(options.mood) || work.bucket === options.mood ? 1 : 0.3;
+    const moodGenres = MOOD_GENRES[options.mood] ?? [];
+    const matches = work.genres.some((g) => moodGenres.includes(g)) || work.bucket === options.mood;
+    M = matches ? 1 : 0.3;
   } else {
     // No mood picked: M's weight folds into T instead of scoring 0.
     M = 0;
@@ -40,7 +59,9 @@ export function scoreWork(
   const P = isNextInBucket && pathState === 'reading' ? 1
     : isNextInBucket && pathState === 'unstarted' ? 0.5
     : 0;
-  const O = work.own === 'none' ? 0.3 : 1;
+  // 'wishlist'/'ordered' aren't in hand yet — same as not owned for scoring;
+  // 'subscription' is readable now even though nothing sits on the shelf.
+  const O = isAccessible(work.own) ? 1 : 0.3;
 
   const last3 = input.recentFinished.slice(0, 3);
   const { count: streak } = currentStreak(input.recentFinished);

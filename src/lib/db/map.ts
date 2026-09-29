@@ -2,7 +2,7 @@
 // SQLite row shape and the domain/engine types — queries import from here,
 // never construct engine objects from raw rows themselves.
 import type { works, editions, storyEdges, paths, pathItems, userLibrary, events } from './schema';
-import type { Dim } from '../types/domain';
+import type { Dim, Genre } from '../types/domain';
 import type { ScorableWork, StoryEdge, FinishedRead } from '../types/engine-io';
 import type { TasteEvent } from '../types/domain';
 
@@ -46,7 +46,7 @@ export function toScorableWork(ctx: WorkContext, requiredParentIds: string[]): S
     bucket: ctx.bucket,
     universe: work.universe,
     fingerprint: work.fingerprint as Record<Dim, number> | null,
-    genres: work.genres,
+    genres: work.genres as Genre[],
     creators: work.creators,
     characters: work.characters,
     contextNeeded: work.contextNeeded as 'none' | 'helpful' | 'required',
@@ -59,7 +59,10 @@ export function toScorableWork(ctx: WorkContext, requiredParentIds: string[]): S
 }
 
 export function toStoryEdge(row: EdgeRow): StoryEdge {
-  return { fromWork: row.fromWork, toWork: row.toWork, type: row.type as StoryEdge['type'], confirmed: row.confirmed };
+  return {
+    fromWork: row.fromWork, toWork: row.toWork, type: row.type as StoryEdge['type'],
+    strength: row.strength as StoryEdge['strength'], confirmed: row.confirmed,
+  };
 }
 
 export function toFinishedRead(row: LibraryRow, bucket: string, fingerprint: Record<Dim, number> | null): FinishedRead | null {

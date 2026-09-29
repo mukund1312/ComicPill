@@ -14,3 +14,14 @@ export function labelFor(s: PurchaseSignals): PurchaseLabel {
 export function buyScore(s: PurchaseSignals): number {
   return 0.4 * s.interest + 0.3 * s.keeper + 0.2 * s.urgency + 0.1 * s.priceValue;
 }
+
+/** Job #29: "should I wait for a discount?" A 'buy_on_sale' verdict on its
+ *  own doesn't tell the reader what price makes it worth buying — this does.
+ *  Derived directly from the priceValue thresholds in purchaseSignals(): a
+ *  price at or below 1.3x the typical price is where the verdict would flip
+ *  from buy_on_sale to collect. Only meaningful for that label; returns null
+ *  otherwise (there's no "wait for a discount" on a skip or a digital-fine). */
+export function suggestedMaxPricePaise(label: PurchaseLabel, typicalPricePaise: number | null): number | null {
+  if (label !== 'buy_on_sale' || typicalPricePaise == null) return null;
+  return Math.floor(typicalPricePaise * 1.3);
+}
