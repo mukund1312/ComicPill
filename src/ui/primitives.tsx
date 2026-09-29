@@ -50,7 +50,8 @@ export function Input({ placeholder, value, onChangeText, secureTextEntry = fals
 }
 
 export function EmptyState({ mark = '◇', title, copy, action, onAction }: { mark?: string; title: string; copy: string; action?: string; onAction?: () => void }) {
-  return <View style={styles.empty}><Text style={styles.emptyMark}>{mark}</Text><Text style={styles.emptyTitle}>{title}</Text><Text style={styles.emptyCopy}>{copy}</Text>{action ? <Button onPress={onAction} style={{ marginTop: space.lg }}>{action}</Button> : null}</View>;
+  const { theme, typography } = useAppearance();
+  return <View style={styles.empty}><Text style={[styles.emptyMark, { color: theme.colors.primary }]}>{mark}</Text><Text style={[styles.emptyTitle, { color: theme.colors.textPrimary, fontFamily: typography.display }]}>{title}</Text><Text style={[styles.emptyCopy, { color: theme.colors.textSecondary, fontFamily: typography.body }]}>{copy}</Text>{action ? <Button onPress={onAction} style={{ marginTop: space.lg }}>{action}</Button> : null}</View>;
 }
 
 const styles = StyleSheet.create({

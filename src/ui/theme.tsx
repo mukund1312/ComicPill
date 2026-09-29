@@ -26,19 +26,41 @@ export const TYPOGRAPHY: TypographyPreset[] = [
   { id: 'minimal', name: 'Minimal', description: 'Quiet and highly readable.', display: 'Inter_500Medium', displayMedium: 'Inter_500Medium', body: 'Inter_400Regular', bodyMedium: 'Inter_500Medium', bodySemibold: 'Inter_600SemiBold' },
 ];
 
-type Appearance = { theme: ComicPillTheme; typography: TypographyPreset; setTheme: (id: string) => void; setTypography: (id: string) => void; reset: () => void; ready: boolean };
+type Appearance = {
+  theme: ComicPillTheme;
+  typography: TypographyPreset;
+  savedThemeId: string;
+  savedTypographyId: string;
+  previewTheme: (id: string) => void;
+  previewTypography: (id: string) => void;
+  clearPreview: () => void;
+  setTheme: (id: string) => void;
+  setTypography: (id: string) => void;
+  setAppearance: (themeId: string, typographyId: string) => void;
+  reset: () => void;
+  ready: boolean;
+};
 const AppearanceContext = createContext<Appearance | null>(null);
 const key = '@comicpill/appearance/v1';
 const byId = <T extends { id: string }>(items: T[], id: string | null, fallback: T) => items.find((item) => item.id === id) ?? fallback;
 
 export function AppearanceProvider({ children }: PropsWithChildren) {
-  const [themeId, setThemeId] = useState('comicpill'); const [typeId, setTypeId] = useState('editorial'); const [ready, setReady] = useState(false);
+  const [themeId, setThemeId] = useState('comicpill'); const [typeId, setTypeId] = useState('editorial');
+  const [previewThemeId, setPreviewThemeId] = useState<string | null>(null); const [previewTypeId, setPreviewTypeId] = useState<string | null>(null); const [ready, setReady] = useState(false);
   useEffect(() => { AsyncStorage.getItem(key).then((raw) => { if (raw) { const value = JSON.parse(raw) as { themeId?: string; typeId?: string }; setThemeId(byId(THEMES, value.themeId ?? null, THEMES[0]).id); setTypeId(byId(TYPOGRAPHY, value.typeId ?? null, TYPOGRAPHY[0]).id); } }).catch(() => {}).finally(() => setReady(true)); }, []);
   const persist = useCallback((nextTheme: string, nextType: string) => { void AsyncStorage.setItem(key, JSON.stringify({ themeId: nextTheme, typeId: nextType })); }, []);
-  const setTheme = useCallback((id: string) => { const next = byId(THEMES, id, THEMES[0]).id; setThemeId(next); persist(next, typeId); }, [persist, typeId]);
-  const setTypography = useCallback((id: string) => { const next = byId(TYPOGRAPHY, id, TYPOGRAPHY[0]).id; setTypeId(next); persist(themeId, next); }, [persist, themeId]);
-  const reset = useCallback(() => { setThemeId('comicpill'); setTypeId('editorial'); persist('comicpill', 'editorial'); }, [persist]);
-  const value = useMemo(() => ({ theme: byId(THEMES, themeId, THEMES[0]), typography: byId(TYPOGRAPHY, typeId, TYPOGRAPHY[0]), setTheme, setTypography, reset, ready }), [themeId, typeId, setTheme, setTypography, reset, ready]);
+  const clearPreview = useCallback(() => { setPreviewThemeId(null); setPreviewTypeId(null); }, []);
+  const previewTheme = useCallback((id: string) => setPreviewThemeId(byId(THEMES, id, THEMES[0]).id), []);
+  const previewTypography = useCallback((id: string) => setPreviewTypeId(byId(TYPOGRAPHY, id, TYPOGRAPHY[0]).id), []);
+  const setAppearance = useCallback((nextThemeId: string, nextTypeId: string) => {
+    const nextTheme = byId(THEMES, nextThemeId, THEMES[0]).id; const nextType = byId(TYPOGRAPHY, nextTypeId, TYPOGRAPHY[0]).id;
+    setThemeId(nextTheme); setTypeId(nextType); clearPreview(); persist(nextTheme, nextType);
+  }, [clearPreview, persist]);
+  const setTheme = useCallback((id: string) => setAppearance(id, typeId), [setAppearance, typeId]);
+  const setTypography = useCallback((id: string) => setAppearance(themeId, id), [setAppearance, themeId]);
+  const reset = useCallback(() => setAppearance('comicpill', 'editorial'), [setAppearance]);
+  const shownThemeId = previewThemeId ?? themeId; const shownTypeId = previewTypeId ?? typeId;
+  const value = useMemo(() => ({ theme: byId(THEMES, shownThemeId, THEMES[0]), typography: byId(TYPOGRAPHY, shownTypeId, TYPOGRAPHY[0]), savedThemeId: themeId, savedTypographyId: typeId, previewTheme, previewTypography, clearPreview, setTheme, setTypography, setAppearance, reset, ready }), [shownThemeId, shownTypeId, themeId, typeId, previewTheme, previewTypography, clearPreview, setTheme, setTypography, setAppearance, reset, ready]);
   return <AppearanceContext.Provider value={value}>{children}</AppearanceContext.Provider>;
 }
 
