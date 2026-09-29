@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { encodePlaylistShare, decodePlaylistShare, resolveSharedItems } from './playlistShare';
+import { encodePlaylistShare, decodePlaylistShare, resolveSharedItems, buildShareUrl } from './playlistShare';
 
 describe('playlist share codec', () => {
   it('round-trips name and items through encode/decode', () => {
@@ -37,5 +37,19 @@ describe('playlist share codec', () => {
       { workId: 'watchmen', title: '  Watchmen  ', matchedBy: 'title' },
     ]);
     expect(unresolved).toEqual([{ workId: 'nope', title: 'Totally Unowned Book' }]);
+  });
+});
+
+describe('buildShareUrl', () => {
+  it('produces a real https link carrying a decodable code plus a plain preview', () => {
+    const items = [{ workId: 'watchmen', title: 'Watchmen' }, { workId: 'v-for-vendetta', title: 'V for Vendetta' }];
+    const url = buildShareUrl('Alan Moore essentials', items);
+    expect(url.startsWith('https://mukund1312.github.io/ComicPill/p/?')).toBe(true);
+
+    const params = new URL(url).searchParams;
+    expect(params.get('name')).toBe('Alan Moore essentials');
+    expect(params.get('count')).toBe('2');
+    const decoded = decodePlaylistShare(params.get('d')!);
+    expect(decoded).toEqual({ v: 1, name: 'Alan Moore essentials', items });
   });
 });

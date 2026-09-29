@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import {
   listPlaylists, createPlaylist, renamePlaylist, deletePlaylist,
   addToPlaylist, removeFromPlaylist, reorderPlaylist, generateAppPlaylist,
-  generateCharacterJourneyPlaylist, buildShareCode, importSharedPlaylist,
+  generateCharacterJourneyPlaylist, buildShareLink, importSharedPlaylist,
 } from '../../lib/db/queries/playlists';
 import { searchWorks, searchCharacters } from '../../lib/db/queries/search';
 
@@ -56,7 +56,7 @@ export function usePlaylists() {
   const searchResults = useMemo(() => searchWorks(query), [query]);
   const characterSuggestions = useMemo(() => searchCharacters(query), [query]);
 
-  const share = useCallback((playlistId: string) => buildShareCode(playlistId), []);
+  const share = useCallback((playlistId: string) => buildShareLink(playlistId), []);
   const importFromCode = useCallback((code: string) => {
     const result = importSharedPlaylist(code);
     if (result.playlist) { refresh(); setSelectedId(result.playlist.id); }

@@ -77,6 +77,25 @@ export function decodePlaylistShare(code: string): SharedPlaylistPayload | null 
   }
 }
 
+// The public landing page (GitHub Pages, free hosting on this repo — see
+// docs/p/index.html) is what makes a share act like sharing an Instagram
+// reel: a real https:// link, not a blob of text to paste. Opening it:
+//  - with the app installed, redirects into it via the comicpill:// scheme
+//    (app/import.tsx decodes the same `d` param and imports directly)
+//  - without the app, shows the playlist name/count and a "Get ComicPill"
+//    section (honest "coming soon" until a public APK link exists)
+// `name`/`count` ride as their own plain query params so the landing page
+// can show a real preview without needing to port the codec to JS — only
+// the app itself decodes `d`, using the exact same PILL1 format as the
+// in-app "paste a code" import.
+const LANDING_PAGE_BASE = 'https://mukund1312.github.io/ComicPill/p/';
+
+export function buildShareUrl(name: string, items: SharedPlaylistItem[]): string {
+  const code = encodePlaylistShare(name, items);
+  const params = new URLSearchParams({ name, count: String(items.length), d: code });
+  return `${LANDING_PAGE_BASE}?${params.toString()}`;
+}
+
 export interface ResolvedSharedItem { workId: string; title: string; matchedBy: 'id' | 'title'; }
 
 /** Resolve a decoded payload against the local catalog: an id match is

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>A shared ComicPill playlist</title>
+<meta name="robots" content="noindex" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; background: #08090B; color: #F1EDE6;
+    font-family: 'Inter', -apple-system, sans-serif;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px; padding-top: max(24px, env(safe-area-inset-top));
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
+  }
+  .card {
+    width: 100%; max-width: 420px; background: #101114; border: 1px solid #27282D;
+    border-radius: 20px; padding: 32px 28px; text-align: center;
+  }
+  .wordmark { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 22px; margin-bottom: 28px; }
+  .wordmark .pill { color: #E32636; }
+  .eyebrow { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: #A6A3A0; margin-bottom: 10px; }
+  h1 { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 28px; line-height: 1.25; margin: 0 0 10px; }
+  .count { color: #6F6D6A; font-size: 14px; margin-bottom: 28px; }
+  a.button {
+    display: block; text-decoration: none; border-radius: 12px; padding: 15px 20px;
+    font-weight: 600; font-size: 15px; margin-bottom: 12px;
+  }
+  a.primary { background: #E32636; color: #F1EDE6; }
+  .divider { height: 1px; background: #27282D; margin: 28px 0; }
+  .get-app { font-size: 13px; color: #A6A3A0; line-height: 1.6; }
+  .get-app strong { color: #F1EDE6; }
+  .error { color: #A6A3A0; font-size: 14px; line-height: 1.6; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="wordmark">Comic<span class="pill">Pill</span></div>
+    <div id="content">
+      <div class="eyebrow">Shared playlist</div>
+      <h1 id="name">A comic reading list</h1>
+      <div class="count" id="count"></div>
+      <a class="button primary" id="open-app" href="#">Open in ComicPill</a>
+      <div class="divider"></div>
+      <div class="get-app">
+        <strong>Don't have ComicPill yet?</strong><br />
+        Android APK coming soon — check back here once it's live.
+      </div>
+    </div>
+  </div>
+  <script>
+    var params = new URLSearchParams(window.location.search);
+    var name = params.get('name');
+    var count = params.get('count');
+    var code = params.get('d');
+
+    if (name) document.getElementById('name').textContent = name;
+    if (count) {
+      var n = parseInt(count, 10);
+      document.getElementById('count').textContent = n + (n === 1 ? ' comic' : ' comics');
+    }
+
+    if (code) {
+      var deepLink = 'comicpill://import?d=' + encodeURIComponent(code);
+      document.getElementById('open-app').href = deepLink;
+      // Best-effort auto-open if ComicPill is installed — the visible
+      // button above is the reliable fallback since silent redirects are
+      // inconsistently allowed across mobile browsers.
+      window.location.href = deepLink;
+    } else {
+      document.getElementById('content').innerHTML =
+        '<div class="eyebrow">Shared playlist</div>' +
+        '<p class="error">This link is missing its playlist data. Ask whoever sent it to share again.</p>';
+    }
+  </script>
+</body>
+</html>

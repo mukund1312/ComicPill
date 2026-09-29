@@ -5,7 +5,7 @@ import { loadAllScorableWorks, loadAllWorkContexts } from './library';
 import { getProfile } from './profile';
 import { generatePlaylist, type GeneratePlaylistOptions } from '../../engines/playlist/generate';
 import { characterJourney, type LanePosition } from '../../engines/playlist/journey';
-import { encodePlaylistShare, decodePlaylistShare, resolveSharedItems } from '../../util/playlistShare';
+import { encodePlaylistShare, buildShareUrl, decodePlaylistShare, resolveSharedItems } from '../../util/playlistShare';
 import { newId } from '../../util/id';
 import type { Playlist, PlaylistOrigin } from '../../types/domain';
 
@@ -137,6 +137,15 @@ export function buildShareCode(playlistId: string): string | null {
   const playlist = getPlaylist(playlistId);
   if (!playlist) return null;
   return encodePlaylistShare(playlist.name, playlist.items.map((i) => ({ workId: i.workId, title: i.title })));
+}
+
+/** A real https:// link (feature #: "share like an Insta reel"), not just a
+ *  code to paste — see util/playlistShare.ts for how it degrades gracefully
+ *  without a backend. */
+export function buildShareLink(playlistId: string): string | null {
+  const playlist = getPlaylist(playlistId);
+  if (!playlist) return null;
+  return buildShareUrl(playlist.name, playlist.items.map((i) => ({ workId: i.workId, title: i.title })));
 }
 
 export interface ImportResult {

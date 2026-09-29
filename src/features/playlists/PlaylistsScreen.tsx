@@ -1,5 +1,5 @@
 import { useMemo, useState, type PropsWithChildren } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { router } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
@@ -30,7 +30,7 @@ export default function PlaylistsScreen() {
   const [generateOpen, setGenerateOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [shareCode, setShareCode] = useState<string | null>(null);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [newName, setNewName] = useState('');
   const [generatedName, setGeneratedName] = useState('');
@@ -85,15 +85,16 @@ export default function PlaylistsScreen() {
       onAdd={() => { state.setQuery(''); setPickerOpen(true); }}
       onRemoveItem={(workId) => state.removeItem(selected.id, workId)}
       onReorder={(orderedWorkIds) => state.reorder(selected.id, orderedWorkIds)}
-      onShare={() => { setCopied(false); setShareCode(state.share(selected.id)); }}
+      onShare={() => { setCopied(false); setShareUrl(state.share(selected.id)); }}
       onDelete={() => state.remove(selected.id)}
       onAddWork={(workId) => state.addItem(selected.id, workId)}
       pickerOpen={pickerOpen}
       closePicker={() => { setPickerOpen(false); state.setQuery(''); }}
-      shareCode={shareCode}
-      closeShare={() => setShareCode(null)}
+      shareUrl={shareUrl}
+      closeShare={() => setShareUrl(null)}
       copied={copied}
-      onCopy={async () => { if (shareCode) { await Clipboard.setStringAsync(shareCode); setCopied(true); } }}
+      onCopy={async () => { if (shareUrl) { await Clipboard.setStringAsync(shareUrl); setCopied(true); } }}
+      onShareVia={() => { if (shareUrl) Share.share({ message: `Check out my "${selected.name}" comic playlist on ComicPill: ${shareUrl}` }); }}
     />;
   }
 
@@ -127,8 +128,8 @@ function PlaylistRow({ playlist, onPress }: { playlist: Playlist; onPress: () =>
   return <View style={styles.playlistRow}><ComicRow title={playlist.name} recyclingKey={playlist.id} meta={meta} status={playlist.createdBy === 'app' ? 'App-made' : 'Personal'} onPress={onPress} /></View>;
 }
 
-function PlaylistDetail({ playlist, query, searchResults, onQuery, onBack, onAdd, onRemoveItem, onReorder, onShare, onDelete, onAddWork, pickerOpen, closePicker, shareCode, closeShare, copied, onCopy }: {
-  playlist: Playlist; query: string; searchResults: ReturnType<typeof usePlaylists>['searchResults']; onQuery: (query: string) => void; onBack: () => void; onAdd: () => void; onRemoveItem: (workId: string) => void; onReorder: (orderedWorkIds: string[]) => void; onShare: () => void; onDelete: () => void; onAddWork: (workId: string) => void; pickerOpen: boolean; closePicker: () => void; shareCode: string | null; closeShare: () => void; copied: boolean; onCopy: () => void;
+function PlaylistDetail({ playlist, query, searchResults, onQuery, onBack, onAdd, onRemoveItem, onReorder, onShare, onDelete, onAddWork, pickerOpen, closePicker, shareUrl, closeShare, copied, onCopy, onShareVia }: {
+  playlist: Playlist; query: string; searchResults: ReturnType<typeof usePlaylists>['searchResults']; onQuery: (query: string) => void; onBack: () => void; onAdd: () => void; onRemoveItem: (workId: string) => void; onReorder: (orderedWorkIds: string[]) => void; onShare: () => void; onDelete: () => void; onAddWork: (workId: string) => void; pickerOpen: boolean; closePicker: () => void; shareUrl: string | null; closeShare: () => void; copied: boolean; onCopy: () => void; onShareVia: () => void;
 }) {
   const completed = useMemo(() => playlist.items.filter((item) => item.status === 'done').length, [playlist.items]);
   const move = (index: number, direction: -1 | 1) => {
@@ -151,7 +152,7 @@ function PlaylistDetail({ playlist, query, searchResults, onQuery, onBack, onAdd
       ListFooterComponent={<Button kind="destructive" style={styles.deleteButton} onPress={onDelete}>Delete playlist</Button>}
     />
     {pickerOpen ? <PickerOverlay query={query} results={searchResults} existing={existing} onQuery={onQuery} onAdd={(workId) => { onAddWork(workId); }} onClose={closePicker} /> : null}
-    {shareCode ? <SheetOverlay title="Share this playlist"><Text style={styles.sheetCopy}>Send this code directly by text, chat, or email. It does not post anywhere or sync automatically.</Text><Text selectable style={styles.shareCode}>{shareCode}</Text><Button style={styles.sheetButton} onPress={onCopy}>{copied ? 'Copied' : 'Copy code'}</Button><Button kind="ghost" onPress={closeShare}>Close</Button></SheetOverlay> : null}
+    {shareUrl ? <SheetOverlay title="Share this playlist"><Text style={styles.sheetCopy}>A real link — like sharing anything else. Opens straight into ComicPill for anyone who already has it installed.</Text><Text selectable style={styles.shareCode}>{shareUrl}</Text><Button style={styles.sheetButton} onPress={onShareVia}>Share via…</Button><Button kind="secondary" style={{ marginTop: 10 }} onPress={onCopy}>{copied ? 'Copied' : 'Copy link'}</Button><Button kind="ghost" onPress={closeShare}>Close</Button></SheetOverlay> : null}
   </AppShell>;
 }
 
