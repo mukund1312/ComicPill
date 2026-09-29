@@ -19,7 +19,7 @@ export default function LibraryScreen() {
     || (filter === 'owned' && isAccessible(item.own))
     || (filter === 'reading' && item.status === 'reading')
     || (filter === 'read' && item.status === 'done')
-    || (filter === 'wishlist' && (item.own === 'wishlist' || item.own === 'ordered'))
+    || (filter === 'wishlist' && item.own === 'wishlist')
   ) && item.title.toLowerCase().includes(query.toLowerCase())), [library.items, filter, query]);
   const ownedCount = useMemo(() => library.items.filter((item) => isAccessible(item.own)).length, [library.items]);
   return <AppShell active="library" title="My Library" right={<View style={styles.actions}><Pressable onPress={() => setQuery(query ? '' : 'a')}><Text style={styles.action}>⌕</Text></Pressable><Pressable onPress={() => setFiltersOpen(true)}><Text style={styles.action}>☷</Text></Pressable></View>}>
@@ -38,13 +38,10 @@ function LibraryCell({ item }: { item: LibraryItem }) {
 
 const styles = StyleSheet.create({
   content: { padding: space.lg, paddingBottom: 105 }, header: { marginBottom: 2 }, actions: { flexDirection: 'row', gap: 18 }, action: { color: color.text, fontSize: 25 }, count: { color: color.muted, fontFamily: font.body, fontSize: type.caption, marginTop: 8 }, playlistsLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: space.md, paddingHorizontal: space.md, minHeight: 48, borderWidth: 1, borderColor: color.border, borderRadius: radius.md, backgroundColor: color.surface2 }, playlistsLinkText: { color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle }, playlistsArrow: { color: color.accent, fontSize: 26 }, pills: { gap: 8, paddingVertical: space.lg },
-  gridItem: { width: '33.333%', paddingHorizontal: 5, paddingBottom: 18, alignItems: 'center' },
-  // Fixed to 104 — the exact width of ComicCover's 'grid' size — rather than
-  // alignSelf:'stretch' against the FlashList column, whose resolved width
-  // was measured narrower than the cover itself, wrapping titles mid-word
-  // ("Abso" / "lut..."). A fixed width tied to the cover's own size can't
-  // drift out of sync with it.
-  gridTitle: { width: 104, color: color.text, fontFamily: font.displayMedium, fontSize: 12, lineHeight: 15, marginTop: 7, textAlign: 'center' },
-  gridStatus: { width: 104, color: color.faint, fontFamily: font.bodyMedium, fontSize: 11, marginTop: 3, textAlign: 'center', textTransform: 'capitalize' },
+  // The fixed title/status zone makes every three-column grid row start at
+  // the same baseline, even when one comic has a much longer title.
+  gridItem: { width: '33.333%', minHeight: 229, paddingHorizontal: 2, paddingBottom: 18, alignItems: 'center' },
+  gridTitle: { width: 96, height: 45, color: color.text, fontFamily: font.displayMedium, fontSize: 12, lineHeight: 15, marginTop: 7, textAlign: 'center' },
+  gridStatus: { width: 96, minHeight: 14, color: color.faint, fontFamily: font.bodyMedium, fontSize: 11, lineHeight: 14, marginTop: 3, textAlign: 'center', textTransform: 'capitalize' },
   overlay: { ...StyleSheet.absoluteFill, zIndex: 5, justifyContent: 'flex-end', backgroundColor: '#000000aa' }, filterHeading: { color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle, marginTop: 8, marginBottom: 10 }, sheetPills: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 16 }, apply: { minHeight: 50, borderRadius: radius.md, backgroundColor: color.accent, alignItems: 'center', justifyContent: 'center', marginTop: 8 }, applyText: { color: color.text, fontFamily: font.bodySemibold, fontSize: type.caption },
 });

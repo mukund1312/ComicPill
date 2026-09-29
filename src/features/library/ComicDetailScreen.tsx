@@ -149,7 +149,7 @@ function Detail({ item, detail, setStatus, label, linkedBank, purchase, onSave, 
 function EditionRow({ edition }: { edition: DetailEdition }) {
   return (
     <View style={styles.editionRow}>
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={styles.editionPrinting}>{PRINTING_LABEL[edition.printing] ?? edition.printing}</Text>
         <Text style={styles.editionMeta}>{[edition.format === 'physical' ? 'Physical' : 'Digital', edition.pages ? `${edition.pages}pp` : null].filter(Boolean).join(' · ')}</Text>
       </View>
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   content: { padding: space.lg, paddingTop: 60, paddingBottom: 40 },
   back: { color: color.muted, fontFamily: font.bodyMedium, fontSize: type.body, marginBottom: 16 },
   hero: { flexDirection: 'row', gap: 18 },
-  heroInfo: { flex: 1, justifyContent: 'center', gap: 9 },
+  heroInfo: { flex: 1, minWidth: 0, justifyContent: 'center', gap: 9 },
   title: { color: color.text, fontFamily: font.display, fontSize: 29, lineHeight: 34 },
   meta: { color: color.muted, fontFamily: font.body, fontSize: type.caption, lineHeight: 18 },
   journeyRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginTop: 18 },
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
   skipTitle: { color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle, marginTop: 4 },
   skipLine: { color: color.muted, fontFamily: font.body, fontSize: type.caption, lineHeight: 18 },
   editions: { gap: 8 },
-  editionRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: color.surface, borderWidth: 1, borderColor: color.border, borderRadius: radius.md, padding: space.md },
+  editionRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, backgroundColor: color.surface, borderWidth: 1, borderColor: color.border, borderRadius: radius.md, padding: space.md },
   editionPrinting: { color: color.text, fontFamily: font.bodySemibold, fontSize: type.body },
   editionMeta: { color: color.faint, fontFamily: font.body, fontSize: type.caption, marginTop: 2 },
   editionPrice: { color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle },

@@ -14,7 +14,9 @@ function tint(title: string) { return coverColors[title.split('').reduce((sum, c
  * error state, since plenty of works (mocks, unmatched titles) never get one.
  * `recyclingKey` lets FlashList safely recycle the underlying image request. */
 export function ComicCover({ title, workId, size = 'grid', status, onPress, recyclingKey }: { title: string; workId?: string; size?: 'tiny' | 'list' | 'grid' | 'hero'; status?: string; onPress?: () => void; recyclingKey?: string }) {
-  const dims = { tiny: [44, 66], list: [58, 86], grid: [104, 156], hero: [132, 198] }[size];
+  // This fixed 2:3 size leaves room for three equal library columns on
+  // compact phones without asking FlashList to measure every cover.
+  const dims = { tiny: [44, 66], list: [58, 86], grid: [96, 144], hero: [132, 198] }[size];
   const asset = workId ? COVER_ASSETS[workId] : undefined;
   return <Pressable testID={recyclingKey ? `cover-${recyclingKey}` : undefined} accessibilityRole={onPress ? 'button' : undefined} onPress={onPress} style={({ pressed }) => [styles.cover, { width: dims[0], height: dims[1], backgroundColor: asset ? color.surface2 : tint(title) }, pressed && { transform: [{ scale: 0.98 }] }]}>
     {asset ? (
@@ -39,5 +41,5 @@ const styles = StyleSheet.create({
   moon: { position: 'absolute', right: -10, top: 18, width: 64, height: 64, borderRadius: 32, backgroundColor: '#f1ede6', opacity: 0.88 },
   coverTitle: { color: color.text, fontFamily: font.display, fontSize: 15, lineHeight: 17, textShadowColor: '#000', textShadowRadius: 4 }, coverRule: { width: 20, height: 2, backgroundColor: color.accent, marginTop: 7 },
   status: { position: 'absolute', right: 5, bottom: 5, backgroundColor: color.positive, borderRadius: 8, paddingHorizontal: 4 }, statusText: { color: color.text, fontSize: 8, fontFamily: font.bodySemibold },
-  row: { minHeight: 104, flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: color.border }, rowBody: { flex: 1, gap: 5 }, rowTitle: { color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle }, rowMeta: { color: color.muted, fontFamily: font.body, fontSize: type.caption }, rowStatus: { color: color.faint, fontFamily: font.bodyMedium, fontSize: type.caption, textTransform: 'capitalize' }, chevron: { color: color.muted, fontSize: 26 },
+  row: { minHeight: 104, flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: color.border }, rowBody: { flex: 1, minWidth: 0, gap: 5 }, rowTitle: { color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle }, rowMeta: { color: color.muted, fontFamily: font.body, fontSize: type.caption }, rowStatus: { color: color.faint, fontFamily: font.bodyMedium, fontSize: type.caption, textTransform: 'capitalize' }, chevron: { width: 18, color: color.muted, fontSize: 26, textAlign: 'right' },
 });
