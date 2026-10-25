@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.ParcelFileDescriptor
+import android.util.Base64
 import com.github.junrar.Archive
 import com.github.junrar.exception.UnsupportedRarV5Exception
 import expo.modules.kotlin.exception.CodedException
@@ -178,5 +179,34 @@ class ComicArchiveModule : Module() {
         }
       }
     }
+
+    // A small grayscale copy of an image for panel detection: { width, height, data: base64 of w*h bytes }.
+    AsyncFunction("grayThumbnail") { path: String, maxWidth: Int ->
+      val file = fileOf(path)
+      val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+      BitmapFactory.decodeFile(file.path, bounds)
+      if (bounds.outWidth <= 0 || bounds.outHeight <= 0) throw CodedException("DECODE", "Cannot decode image", null)
+      var sample = 1
+      while (bounds.outWidth / (sample * 2) >= maxWidth) sample *= 2
+      val decoded = BitmapFactory.decodeFile(file.path, BitmapFactory.Options().apply { inSampleSize = sample })
+        ?: throw CodedException("DECODE", "Cannot decode image", null)
+      val scale = minOf(1f, maxWidth.toFloat() / decoded.width)
+      val w = maxOf(1, (decoded.width * scale).toInt())
+      val h = maxOf(1, (decoded.height * scale).toInt())
+      val scaled = if (scale < 1f) Bitmap.createScaledBitmap(decoded, w, h, true) else decoded
+      val pixels = IntArray(w * h)
+      scaled.getPixels(pixels, 0, w, 0, 0, w, h)
+      val gray = ByteArray(w * h) { i ->
+        val p = pixels[i]
+        val alpha = (p ushr 24) and 255
+        val lum = 0.299 * ((p shr 16) and 255) + 0.587 * ((p shr 8) and 255) + 0.114 * (p and 255)
+        // Transparent pixels read as white paper.
+        ((lum * alpha + 255.0 * (255 - alpha)) / 255.0).toInt().toByte()
+      }
+      if (scaled !== decoded) scaled.recycle()
+      decoded.recycle()
+      return@AsyncFunction mapOf("width" to w, "height" to h, "data" to Base64.encodeToString(gray, Base64.NO_WRAP))
+    }
   }
 }
+

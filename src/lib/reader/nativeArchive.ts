@@ -12,7 +12,11 @@ type Native = {
   imageSizes(path: string, kind: NativeKind, entries: string[]): Promise<number[][]>;
   pdfPageSizes(path: string): Promise<number[][]>;
   renderPdfPage(path: string, index: number, dest: string, targetWidth: number): Promise<void>;
+  grayThumbnail?(path: string, maxWidth: number): Promise<{ width: number; height: number; data: string }>;
 };
+
+/** Optional: absent on iOS and in Expo Go, where guided view is simply unavailable. */
+export const optionalNative = (): Native | null => requireOptionalNativeModule<Native>('ComicArchive');
 
 const LABEL = { rar: 'CBR', '7z': 'CB7', pdf: 'PDF' } as const;
 

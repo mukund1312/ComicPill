@@ -28,7 +28,7 @@ export function ThumbnailStrip({ source, pages, current, bookmarks, onSelect, co
   );
 }
 
-const Thumb = memo(function Thumb({ source, page, active, marked, onSelect, w, h }: { source: ComicSource; page: number; active: boolean; marked: boolean; onSelect: (p: number) => void; w: number; h: number }) {
+export const Thumb = memo(function Thumb({ source, page, active, marked, onSelect, w, h }: { source: ComicSource; page: number; active: boolean; marked: boolean; onSelect: (p: number) => void; w: number; h: number }) {
   const [uri, setUri] = useState<string | null>(null);
   useEffect(() => {
     let live = true;

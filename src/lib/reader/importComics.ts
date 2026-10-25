@@ -3,7 +3,8 @@ import { randomUUID } from 'expo-crypto';
 // eslint-disable-next-line import/no-unresolved -- package ships .ts source; tsc and Metro resolve it
 import { Directory, File, Paths } from 'expo-file-system';
 import { ComicOpenError, extractNestedComic, listNestedComics, openComicSource } from './ComicSource';
-import { deleteReaderComic, getReaderComic, insertReaderComic } from './readerLibrary';
+import { parseComicInfo, displayTitle } from './formats/comicInfo';
+import { createFolder, deleteReaderComic, getReaderComic, insertReaderComic } from './readerLibrary';
 
 export type ImportResult = { imported: string[]; failed: Array<{ name: string; reason: string }> };
 
@@ -11,7 +12,9 @@ const titleOf = (name: string) => name.replace(/\.[^.]+$/, '').replace(/[_]+/g, 
 
 const comicsRoot = () => new Directory(Paths.document, 'comics');
 
-async function importFile(uri: string, name: string, result: ImportResult, depth = 0): Promise<void> {
+type ImportOptions = { folderId?: string };
+
+async function importFile(uri: string, name: string, result: ImportResult, opts: ImportOptions = {}, depth = 0): Promise<void> {
   const id = randomUUID();
   const dir = new Directory(comicsRoot(), id);
   try {
@@ -30,7 +33,7 @@ async function importFile(uri: string, name: string, result: ImportResult, depth
         if (nested.length) {
           for (const entry of nested) {
             const tmp = new File(Paths.cache, `nested-${randomUUID()}`);
-            try { extractNestedComic(stored.uri, entry, tmp); await importFile(tmp.uri, entry.split('/').pop() ?? entry, result, depth + 1); }
+            try { extractNestedComic(stored.uri, entry, tmp); await importFile(tmp.uri, entry.split('/').pop() ?? entry, result, opts, depth + 1); }
             finally { try { if (tmp.exists) tmp.delete(); } catch { /* ignore */ } }
           }
           dir.delete();
@@ -46,7 +49,14 @@ async function importFile(uri: string, name: string, result: ImportResult, depth
       await first.copy(cover);
       coverPath = cover.uri;
     } catch { /* a missing cover is not fatal */ }
-    insertReaderComic({ id, title: titleOf(name), path: stored.uri, format: source.format, pageCount: source.pageCount, coverPath });
+    // ComicInfo.xml gives a real title, series, writer and the manga (right-to-left) hint.
+    const xml = await source.readComicInfo();
+    const info = xml ? parseComicInfo(xml) : {};
+    insertReaderComic({
+      id, title: displayTitle(info, titleOf(name)), path: stored.uri, format: source.format, pageCount: source.pageCount, coverPath,
+      series: info.series ?? null, issue: info.number ?? null, writer: info.writer ?? null, folderId: opts.folderId ?? null,
+      mode: info.rtl ? 'rtl' : 'ltr',
+    });
     source.close();
     result.imported.push(name);
   } catch (e) {
@@ -75,4 +85,30 @@ export function removeComic(id: string): void {
   const comic = getReaderComic(id);
   if (comic) { try { const dir = new File(comic.path).parentDirectory; if (dir.exists) dir.delete(); } catch { /* ignore */ } }
   deleteReaderComic(id);
+}
+
+const COMIC_EXT = ['cbz', 'cbr', 'cb7', 'zip', 'pdf', 'epub'];
+const MAX_FOLDER_DEPTH = 4;
+
+function collectComicFiles(dir: Directory, depth = 0): File[] {
+  const out: File[] = [];
+  if (depth > MAX_FOLDER_DEPTH) return out;
+  for (const entry of dir.list()) {
+    if (entry instanceof Directory) out.push(...collectComicFiles(entry, depth + 1));
+    else if (COMIC_EXT.includes(entry.extension.replace('.', '').toLowerCase())) out.push(entry);
+  }
+  return out;
+}
+
+/** Pick a whole folder; every comic file inside it is imported and grouped into a library folder of the same name. */
+export async function pickAndImportFolder(): Promise<ImportResult> {
+  const result: ImportResult = { imported: [], failed: [] };
+  let dir: Directory;
+  try { dir = await Directory.pickDirectoryAsync(); } catch { return result; } // cancelled
+  const files = collectComicFiles(dir);
+  const root = comicsRoot();
+  if (!root.exists) root.create({ intermediates: true });
+  const folderId = files.length ? createFolder(dir.name || 'Imported') : undefined;
+  for (const f of files) await importFile(f.uri, f.name, result, { folderId });
+  return result;
 }

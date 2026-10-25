@@ -195,6 +195,28 @@ CREATE TABLE IF NOT EXISTS reader_comics (
   last_read_at INTEGER, progress_page INTEGER NOT NULL DEFAULT 0, mode TEXT NOT NULL DEFAULT 'ltr'
 );
 
+CREATE TABLE IF NOT EXISTS reader_folders (
+  id TEXT PRIMARY KEY, name TEXT NOT NULL, preset_id TEXT, created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS reader_collections (
+  id TEXT PRIMARY KEY, name TEXT NOT NULL, created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS reader_collection_items (
+  collection_id TEXT NOT NULL, comic_id TEXT NOT NULL, added_at INTEGER NOT NULL,
+  PRIMARY KEY (collection_id, comic_id)
+);
+
+CREATE TABLE IF NOT EXISTS reader_presets (
+  id TEXT PRIMARY KEY, name TEXT NOT NULL, mode TEXT NOT NULL, fit TEXT NOT NULL, background TEXT NOT NULL, created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS reader_panels (
+  comic_id TEXT NOT NULL, page INTEGER NOT NULL, panels_json TEXT NOT NULL,
+  PRIMARY KEY (comic_id, page)
+);
+
 CREATE TABLE IF NOT EXISTS reader_bookmarks (
   id INTEGER PRIMARY KEY AUTOINCREMENT, comic_id TEXT NOT NULL, page INTEGER NOT NULL, created_at INTEGER NOT NULL,
   UNIQUE (comic_id, page)
@@ -208,8 +230,11 @@ export function ensureSchema(): void {
   sqlite.execSync(BOOTSTRAP_SQL);
   // reader_comics gained columns after first release; CREATE IF NOT EXISTS won't add them.
   const cols = sqlite.getAllSync<{ name: string }>('PRAGMA table_info(reader_comics)').map((c) => c.name);
-  if (!cols.includes('progress_offset')) sqlite.execSync('ALTER TABLE reader_comics ADD COLUMN progress_offset REAL NOT NULL DEFAULT 0');
-  if (!cols.includes('sizes_json')) sqlite.execSync('ALTER TABLE reader_comics ADD COLUMN sizes_json TEXT');
+  const added: Array<[string, string]> = [
+    ['progress_offset', 'REAL NOT NULL DEFAULT 0'], ['sizes_json', 'TEXT'],
+    ['series', 'TEXT'], ['issue', 'TEXT'], ['writer', 'TEXT'], ['folder_id', 'TEXT'], ['preset_id', 'TEXT'],
+  ];
+  for (const [name, def] of added) if (!cols.includes(name)) sqlite.execSync(`ALTER TABLE reader_comics ADD COLUMN ${name} ${def}`);
   bootstrapped = true;
 }
 

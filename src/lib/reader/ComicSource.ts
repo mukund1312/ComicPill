@@ -26,6 +26,8 @@ export type ComicSource = {
   getPageSize(index: number): Promise<PageSize | null>;
   /** Tell the source where the reader is so cache eviction never drops nearby pages. */
   setFocus(index: number): void;
+  /** Raw ComicInfo.xml text if the archive carries one. */
+  readComicInfo(): Promise<string | null>;
   close(): void;
 };
 
@@ -43,6 +45,8 @@ type Backend = {
   head?(entry: string): Uint8Array;
   /** Whole-archive size scan for backends where per-entry header reads would be quadratic. */
   allSizes?(): Promise<Array<PageSize | null>>;
+  /** ComicInfo.xml, when present. */
+  readInfo?(): Promise<string | null>;
   dispose(): void;
 };
 
@@ -101,6 +105,7 @@ function makeSource(backend: Backend, cacheKey: string): ComicSource {
       return size;
     },
     setFocus(index) { focus = index; },
+    readComicInfo: async () => { try { return (await backend.readInfo?.()) ?? null; } catch { return null; } },
     close() {
       inflight.clear(); order.length = 0;
       backend.dispose();
@@ -141,6 +146,7 @@ function zipBackend(file: File): Backend {
       format: isEpub ? 'epub' : 'cbz', pages, cheapSizes: true,
       extract: async (entry, dest) => writeBytes(dest, zip.readEntry(entry)),
       head: (entry) => zip.readEntryHead(entry),
+      readInfo: async () => { const n = zip.names().find((x) => x.toLowerCase() === 'comicinfo.xml'); return n ? decoder.decode(zip.readEntry(n)) : null; },
       dispose: () => zip.close(),
     };
   } catch (e) { zip.close(); throw e; }
@@ -175,6 +181,12 @@ async function nativeBackend(file: File, kind: NativeKind): Promise<Backend> {
     format: kind === 'rar' ? 'cbr' : 'cb7', pages, cheapSizes: true,
     allSizes: async () => {
       try { return (await native.imageSizes(file.uri, kind, pages)).map(toSize); } catch { return pages.map(() => null); }
+    },
+    readInfo: async () => {
+      const entry = names.find((n) => n.toLowerCase() === 'comicinfo.xml');
+      if (!entry) return null;
+      const tmp = new File(Paths.cache, `info-${Date.now()}.xml`);
+      try { await native.extractEntry(file.uri, kind, entry, tmp.uri); return await tmp.text(); } finally { try { if (tmp.exists) tmp.delete(); } catch { /* temp */ } }
     },
     extract: async (entry, dest) => {
       try { await native.extractEntry(file.uri, kind, entry, dest.uri); } catch (e) { throw translateNativeError(e); }

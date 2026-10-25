@@ -1,10 +1,11 @@
 import { sqlite } from '../db/client';
+import type { ShelfComic } from './shelf';
 
 export type ReaderMode = 'ltr' | 'rtl' | 'webtoon';
 
-export type ReaderComic = {
-  id: string; title: string; path: string; format: string; pageCount: number;
-  coverPath: string | null; addedAt: number; lastReadAt: number | null; progressPage: number; mode: ReaderMode;
+export type ReaderComic = ShelfComic & {
+  path: string; format: string; coverPath: string | null; mode: ReaderMode;
+  issue: string | null; folderId: string | null; presetId: string | null;
   /** Webtoon only: how far into the progress page you had scrolled, 0..1. */
   progressOffset: number;
   sizes: Array<{ width: number; height: number } | null> | null;
@@ -14,6 +15,7 @@ type Row = {
   id: string; title: string; path: string; format: string; page_count: number; cover_path: string | null;
   added_at: number; last_read_at: number | null; progress_page: number; mode: string;
   progress_offset: number; sizes_json: string | null;
+  series: string | null; issue: string | null; writer: string | null; folder_id: string | null; preset_id: string | null;
 };
 
 const parseSizes = (json: string | null): ReaderComic['sizes'] => {
@@ -24,8 +26,12 @@ const map = (r: Row): ReaderComic => ({
   id: r.id, title: r.title, path: r.path, format: r.format, pageCount: r.page_count, coverPath: r.cover_path,
   addedAt: r.added_at, lastReadAt: r.last_read_at, progressPage: r.progress_page, mode: r.mode as ReaderMode,
   progressOffset: r.progress_offset ?? 0, sizes: parseSizes(r.sizes_json),
+  series: r.series, issue: r.issue, writer: r.writer, folderId: r.folder_id, presetId: r.preset_id,
 });
 
+const uid = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+
+// ---- comics -----------------------------------------------------------------
 export const listReaderComics = (): ReaderComic[] =>
   sqlite.getAllSync<Row>('SELECT * FROM reader_comics ORDER BY COALESCE(last_read_at, added_at) DESC').map(map);
 
@@ -34,10 +40,13 @@ export const getReaderComic = (id: string): ReaderComic | null => {
   return row ? map(row) : null;
 };
 
-export const insertReaderComic = (c: Pick<ReaderComic, 'id' | 'title' | 'path' | 'format' | 'pageCount' | 'coverPath'>): void => {
+export type NewReaderComic = Pick<ReaderComic, 'id' | 'title' | 'path' | 'format' | 'pageCount' | 'coverPath'> &
+  Partial<Pick<ReaderComic, 'series' | 'issue' | 'writer' | 'folderId' | 'mode'>>;
+
+export const insertReaderComic = (c: NewReaderComic): void => {
   sqlite.runSync(
-    'INSERT INTO reader_comics (id, title, path, format, page_count, cover_path, added_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    c.id, c.title, c.path, c.format, c.pageCount, c.coverPath, Date.now(),
+    'INSERT INTO reader_comics (id, title, path, format, page_count, cover_path, added_at, series, issue, writer, folder_id, mode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    c.id, c.title, c.path, c.format, c.pageCount, c.coverPath, Date.now(), c.series ?? null, c.issue ?? null, c.writer ?? null, c.folderId ?? null, c.mode ?? 'ltr',
   );
 };
 
@@ -53,11 +62,28 @@ export const saveReaderMode = (id: string, mode: ReaderMode): void => {
   sqlite.runSync('UPDATE reader_comics SET mode = ? WHERE id = ?', mode, id);
 };
 
+export const setComicPreset = (id: string, presetId: string | null): void => {
+  sqlite.runSync('UPDATE reader_comics SET preset_id = ? WHERE id = ?', presetId, id);
+};
+
+export const setComicFolder = (id: string, folderId: string | null): void => {
+  sqlite.runSync('UPDATE reader_comics SET folder_id = ? WHERE id = ?', folderId, id);
+};
+
+/** "Mark read" jumps to the last page; "mark unread" clears progress entirely. */
+export const markComic = (id: string, read: boolean, pageCount: number): void => {
+  if (read) sqlite.runSync('UPDATE reader_comics SET progress_page = ?, progress_offset = 0, last_read_at = ? WHERE id = ?', Math.max(0, pageCount - 1), Date.now(), id);
+  else sqlite.runSync('UPDATE reader_comics SET progress_page = 0, progress_offset = 0, last_read_at = NULL WHERE id = ?', id);
+};
+
 export const deleteReaderComic = (id: string): void => {
   sqlite.runSync('DELETE FROM reader_comics WHERE id = ?', id);
   sqlite.runSync('DELETE FROM reader_bookmarks WHERE comic_id = ?', id);
+  sqlite.runSync('DELETE FROM reader_collection_items WHERE comic_id = ?', id);
+  sqlite.runSync('DELETE FROM reader_panels WHERE comic_id = ?', id);
 };
 
+// ---- bookmarks --------------------------------------------------------------
 export const listBookmarks = (comicId: string): number[] =>
   sqlite.getAllSync<{ page: number }>('SELECT page FROM reader_bookmarks WHERE comic_id = ? ORDER BY page', comicId).map((r) => r.page);
 
@@ -67,4 +93,78 @@ export const toggleBookmark = (comicId: string, page: number): boolean => {
   if (exists) { sqlite.runSync('DELETE FROM reader_bookmarks WHERE comic_id = ? AND page = ?', comicId, page); return false; }
   sqlite.runSync('INSERT INTO reader_bookmarks (comic_id, page, created_at) VALUES (?, ?, ?)', comicId, page, Date.now());
   return true;
+};
+
+// ---- folders ----------------------------------------------------------------
+export type ReaderFolder = { id: string; name: string; presetId: string | null; count: number };
+
+export const listFolders = (): ReaderFolder[] =>
+  sqlite.getAllSync<{ id: string; name: string; preset_id: string | null; n: number }>(
+    'SELECT f.id, f.name, f.preset_id, (SELECT COUNT(*) FROM reader_comics c WHERE c.folder_id = f.id) AS n FROM reader_folders f ORDER BY f.name COLLATE NOCASE',
+  ).map((r) => ({ id: r.id, name: r.name, presetId: r.preset_id, count: r.n }));
+
+export const createFolder = (name: string): string => {
+  const existing = sqlite.getFirstSync<{ id: string }>('SELECT id FROM reader_folders WHERE name = ? COLLATE NOCASE', name);
+  if (existing) return existing.id;
+  const id = uid();
+  sqlite.runSync('INSERT INTO reader_folders (id, name, created_at) VALUES (?, ?, ?)', id, name, Date.now());
+  return id;
+};
+
+export const renameFolder = (id: string, name: string): void => { sqlite.runSync('UPDATE reader_folders SET name = ? WHERE id = ?', name, id); };
+export const setFolderPreset = (id: string, presetId: string | null): void => { sqlite.runSync('UPDATE reader_folders SET preset_id = ? WHERE id = ?', presetId, id); };
+
+/** Deleting a folder keeps its comics — they return to the top level. */
+export const deleteFolder = (id: string): void => {
+  sqlite.runSync('UPDATE reader_comics SET folder_id = NULL WHERE folder_id = ?', id);
+  sqlite.runSync('DELETE FROM reader_folders WHERE id = ?', id);
+};
+
+export const getFolder = (id: string): ReaderFolder | null => listFolders().find((f) => f.id === id) ?? null;
+
+// ---- collections ------------------------------------------------------------
+export type ReaderCollection = { id: string; name: string; count: number };
+
+export const listCollections = (): ReaderCollection[] =>
+  sqlite.getAllSync<{ id: string; name: string; n: number }>(
+    'SELECT c.id, c.name, (SELECT COUNT(*) FROM reader_collection_items i WHERE i.collection_id = c.id) AS n FROM reader_collections c ORDER BY c.name COLLATE NOCASE',
+  ).map((r) => ({ id: r.id, name: r.name, count: r.n }));
+
+export const createCollection = (name: string): string => {
+  const existing = sqlite.getFirstSync<{ id: string }>('SELECT id FROM reader_collections WHERE name = ? COLLATE NOCASE', name);
+  if (existing) return existing.id;
+  const id = uid();
+  sqlite.runSync('INSERT INTO reader_collections (id, name, created_at) VALUES (?, ?, ?)', id, name, Date.now());
+  return id;
+};
+
+export const deleteCollection = (id: string): void => {
+  sqlite.runSync('DELETE FROM reader_collection_items WHERE collection_id = ?', id);
+  sqlite.runSync('DELETE FROM reader_collections WHERE id = ?', id);
+};
+
+export const collectionComicIds = (collectionId: string): string[] =>
+  sqlite.getAllSync<{ comic_id: string }>('SELECT comic_id FROM reader_collection_items WHERE collection_id = ?', collectionId).map((r) => r.comic_id);
+
+export const collectionsForComic = (comicId: string): string[] =>
+  sqlite.getAllSync<{ collection_id: string }>('SELECT collection_id FROM reader_collection_items WHERE comic_id = ?', comicId).map((r) => r.collection_id);
+
+/** Adds the comic if absent, removes it if present. Returns whether it is in the collection now. */
+export const toggleInCollection = (collectionId: string, comicId: string): boolean => {
+  const has = sqlite.getFirstSync('SELECT 1 FROM reader_collection_items WHERE collection_id = ? AND comic_id = ?', collectionId, comicId);
+  if (has) { sqlite.runSync('DELETE FROM reader_collection_items WHERE collection_id = ? AND comic_id = ?', collectionId, comicId); return false; }
+  sqlite.runSync('INSERT INTO reader_collection_items (collection_id, comic_id, added_at) VALUES (?, ?, ?)', collectionId, comicId, Date.now());
+  return true;
+};
+
+// ---- guided-view panel cache -------------------------------------------------
+export type CachedPanels = { rtl: boolean; panels: Array<{ x: number; y: number; w: number; h: number }> };
+
+export const getCachedPanels = (comicId: string, page: number): CachedPanels | null => {
+  const row = sqlite.getFirstSync<{ panels_json: string }>('SELECT panels_json FROM reader_panels WHERE comic_id = ? AND page = ?', comicId, page);
+  try { return row ? (JSON.parse(row.panels_json) as CachedPanels) : null; } catch { return null; }
+};
+
+export const saveCachedPanels = (comicId: string, page: number, value: CachedPanels): void => {
+  sqlite.runSync('INSERT OR REPLACE INTO reader_panels (comic_id, page, panels_json) VALUES (?, ?, ?)', comicId, page, JSON.stringify(value));
 };

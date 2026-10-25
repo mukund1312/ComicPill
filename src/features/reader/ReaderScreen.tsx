@@ -1,19 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent, type ViewToken } from 'react-native';
+import { ActivityIndicator, AppState, FlatList, Modal, Pressable, StyleSheet, Text, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent, type ViewToken } from 'react-native';
 import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
 import { useKeepAwake } from 'expo-keep-awake';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ThumbnailStrip } from './ThumbnailStrip';
-import { ZoomableView } from './ZoomableView';
+import { Thumb, ThumbnailStrip } from './ThumbnailStrip';
+import { ZoomableView, type ZoomHandle } from './ZoomableView';
+import { detectPagePanels, guidedAvailable } from '../../lib/reader/guided/detect';
+import { FULL_PAGE, type Panel } from '../../lib/reader/guided/panels';
 import { ComicOpenError, openComicSource, type ComicSource, type PageSize } from '../../lib/reader/ComicSource';
 import { buildUnits, unitIndexOf } from '../../lib/reader/formats/spreads';
+import { BACKGROUND_COLORS, resolveReading, type Fit, type Reading } from '../../lib/reader/presets';
 import {
-  getReaderComic, listBookmarks, saveReaderMode, saveReaderProgress, saveReaderSizes, toggleBookmark,
+  getFolder, getReaderComic, listBookmarks, saveReaderMode, saveReaderProgress, saveReaderSizes, setComicPreset, toggleBookmark,
   type ReaderComic, type ReaderMode,
 } from '../../lib/reader/readerLibrary';
+import { listPresets, loadReaderSettings, type ReaderSettings } from '../../lib/reader/readerSettings';
 import { color, font, radius, space, type } from '../../ui/tokens';
 
 type Sizes = Array<PageSize | null>;
@@ -38,6 +42,14 @@ export default function ReaderScreen() {
   const [source, setSource] = useState<ComicSource | null>(null);
   const [sizes, setSizes] = useState<Sizes | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(comic ? null : 'Comic not found.');
+  const [settings] = useState<ReaderSettings>(() => loadReaderSettings());
+  const [reading] = useState<Reading | null>(() => {
+    if (!comic) return null;
+    return resolveReading({
+      comicMode: comic.mode, comicPresetId: comic.presetId, folderPresetId: comic.folderId ? getFolder(comic.folderId)?.presetId ?? null : null,
+      defaultPresetId: loadReaderSettings().defaultPresetId, presets: listPresets(),
+    });
+  });
 
   useKeepAwake();
 
@@ -65,17 +77,21 @@ export default function ReaderScreen() {
   }, [comic]);
 
   if (error) return <View style={styles.center}><Text style={styles.errorText}>{error}</Text><Pressable onPress={() => router.back()} style={styles.button}><Text style={styles.buttonText}>Back</Text></Pressable></View>;
-  if (!comic || !source || sizes === undefined) return <View style={styles.center}><ActivityIndicator color={color.accent} /><Text style={styles.errorText}>Preparing pages…</Text></View>;
-  return <Reader comic={comic} source={source} sizes={sizes} />;
+  if (!comic || !source || sizes === undefined || !reading) return <View style={styles.center}><ActivityIndicator color={color.accent} /><Text style={styles.errorText}>Preparing pages…</Text></View>;
+  return <Reader comic={comic} source={source} sizes={sizes} reading={reading} settings={settings} />;
 }
 
 type Position = { page: number; frac: number };
 
-function Reader({ comic, source, sizes }: { comic: ReaderComic; source: ComicSource; sizes: Sizes | null }) {
+function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComic; source: ComicSource; sizes: Sizes | null; reading: Reading; settings: ReaderSettings }) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const total = source.pageCount;
-  const [mode, setMode] = useState<ReaderMode>(comic.mode);
+  const [mode, setMode] = useState<ReaderMode>(reading.mode);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [guided, setGuided] = useState(false);
+  const bg = BACKGROUND_COLORS[reading.background];
+  const fit = reading.fit;
   const [overlay, setOverlay] = useState(false);
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const [bookmarks, setBookmarks] = useState<Set<number>>(() => new Set(listBookmarks(comic.id)));
@@ -89,6 +105,8 @@ function Reader({ comic, source, sizes }: { comic: ReaderComic; source: ComicSou
   const rtl = mode === 'rtl'; const webtoon = mode === 'webtoon';
   const landscape = width > height;
   const spread = landscape && !webtoon;
+  // Guided view reads one page at a time, panel by panel — not in spreads or webtoon strips.
+  const guidedActive = guided && guidedAvailable() && !webtoon && !spread;
   const sizeList: Sizes = useMemo(() => sizes ?? Array.from({ length: total }, () => null), [sizes, total]);
 
   const units = useMemo(() => buildUnits(sizeList, spread), [sizeList, spread]);
@@ -105,9 +123,9 @@ function Reader({ comic, source, sizes }: { comic: ReaderComic; source: ComicSou
   }, [sizes, sizeList, width]);
 
   const persist = useCallback(() => {
-    saveReaderProgress(comic.id, position.current.page, webtoon ? position.current.frac : 0);
+    if (!settings.incognito) saveReaderProgress(comic.id, position.current.page, webtoon ? position.current.frac : 0);
     setAnchor(position.current);
-  }, [comic.id, webtoon]);
+  }, [comic.id, webtoon, settings.incognito]);
 
   // Leave exactly where you were: save on background and on exit as well as on every turn.
   useEffect(() => {
@@ -149,13 +167,54 @@ function Reader({ comic, source, sizes }: { comic: ReaderComic; source: ComicSou
     setPage((prev) => (prev === lo ? prev : lo));
   }, [webtoon, strip, total]);
 
+  // ---- guided view: which panel of the current page is showing ----
+  const zoomRefs = useRef(new Map<number, ZoomHandle>());
+  const panelState = useRef<{ page: number; panels: Panel[]; index: number }>({ page: -1, panels: [], index: 0 });
+  const landOnLast = useRef(false);
+  const registerZoom = useCallback((p: number, handle: ZoomHandle | null) => {
+    if (handle) zoomRefs.current.set(p, handle); else zoomRefs.current.delete(p);
+  }, []);
+
+  const showPanel = (p: number, panel: Panel) => zoomRefs.current.get(p)?.zoomToPanel(panel === FULL_PAGE ? null : panel);
+
+  /** Next (+1) or previous (-1): a panel inside the page when guided, otherwise a whole page/spread. */
+  const advance = useCallback((delta: number) => {
+    if (guidedActive) {
+      const st = panelState.current;
+      // Panels for this page are still being found: swallow the tap rather than skipping a page.
+      if (st.page !== position.current.page) return;
+      if (st.panels.length) {
+        const ni = st.index + delta;
+        if (ni >= 0 && ni < st.panels.length) { st.index = ni; showPanel(st.page, st.panels[ni]); return; }
+      }
+      if (delta < 0) landOnLast.current = true; // going back lands on the previous page's last panel
+    }
+    step(delta);
+  }, [guidedActive, step]);
+
+  useEffect(() => {
+    if (!guidedActive) { zoomRefs.current.get(page)?.zoomToPanel(null); return; }
+    let live = true;
+    const wantLast = landOnLast.current; landOnLast.current = false;
+    (async () => {
+      const uri = await source.getPageUri(page);
+      const panels = await detectPagePanels(comic.id, page, uri, rtl);
+      if (!live) return;
+      const index = wantLast ? panels.length - 1 : 0;
+      panelState.current = { page, panels, index };
+      showPanel(page, panels[index]);
+    })().catch(() => undefined);
+    return () => { live = false; };
+  }, [page, guidedActive, source, comic.id, rtl]);
+
   const onTap = useCallback((x: number) => {
     const edge = width * 0.3;
+    const flip = settings.invertTaps ? -1 : 1;
     // Outer thirds turn the page (direction-aware); the centre toggles the overlay.
-    if (x < edge) step(rtl ? 1 : -1);
-    else if (x > width - edge) step(rtl ? -1 : 1);
+    if (settings.tapZones && x < edge) advance((rtl ? 1 : -1) * flip);
+    else if (settings.tapZones && x > width - edge) advance((rtl ? -1 : 1) * flip);
     else setOverlay((o) => !o);
-  }, [width, rtl, step]);
+  }, [width, rtl, advance, settings.tapZones, settings.invertTaps]);
 
   // Prefetch what's coming (and one back) and tell the source where we are so it never evicts them.
   useEffect(() => {
@@ -163,11 +222,11 @@ function Reader({ comic, source, sizes }: { comic: ReaderComic; source: ComicSou
     const ahead = spread ? [2, 3, 4, -1] : webtoon ? [1, 2, 3, -1] : [1, 2, -1];
     for (const d of ahead) {
       const p = page + d;
-      if (p >= 0 && p < total) source.getPageUri(p).then((u) => Image.prefetch(u)).catch(() => undefined);
+      if (p >= 0 && p < total) source.getPageUri(p).then((u) => { Image.prefetch(u); if (guidedActive && d === 1) detectPagePanels(comic.id, p, u, rtl); }).catch(() => undefined);
     }
-  }, [page, source, total, spread, webtoon]);
+  }, [page, source, total, spread, webtoon, guidedActive, comic.id, rtl]);
 
-  const changeMode = (next: ReaderMode) => { persist(); setMode(next); saveReaderMode(comic.id, next); setOverlay(false); };
+  const changeMode = (next: ReaderMode) => { persist(); setMode(next); saveReaderMode(comic.id, next); setComicPreset(comic.id, null); setOverlay(false); };
 
   const onToggleBookmark = () => {
     const now = toggleBookmark(comic.id, page);
@@ -180,7 +239,7 @@ function Reader({ comic, source, sizes }: { comic: ReaderComic; source: ComicSou
   const webtoonStartY = strip.known ? strip.offsets[initial] + anchor.frac * strip.heights[initial] : 0;
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { backgroundColor: bg }]}>
       <StatusBar hidden={!overlay} />
       <FlatList
         key={listKey}
@@ -208,8 +267,8 @@ function Reader({ comic, source, sizes }: { comic: ReaderComic; source: ComicSou
         onMomentumScrollEnd={persist}
         onScrollToIndexFailed={({ index }) => setTimeout(() => listRef.current?.scrollToIndex({ index, animated: false }), 100)}
         renderItem={({ item }) => webtoon
-          ? <WebtoonPage source={source} page={item[0]} width={width} height={strip.known ? strip.heights[item[0]] : undefined} onTap={() => setOverlay((o) => !o)} />
-          : <PagedUnit source={source} unit={item} sizes={sizeList} width={width} height={height} rtl={rtl} onTap={onTap} />}
+          ? <WebtoonPage source={source} page={item[0]} width={width} height={strip.known ? strip.heights[item[0]] : undefined} bg={bg} onTap={() => setOverlay((o) => !o)} />
+          : <PagedUnit register={registerZoom} source={source} unit={item} sizes={sizeList} width={width} height={height} rtl={rtl} fit={fit} bg={bg} onTap={onTap} />}
       />
       {overlay ? <>
         <View style={[styles.top, { paddingTop: insets.top + space.sm }]}>
@@ -218,6 +277,8 @@ function Reader({ comic, source, sizes }: { comic: ReaderComic; source: ComicSou
           <Pressable accessibilityRole="button" accessibilityLabel={bookmarks.has(page) ? 'Remove bookmark' : 'Add bookmark'} onPress={onToggleBookmark} hitSlop={10}>
             <Text style={[styles.icon, bookmarks.has(page) && styles.iconActive]}>{bookmarks.has(page) ? '★' : '☆'}</Text>
           </Pressable>
+          {guidedAvailable() && !webtoon && !spread ? <Pressable accessibilityRole="button" accessibilityLabel="Guided view" accessibilityState={{ selected: guided }} onPress={() => { setGuided((g) => !g); setOverlay(false); }} hitSlop={10}><Text style={[styles.icon, guided && styles.iconActive]}>◎</Text></Pressable> : null}
+          <Pressable accessibilityRole="button" accessibilityLabel="All pages" onPress={() => setGalleryOpen(true)} hitSlop={10}><Text style={styles.icon}>▦</Text></Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel="Bookmarks" onPress={() => setBookmarksOpen(true)} hitSlop={10}><Text style={styles.icon}>☰</Text></Pressable>
         </View>
         <View style={[styles.bottom, { paddingBottom: insets.bottom + space.md }]}>
@@ -235,6 +296,25 @@ function Reader({ comic, source, sizes }: { comic: ReaderComic; source: ComicSou
           </View>
         </View>
       </> : null}
+      <Modal visible={galleryOpen} animationType="slide" onRequestClose={() => setGalleryOpen(false)} statusBarTranslucent>
+        <View style={[styles.gallery, { paddingTop: insets.top + space.sm }]}>
+          <View style={styles.sheetHeader}>
+            <Text style={styles.sheetTitle}>All pages</Text>
+            <Pressable onPress={() => setGalleryOpen(false)} hitSlop={10}><Text style={styles.icon}>✕</Text></Pressable>
+          </View>
+          <FlatList
+            data={allPages}
+            numColumns={Math.max(3, Math.floor(width / 96))}
+            key={Math.max(3, Math.floor(width / 96))}
+            keyExtractor={(p) => String(p)}
+            columnWrapperStyle={styles.galleryRow}
+            contentContainerStyle={{ paddingBottom: insets.bottom + space.lg }}
+            initialNumToRender={18}
+            windowSize={5}
+            renderItem={({ item }) => <Thumb source={source} page={item} active={item === page} marked={bookmarks.has(item)} onSelect={(p) => { setGalleryOpen(false); goToPage(p, false); }} w={84} h={126} />}
+          />
+        </View>
+      </Modal>
       {bookmarksOpen ? (
         <View style={styles.sheetBackdrop}>
           <View style={[styles.sheet, { paddingBottom: insets.bottom + space.lg }]}>
@@ -272,16 +352,18 @@ function PageImage({ source, page, width, height }: { source: ComicSource; page:
 }
 
 /** One screen of paged reading: a single page, or two side by side (landscape). Zoom applies to the whole unit. */
-function PagedUnit({ source, unit, sizes, width, height, rtl, onTap }: { source: ComicSource; unit: number[]; sizes: Sizes; width: number; height: number; rtl: boolean; onTap: (x: number) => void }) {
+function PagedUnit({ register, source, unit, sizes, width, height, rtl, fit, bg, onTap }: { register: (page: number, handle: ZoomHandle | null) => void; source: ComicSource; unit: number[]; sizes: Sizes; width: number; height: number; rtl: boolean; fit: Fit; bg: string; onTap: (x: number) => void }) {
   const known = unit.every((p) => sizes[p]);
   const ratios = unit.map((p) => (sizes[p] ? sizes[p]!.width / sizes[p]!.height : DEFAULT_RATIO));
   const sumRatio = ratios.reduce((a, b) => a + b, 0);
   // Known shapes: size the unit to its exact fit so pan limits follow the picture, not the screen.
-  const fitH = known ? Math.min(height, width / sumRatio) : height;
+  // Fit width: a single page fills the width and may run taller than the screen (it then scrolls).
+  const fillWidth = fit === 'width' && known && unit.length === 1;
+  const fitH = known ? (fillWidth ? width / sumRatio : Math.min(height, width / sumRatio)) : height;
   const widths = known ? ratios.map((r) => r * fitH) : unit.map(() => width / unit.length);
   const contentW = widths.reduce((a, b) => a + b, 0);
   return (
-    <ZoomableView width={width} height={height} contentWidth={contentW} contentHeight={fitH} onTap={onTap}>
+    <ZoomableView ref={(h) => register(unit[0], h)} width={width} height={height} contentWidth={contentW} contentHeight={fitH} background={bg} onTap={onTap}>
       <View style={{ flexDirection: rtl ? 'row-reverse' : 'row', width: contentW, height: fitH }}>
         {unit.map((p, i) => <PageImage key={p} source={source} page={p} width={widths[i]} height={fitH} />)}
       </View>
@@ -290,7 +372,7 @@ function PagedUnit({ source, unit, sizes, width, height, rtl, onTap }: { source:
 }
 
 /** Webtoon strips lay out at full width; height comes from the known shape, or the image once it loads. */
-function WebtoonPage({ source, page, width, height, onTap }: { source: ComicSource; page: number; width: number; height?: number; onTap: () => void }) {
+function WebtoonPage({ source, page, width, height, bg, onTap }: { source: ComicSource; page: number; width: number; height?: number; bg: string; onTap: () => void }) {
   const [uri, setUri] = useState<string | null>(null);
   const [ratio, setRatio] = useState(WEBTOON_FALLBACK_RATIO);
   useEffect(() => {
@@ -299,7 +381,7 @@ function WebtoonPage({ source, page, width, height, onTap }: { source: ComicSour
     return () => { live = false; };
   }, [source, page]);
   return (
-    <Pressable onPress={onTap} style={{ width, height: height ?? width * ratio, backgroundColor: color.bg }}>
+    <Pressable onPress={onTap} style={{ width, height: height ?? width * ratio, backgroundColor: bg }}>
       {uri ? <Image source={{ uri }} style={styles.fill} contentFit="fill" recyclingKey={uri} onLoad={height ? undefined : (e) => setRatio(e.source.height / e.source.width)} /> : null}
     </Pressable>
   );
@@ -347,6 +429,8 @@ const styles = StyleSheet.create({
   modeActive: { backgroundColor: color.accent, borderColor: color.accent },
   modeText: { color: color.muted, fontFamily: font.bodyMedium, fontSize: type.caption },
   modeTextActive: { color: color.text },
+  gallery: { flex: 1, backgroundColor: color.bg, paddingHorizontal: space.lg },
+  galleryRow: { gap: space.sm, marginBottom: space.sm },
   sheetBackdrop: { ...StyleSheet.absoluteFill, justifyContent: 'flex-end', backgroundColor: '#000000aa' },
   sheet: { maxHeight: '60%', backgroundColor: color.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: space.lg },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: space.md },
