@@ -94,10 +94,10 @@ function CardFace({ card }: { card: DeckCard }) {
 }
 
 const styles = StyleSheet.create({
-  deck: { minHeight: 390, justifyContent: 'center', alignItems: 'center', marginTop: 8 },
+  deck: { minHeight: 270, justifyContent: 'center', alignItems: 'center', marginTop: 8 },
   cardWrap: { width: '92%' },
   behind: { position: 'absolute' },
-  ghost: { position: 'absolute', width: '82%', height: 350, borderRadius: radius.lg, backgroundColor: color.surface2, transform: [{ rotate: '4deg' }] },
+  ghost: { position: 'absolute', width: '82%', height: 230, borderRadius: radius.lg, backgroundColor: color.surface2, transform: [{ rotate: '4deg' }] },
   card: { width: '100%', backgroundColor: color.surface, borderColor: color.border, borderWidth: 1, borderRadius: radius.lg, padding: 16, flexDirection: 'row', gap: 14, shadowColor: '#000', shadowOpacity: 0.6, shadowRadius: 18, elevation: 9 },
   info: { flex: 1, minWidth: 0, justifyContent: 'center' },
   title: { color: color.text, fontFamily: font.display, fontSize: 25, lineHeight: 29 },
