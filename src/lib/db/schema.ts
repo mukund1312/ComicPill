@@ -244,6 +244,41 @@ export const feedback = sqliteTable('feedback', {
   createdAt: text('created_at').notNull(),
 });
 
+// A reader's reading goal and the arc it was resolved to. The arc's shape
+// (chapters/milestones/books) is NOT stored — it is rebuilt from the
+// template + the live library every time, so progress and ownership are
+// never stale. What IS stored is the goal, the depth they chose, and the
+// structured intent it came from (so "Edit goal" can round-trip).
+export const userArcs = sqliteTable('user_arcs', {
+  id: text('id').primaryKey(),
+  templateKey: text('template_key').notNull(),
+  goalText: text('goal_text').notNull(),
+  depth: text('depth').notNull().default('recommended'), // essential|recommended|completionist
+  intent: text('intent', { mode: 'json' }), // structured ReadingIntent, if one was extracted
+  parentArcId: text('parent_arc_id'), // set when this arc branched off another (e.g. a Nightwing deep dive)
+  status: text('status').notNull().default('active'), // active|saved|done
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+// Curiosity the reader wants to keep without derailing what they're reading
+// ("Doom Patrol — saved for later"). Saving one never changes an active journey.
+export const rabbitHoles = sqliteTable('rabbit_holes', {
+  id: text('id').primaryKey(),
+  topic: text('topic').notNull(),
+  sourceWorkId: text('source_work_id'), // the book that sparked it
+  status: text('status').notNull().default('saved'), // saved|active|done
+  createdAt: text('created_at').notNull(),
+});
+
+// Small key/value facts about THIS install (not about the catalog or the
+// reader's library): e.g. that the developer's demo shelf was already seeded,
+// so clearing the library doesn't bring it back on the next launch.
+export const appMeta = sqliteTable('app_meta', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+});
+
 export const userLibrary = sqliteTable('user_library', {
   workId: text('work_id').primaryKey(),
   own: text('own').notNull().default('none'), // physical|digital|both|wishlist|ordered|subscription|none
@@ -292,4 +327,17 @@ export const notTonight = sqliteTable('not_tonight', {
   id: text('id').primaryKey(),
   workId: text('work_id').notNull(),
   at: text('at').notNull(),
+});
+
+// What the reader SAID they like (source ONBOARDING), kept apart from what they
+// did (events) and what they own (user_library), so later reading never
+// overwrites the original signal and editing taste can replace exactly these.
+export const tasteSignals = sqliteTable('taste_signals', {
+  id: text('id').primaryKey(), // `${entityType}:${entityId}`
+  entityType: text('entity_type').notNull(), // CHARACTER|CREATOR|ART_STYLE|GENRE|STORY_TRAIT
+  entityId: text('entity_id').notNull(),
+  signal: text('signal').notNull(), // LIKE
+  source: text('source').notNull(), // ONBOARDING
+  strength: real('strength').notNull(),
+  createdAt: text('created_at').notNull(),
 });

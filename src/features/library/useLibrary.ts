@@ -47,7 +47,9 @@ export function useLibrary() {
     setTick((t) => t + 1);
   }
   function setStatus(workId: string, status: ReadStatus) {
-    upsertLibraryEntry(workId, { status });
+    // Record WHEN it was finished (and forget it if the reader un-finishes), so
+    // the profile's monthly goal and history are real.
+    upsertLibraryEntry(workId, status === 'done' ? { status, finishedAt: new Date().toISOString() } : { status, finishedAt: null });
     setTick((t) => t + 1);
   }
 

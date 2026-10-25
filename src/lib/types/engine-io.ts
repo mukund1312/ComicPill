@@ -105,6 +105,7 @@ export const DEFAULT_ENGINE_CONFIG: EngineConfig = {
     rating_not_for_me: -0.8,
     dropped: -1.0,
     chip: 0.5,
+    stated_like: 0.7, // an explicit "I like this" outweighs a reflection chip
     swipe_right: 0.3,
     swipe_left: -0.3,
     swipe_up: 0.7, // multiplier on the mini-rating, not a flat weight

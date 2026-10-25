@@ -2,7 +2,7 @@
 // described in the plan: loadTodayInput -> pickToday -> recordShown.
 // A screen calls useToday(), gets TodaySlots plus per-slot Work data and
 // reasons, and never touches the db or the engine directly.
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { loadTodayInput } from '../../lib/db/queries/today';
 import { recordShown } from '../../lib/db/queries/shown';
 import { recordNotTonight } from '../../lib/db/queries/events';
@@ -11,10 +11,13 @@ import { pickToday } from '../../lib/engines/recommend/slots';
 import { reasonsFor } from '../../lib/engines/recommend/reasons';
 import { isAccessible } from '../../lib/util/own';
 import { useTravelMode } from '../../lib/state/travelMode';
+import { useSettings } from '../../lib/state/settings';
 import { DEFAULT_ENGINE_CONFIG } from '../../lib/types/engine-io';
 import type { TodaySlots } from '../../lib/types/engine-io';
 import type { Own } from '../../lib/types/domain';
 import { dateKey } from '../../lib/util/dateKey';
+import { loadNextSteps } from '../../lib/db/queries/arc';
+import { journeyReason } from '../../lib/engines/arc/today';
 
 export interface TodayCard {
   workId: string;
@@ -45,7 +48,7 @@ export interface TodayResult {
   refresh: () => void;
 }
 
-function toCard(slot: TodaySlots['continueSlot'], titleById: Map<string, { title: string; bucket: string; own: Own }>): TodayCard | null {
+function toCard(slot: TodaySlots['continueSlot'], titleById: Map<string, { title: string; bucket: string; own: Own }>, journeyByWork: Map<string, string>): TodayCard | null {
   if (!slot) return null;
   const meta = titleById.get(slot.workId);
   const own = meta?.own ?? 'none';
@@ -55,7 +58,8 @@ function toCard(slot: TodaySlots['continueSlot'], titleById: Map<string, { title
     bucket: meta?.bucket ?? '',
     own,
     inLibrary: isAccessible(own),
-    reasons: reasonsFor(slot.parts),
+    // The journey reason leads: it is the most specific "why" the app has.
+    reasons: [...(journeyByWork.has(slot.workId) ? [journeyByWork.get(slot.workId)!] : []), ...reasonsFor(slot.parts)],
   };
 }
 
@@ -68,16 +72,20 @@ export function useToday(): TodayResult {
   const setDigitalOnly = useTravelMode((s) => s.setDigitalOnly);
   const formatFilter: 'any' | 'physical' | 'digital' = digitalOnly ? 'digital' : 'any';
   const setFormatFilter = (v: 'any' | 'physical' | 'digital') => setDigitalOnly(v === 'digital');
+  const personalized = useSettings((s) => s.personalizedRecommendations);
   const [tick, setTick] = useState(0); // bump to force a recompute after a write
 
-  const slots = useMemo(() => {
+  // Pure computation only — the shown-log write happens in the effect below,
+  // never during render (a render may be retried or discarded by React).
+  const { slots, computedAt } = useMemo(() => {
     const now = new Date();
     const input = loadTodayInput(now, ownedOnly, formatFilter);
     const picked = pickToday(input, { mood, dateKey: dateKey(now), config: DEFAULT_ENGINE_CONFIG, now });
-    recordShown(picked, now);
-    return picked;
+    return { slots: picked, computedAt: now };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mood, ownedOnly, formatFilter, tick]);
+  }, [mood, ownedOnly, formatFilter, tick, personalized]);
+
+  useEffect(() => { recordShown(slots, computedAt); }, [slots, computedAt]);
 
   const titleById = useMemo(() => {
     const map = new Map<string, { title: string; bucket: string; own: Own }>();
@@ -87,6 +95,13 @@ export function useToday(): TodayResult {
     return map;
   }, [tick]);
 
+  // Which of tonight's cards advance a journey (recomputed with the slots).
+  const journeyByWork = useMemo(
+    () => new Map(loadNextSteps().filter((s) => s.accessible).map((s) => [s.workId, journeyReason(s)])),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [slots],
+  );
+
   const notTonight = useCallback((workId: string) => {
     recordNotTonight(workId, new Date().toISOString());
     setTick((t) => t + 1);
@@ -95,9 +110,9 @@ export function useToday(): TodayResult {
   const refresh = useCallback(() => setTick((t) => t + 1), []);
 
   return {
-    continueCard: toCard(slots.continueSlot, titleById),
-    switchCard: toCard(slots.switchSlot, titleById),
-    exploreCard: toCard(slots.exploreSlot, titleById),
+    continueCard: toCard(slots.continueSlot, titleById, journeyByWork),
+    switchCard: toCard(slots.switchSlot, titleById, journeyByWork),
+    exploreCard: toCard(slots.exploreSlot, titleById, journeyByWork),
     lead: slots.lead,
     mood, setMood, ownedOnly, setOwnedOnly, formatFilter, setFormatFilter, notTonight, refresh,
   };

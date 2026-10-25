@@ -5,6 +5,9 @@ import { DEFAULT_ENGINE_CONFIG } from '../../types/engine-io';
 import { updateAffinity } from './affinity';
 
 export const ENGINE_VERSION = 1;
+
+/** Stated preferences never claim more than this much confidence on their own. */
+const SEED_CONFIDENCE_CAP = 0.3;
 const HALF_LIFE_DAYS = 182; // ~6 months
 
 export function emptySweetSpots(): SweetSpots {
@@ -122,6 +125,19 @@ export function applySignal(
     const w = baseWeight * decay;
     const table = next.affinities[event.tag.kind];
     bumpAffinity(table, event.tag.value, w);
+  } else if (event.type === 'stated_like' && event.tag && event.tag.kind !== 'note') {
+    // Said, not shown: a real signal, but it lands in the same table as observed
+    // taste, so later reading (which steps in the same way) can confirm or outgrow it.
+    bumpAffinity(next.affinities[event.tag.kind], event.tag.value, baseWeight * decay);
+  } else if (event.type === 'preference_seed' && event.dimension && event.value != null) {
+    // A stated leaning on one dimension: move halfway toward it, and keep the
+    // confidence modest — the reader has told us, not shown us.
+    const spot = next.sweetSpots[event.dimension];
+    const target = Math.max(0, Math.min(1, event.value));
+    next.sweetSpots[event.dimension] = {
+      value: spot.value + (target - spot.value) * 0.5,
+      confidence: Math.min(SEED_CONFIDENCE_CAP, spot.confidence + 0.1),
+    };
   } else if ((event.type === 'swipe_right' || event.type === 'swipe_left') && work) {
     const w = baseWeight * decay;
     for (const g of work.genres) bumpAffinity(next.affinities.genre, g, w);

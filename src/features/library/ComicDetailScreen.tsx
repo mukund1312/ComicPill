@@ -10,6 +10,8 @@ import { ComicCover } from '../../ui/comic';
 import { Button, Eyebrow, Input, Pill, Progress, PurchaseBadge, SectionHeader, Sheet } from '../../ui/primitives';
 import { color, font, radius, space, type } from '../../ui/tokens';
 import { isAccessible } from '../../lib/util/own';
+import ArcRelevance from '../arc/ArcRelevance';
+import MeetCharacters from '../arc/MeetCharacters';
 
 function formatCommitment(paise: number | null): string {
   if (paise == null) return 'price not on file for every remaining volume';
@@ -94,6 +96,8 @@ function Detail({ item, detail, setStatus, label, linkedBank, purchase, onSave, 
       ) : null}
 
       <Text style={styles.summary}>{detail.summary ?? 'A story with enough atmosphere and character to make room for a deliberate read.'}</Text>
+
+      <View style={{ marginBottom: space.lg, gap: space.md }}><ArcRelevance workId={item.workId} /><MeetCharacters workId={item.workId} /></View>
 
       <View style={styles.verdict}>
         <Eyebrow>Best format for you</Eyebrow>

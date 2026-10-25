@@ -27,7 +27,15 @@ export type SeriesStatus = 'ongoing' | 'complete' | 'hiatus';
 
 export type EdgeType =
   | 'direct_sequel' | 'required_context' | 'optional_context'
-  | 'same_run' | 'same_event' | 'alternate_universe' | 'similar_tone';
+  | 'same_run' | 'same_event' | 'alternate_universe' | 'similar_tone'
+  // Why two books belong together, not just that they do (arc builder).
+  // A character merely appearing in a book is never a prerequisite — the
+  // distinction between cameo/helpful/required is what keeps "unfamiliar
+  // character" from turning into "go read 17 other comics first".
+  | 'cameo' | 'helpful_context' | 'recommended_before' | 'read_before'
+  | 'character_introduction' | 'character_transformation' | 'identity_change'
+  | 'mentor_relationship' | 'family_relationship' | 'event_connection'
+  | 'legacy_succession' | 'possible_future';
 
 // How strongly readers should be pushed toward a story-edge relationship —
 // separate from the edge's TYPE (what kind of relationship it is). Two
@@ -323,7 +331,11 @@ export interface LibraryEntry {
 export type SignalKind =
   | 'rating_loved' | 'rating_great' | 'rating_good' | 'rating_meh' | 'rating_not_for_me'
   | 'dropped' | 'chip' | 'swipe_right' | 'swipe_left' | 'swipe_up' | 'not_tonight'
-  | 'calibrate' | 'appetite' | 'explore_outcome';
+  | 'calibrate' | 'appetite' | 'explore_outcome'
+  // Stated up front (onboarding / taste editing), not observed from reading:
+  //  - stated_like: "I like this character / creator / genre" (tag)
+  //  - preference_seed: "I like stories around this level of <dimension>" (dimension + value 0..1)
+  | 'stated_like' | 'preference_seed';
 
 export type AppetiteAnswer = 'more' | 'mix' | 'new';
 

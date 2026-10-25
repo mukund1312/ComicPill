@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+<g stroke-linejoin="round" stroke-linecap="round">
+<!-- original minimalist armored hero portrait; no official logo -->
+<path fill="#8E1118" d="M151 119 205 73h102l54 46 30 92-19 190-65 70H205l-65-70-19-190z"/>
+<path fill="#E8B83F" d="M189 121 220 96h72l31 25 32 83-24 161-49 58h-52l-49-58-24-161z"/>
+<path fill="#A71920" d="M207 95h98l-20 74h-58zM169 223l62 28-17 27-56-20zm174 0-62 28 17 27 56-20z"/>
+<path fill="#F6F1E7" d="M183 226 231 247l-15 22-43-16zm146 0-48 21 15 22 43-16z"/>
+<path fill="#8E1118" d="m210 320 25 18h42l25-18 9 52-31 42h-48l-31-42z"/>
+<path fill="#E8B83F" d="M197 444 145 472h222l-52-28-31-20h-56z"/>
+</g></svg>

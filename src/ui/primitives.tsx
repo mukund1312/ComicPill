@@ -2,6 +2,8 @@ import type { PropsWithChildren, ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View, type ViewStyle } from 'react-native';
 import { color, font, radius, space, type } from './tokens';
 import { useAppearance } from './theme';
+import { feedback } from '../lib/platform/feedback';
+import { useReducedMotion } from '../lib/platform/motion';
 
 export function Wordmark({ small = false }: { small?: boolean }) {
   const { theme, typography } = useAppearance(); return <Text style={[styles.wordmark, { color: theme.colors.textPrimary, fontFamily: typography.display }, small && styles.wordmarkSmall]}>Comic<Text style={{ color: theme.colors.primary }}>Pill</Text></Text>;
@@ -12,16 +14,16 @@ export function Eyebrow({ children }: PropsWithChildren) {
 }
 
 export function Button({ children, onPress, kind = 'primary', disabled = false, style }: { children: ReactNode; onPress?: () => void; kind?: 'primary' | 'secondary' | 'ghost' | 'destructive'; disabled?: boolean; style?: ViewStyle }) {
-  const { theme, typography } = useAppearance(); const c = theme.colors; const dynamic = kind === 'primary' ? { backgroundColor: c.primary, borderColor: c.primary } : kind === 'destructive' ? { backgroundColor: 'transparent', borderColor: c.destructive } : kind === 'secondary' ? { backgroundColor: c.surfaceRaised, borderColor: c.border } : { backgroundColor: 'transparent', borderColor: 'transparent' };
+  const { theme, typography } = useAppearance(); const c = theme.colors; const reduceMotion = useReducedMotion(); const dynamic = kind === 'primary' ? { backgroundColor: c.secondary, borderColor: c.secondary } : kind === 'destructive' ? { backgroundColor: 'transparent', borderColor: c.destructive } : kind === 'secondary' ? { backgroundColor: c.surfaceRaised, borderColor: c.border } : { backgroundColor: 'transparent', borderColor: 'transparent' };
   return (
-    <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.button, styles[`button_${kind}`], dynamic, disabled && styles.disabled, pressed && styles.pressed, style]}>
-      <Text style={[styles.buttonText, { color: kind === 'primary' ? c.primaryForeground : c.textPrimary, fontFamily: typography.bodySemibold }]}>{children}</Text>
+    <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={() => { feedback.tap(); onPress?.(); }} style={({ pressed }) => [styles.button, styles[`button_${kind}`], dynamic, disabled && styles.disabled, pressed && (reduceMotion ? styles.pressedStill : styles.pressed), style]}>
+      <Text style={[styles.buttonText, { color: kind === 'primary' ? c.secondaryForeground : c.textPrimary, fontFamily: typography.bodySemibold }]}>{children}</Text>
     </Pressable>
   );
 }
 
 export function Pill({ label, active = false, onPress }: { label: string; active?: boolean; onPress?: () => void }) {
-  const { theme, typography } = useAppearance(); const c = theme.colors; return <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.pill, { backgroundColor: active ? c.primary : c.surfaceRaised, borderColor: active ? c.primary : c.border }, pressed && styles.pressed]}><Text style={[styles.pillText, { color: active ? c.primaryForeground : c.textSecondary, fontFamily: typography.bodyMedium }]}>{label}</Text></Pressable>;
+  const { theme, typography } = useAppearance(); const c = theme.colors; const reduceMotion = useReducedMotion(); return <Pressable accessibilityRole="button" accessibilityState={{ selected: active }} onPress={() => { feedback.select(); onPress?.(); }} style={({ pressed }) => [styles.pill, { backgroundColor: active ? c.primary : c.surfaceRaised, borderColor: active ? c.primary : c.border }, pressed && (reduceMotion ? styles.pressedStill : styles.pressed)]}><Text style={[styles.pillText, { color: active ? c.primaryForeground : c.textSecondary, fontFamily: typography.bodyMedium }]}>{label}</Text></Pressable>;
 }
 
 export function PurchaseBadge({ label }: { label: 'collect' | 'buy_on_sale' | 'digital_is_fine' | 'try_digital_first' | 'skip' }) {
@@ -64,7 +66,7 @@ const styles = StyleSheet.create({
   button_ghost: { backgroundColor: 'transparent', borderColor: 'transparent', minHeight: 40 },
   button_destructive: { backgroundColor: 'transparent', borderColor: color.accent },
   buttonText: { color: color.text, fontSize: type.caption, fontFamily: font.bodySemibold },
-  buttonTextSecondary: { color: color.text }, disabled: { opacity: 0.45 }, pressed: { transform: [{ scale: 0.98 }], opacity: 0.9 },
+  buttonTextSecondary: { color: color.text }, disabled: { opacity: 0.45 }, pressed: { transform: [{ scale: 0.98 }], opacity: 0.9 }, pressedStill: { opacity: 0.85 },
   pill: { paddingHorizontal: 14, height: 34, borderRadius: radius.pill, backgroundColor: color.surface2, borderColor: color.border, borderWidth: 1, justifyContent: 'center' },
   pillActive: { backgroundColor: color.accent, borderColor: color.accent }, pillText: { color: color.muted, fontFamily: font.bodyMedium, fontSize: 12 }, pillTextActive: { color: color.text },
   badge: { alignSelf: 'flex-start', borderRadius: radius.pill, paddingHorizontal: 9, paddingVertical: 5, backgroundColor: color.surface2, borderWidth: 1 },

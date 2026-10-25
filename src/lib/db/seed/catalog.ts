@@ -1,4 +1,4 @@
-// The 600-book seed catalog: the original Longbox curation plus three vetted
+// The 800-book seed catalog: the original Longbox curation plus four vetted
 // essentials expansions, fingerprinted once (see catalog.data.json and
 // catalog.popular.data.json).
 //
@@ -14,7 +14,11 @@
 import raw from './catalog.data.json';
 import popularRaw from './catalog.popular.data.json';
 import { MORE_POPULAR_ROWS } from './catalog.more';
-import type { Dim, Own, PrintingType, ReadStatus, Universe } from '../../types/domain';
+import { MARVEL_DC_EXPANSION_EDGES, MARVEL_DC_EXPANSION_ROWS } from './catalog.marvel-dc';
+import { BATMAN_ARC_ROWS } from './catalog.batman-arc';
+import { BATMAN_ARC_EDGES } from './catalog.batman-arc.edges';
+import { withSupplement } from './characterSupplement';
+import type { Dim, EdgeStrength, EdgeType, Own, PrintingType, ReadStatus, Universe } from '../../types/domain';
 
 interface RawRow {
   id: string; title: string; lane: string; laneName: string; universe: string;
@@ -74,7 +78,7 @@ const popularRows: RawRow[] = (popularRaw as Array<Omit<RawRow, 'laneName' | 'ow
     flag: null,
   }));
 
-const ROWS = [...(raw as RawRow[]), ...popularRows, ...(MORE_POPULAR_ROWS as RawRow[])];
+const ROWS = [...(raw as RawRow[]), ...popularRows, ...(MORE_POPULAR_ROWS as RawRow[]), ...MARVEL_DC_EXPANSION_ROWS, ...(BATMAN_ARC_ROWS as RawRow[])];
 export const FINGERPRINT_PROMPT_VERSION = 1;
 
 export interface CatalogWork {
@@ -90,7 +94,7 @@ export interface CatalogEdition {
 export interface CatalogEditionWork { editionId: string; workId: string; position: number }
 export interface CatalogPath { id: string; name: string; pathKey: string }
 export interface CatalogPathItem { pathId: string; workId: string; position: number }
-export interface CatalogEdge { fromWork: string; toWork: string; type: 'same_run'; confirmed: true }
+export interface CatalogEdge { fromWork: string; toWork: string; type: EdgeType; confirmed: true; strength?: EdgeStrength }
 export interface DevLibraryEntry { workId: string; own: Own; status: ReadStatus }
 
 function normalizeTitle(t: string): string {
@@ -145,7 +149,7 @@ export const CATALOG_WORKS: CatalogWork[] = ROWS.map((r) => ({
   fingerprint: r.fp,
   genres: r.genres,
   creators: r.creators,
-  characters: r.characters,
+  characters: withSupplement(r.id, r.characters),
   publisher: inferPublisher(r),
   keeperFlag: r.keeper,
   summary: r.note || null,
@@ -207,6 +211,12 @@ for (const lane of LANE_KEYS) {
     CATALOG_EDGES.push({ fromWork: items[i].id, toWork: items[i + 1].id, type: 'same_run', confirmed: true });
   }
 }
+
+// Unlike the general-popularity shelves, these are intentional continuity
+// bridges into gaps already present in the catalog.  Keep them explicit: a
+// title merely sharing a hero or an event is not enough to imply an order.
+CATALOG_EDGES.push(...MARVEL_DC_EXPANSION_EDGES);
+CATALOG_EDGES.push(...BATMAN_ARC_EDGES);
 
 // Dev-only: Mukund's own ownership/read history from the Longbox prototype.
 // Never applied to a real new user — see isDevSeedUser() at the call site.

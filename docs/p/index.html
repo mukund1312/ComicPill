@@ -18,24 +18,24 @@
     padding: 24px; padding-top: max(24px, env(safe-area-inset-top));
     padding-bottom: max(24px, env(safe-area-inset-bottom));
   }
-  .card {
-    width: 100%; max-width: 420px; background: #101114; border: 1px solid #27282D;
-    border-radius: 20px; padding: 32px 28px; text-align: center;
-  }
+  .card { width: 100%; max-width: 420px; background: #101114; border: 1px solid #27282D; border-radius: 20px; padding: 32px 28px; text-align: center; }
   .wordmark { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 22px; margin-bottom: 28px; }
   .wordmark .pill { color: #E32636; }
   .eyebrow { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: #A6A3A0; margin-bottom: 10px; }
   h1 { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 28px; line-height: 1.25; margin: 0 0 10px; }
   .count { color: #6F6D6A; font-size: 14px; margin-bottom: 28px; }
-  a.button {
-    display: block; text-decoration: none; border-radius: 12px; padding: 15px 20px;
-    font-weight: 600; font-size: 15px; margin-bottom: 12px;
-  }
+  a.button { display: block; text-decoration: none; border-radius: 12px; padding: 15px 20px; font-weight: 600; font-size: 15px; margin-bottom: 12px; }
   a.primary { background: #E32636; color: #F1EDE6; }
+  a.secondary { background: #17181C; color: #F1EDE6; border: 1px solid #27282D; }
   .divider { height: 1px; background: #27282D; margin: 28px 0; }
-  .get-app { font-size: 13px; color: #A6A3A0; line-height: 1.6; }
-  .get-app strong { color: #F1EDE6; }
+  .install h2 { font-size: 15px; margin: 0 0 6px; }
+  .install p, .steps { font-size: 13px; color: #A6A3A0; line-height: 1.6; margin: 0 0 14px; }
+  .steps { text-align: left; padding-left: 20px; }
+  .steps li { margin-bottom: 6px; }
+  .small { font-size: 12px; color: #6F6D6A; margin-top: 4px; }
   .error { color: #A6A3A0; font-size: 14px; line-height: 1.6; }
+  [hidden] { display: none !important; }
+  .highlight { border-color: #E32636 !important; }
 </style>
 </head>
 <body>
@@ -45,33 +45,80 @@
       <div class="eyebrow">Shared playlist</div>
       <h1 id="name">A comic reading list</h1>
       <div class="count" id="count"></div>
+
       <a class="button primary" id="open-app" href="#">Open in ComicPill</a>
+
       <div class="divider"></div>
-      <div class="get-app">
-        <strong>Don't have ComicPill yet?</strong><br />
-        Android APK coming soon — check back here once it's live.
+
+      <div class="install" id="install">
+        <h2>Don't have ComicPill yet?</h2>
+
+        <div id="android" hidden>
+          <p>It's a free Android app. Install it, then come back to this link and tap <strong>Open in ComicPill</strong>.</p>
+          <a class="button secondary" id="apk" href="https://github.com/mukund1312/ComicPill/releases/latest/download/comicpill.apk">Download for Android</a>
+          <ol class="steps">
+            <li>Tap <strong>Download for Android</strong> and open the file when it finishes.</li>
+            <li>If Android asks, allow your browser to <strong>install unknown apps</strong> — it only needs to be allowed once.</li>
+            <li>Come back to this page and tap <strong>Open in ComicPill</strong>.</li>
+          </ol>
+          <div class="small" id="version"></div>
+        </div>
+
+        <div id="other" hidden>
+          <p id="other-msg"></p>
+        </div>
       </div>
     </div>
   </div>
+
   <script>
+    // Everything from the URL is written with textContent, never innerHTML,
+    // so a crafted link can't inject markup into this page.
     var params = new URLSearchParams(window.location.search);
     var name = params.get('name');
     var count = params.get('count');
     var code = params.get('d');
 
+    var isAndroid = /android/i.test(navigator.userAgent);
+    var isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+
     if (name) document.getElementById('name').textContent = name;
     if (count) {
       var n = parseInt(count, 10);
-      document.getElementById('count').textContent = n + (n === 1 ? ' comic' : ' comics');
+      if (!isNaN(n) && n >= 0) document.getElementById('count').textContent = n + (n === 1 ? ' comic' : ' comics');
+    }
+
+    // Install help: shown to everyone who might need it, tailored by device.
+    if (isAndroid) {
+      document.getElementById('android').hidden = false;
+      // Show the current version if we can; the page works fine without it.
+      fetch('../version.json', { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (m) {
+        if (m && /^\d+\.\d+\.\d+$/.test(m.latest)) document.getElementById('version').textContent = 'Version ' + m.latest;
+      }).catch(function () {});
+    } else {
+      var other = document.getElementById('other');
+      other.hidden = false;
+      document.getElementById('other-msg').textContent = isIos
+        ? "ComicPill isn't available for iPhone yet. Open this link on an Android phone to get the playlist."
+        : 'ComicPill is an Android app. Open this link on your Android phone to install it and get the playlist.';
     }
 
     if (code) {
       var deepLink = 'comicpill://import?d=' + encodeURIComponent(code);
-      document.getElementById('open-app').href = deepLink;
-      // Best-effort auto-open if ComicPill is installed — the visible
-      // button above is the reliable fallback since silent redirects are
-      // inconsistently allowed across mobile browsers.
-      window.location.href = deepLink;
+      var open = document.getElementById('open-app');
+      open.href = deepLink;
+
+      if (isAndroid) {
+        // Try to open the app automatically. If it is installed the page goes to
+        // the background; if it is not, nothing happens and the install help below
+        // is already visible, so we just highlight the download button.
+        var opened = false;
+        document.addEventListener('visibilitychange', function () { if (document.hidden) opened = true; });
+        window.location.href = deepLink;
+        setTimeout(function () {
+          if (!opened) document.getElementById('apk').classList.add('highlight');
+        }, 1800);
+      }
     } else {
       document.getElementById('content').innerHTML =
         '<div class="eyebrow">Shared playlist</div>' +

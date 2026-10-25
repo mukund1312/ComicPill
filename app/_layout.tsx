@@ -3,6 +3,7 @@
 // frontend build (see /docs for the design blueprint and API surface).
 import { useState } from 'react';
 import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { View, ActivityIndicator } from 'react-native';
 import {
@@ -16,6 +17,7 @@ import { BarlowCondensed_600SemiBold, BarlowCondensed_700Bold } from '@expo-goog
 import { initDatabase } from '../src/lib/db/client';
 import { color } from '../src/ui/tokens';
 import { AppearanceProvider, useAppearance } from '../src/ui/theme';
+import ReminderSync from '../src/features/settings/ReminderSync';
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -36,11 +38,14 @@ export default function RootLayout() {
     );
   }
 
-  return <GestureHandlerRootView style={{ flex: 1 }}><AppearanceProvider><ThemedStack /></AppearanceProvider></GestureHandlerRootView>;
+  return <GestureHandlerRootView style={{ flex: 1 }}><AppearanceProvider><ReminderSync /><ThemedStack /></AppearanceProvider></GestureHandlerRootView>;
 }
 
 function ThemedStack() {
   const { theme, ready } = useAppearance();
   if (!ready) return <View style={{ flex: 1, backgroundColor: color.bg, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={color.accent} /></View>;
-  return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.colors.background } }} />;
+  const background = theme.colors.background;
+  const value = Number.parseInt(background.slice(1), 16);
+  const brightness = ((value >> 16) & 255) * 0.299 + ((value >> 8) & 255) * 0.587 + (value & 255) * 0.114;
+  return <><StatusBar style={brightness > 150 ? 'dark' : 'light'} animated /><Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: background } }} /></>;
 }

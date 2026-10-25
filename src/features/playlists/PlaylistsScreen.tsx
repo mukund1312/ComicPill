@@ -94,7 +94,7 @@ export default function PlaylistsScreen() {
       closeShare={() => setShareUrl(null)}
       copied={copied}
       onCopy={async () => { if (shareUrl) { await Clipboard.setStringAsync(shareUrl); setCopied(true); } }}
-      onShareVia={() => { if (shareUrl) Share.share({ message: `Check out my "${selected.name}" comic playlist on ComicPill: ${shareUrl}` }); }}
+      onShareVia={() => { if (shareUrl) Share.share({ message: `Check out my "${selected.name}" comic playlist on ComicPill: ${shareUrl}\n\nDon\u2019t have the app? The link has the install steps.` }); }}
     />;
   }
 

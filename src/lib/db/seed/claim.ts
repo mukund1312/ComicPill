@@ -9,11 +9,14 @@
 import { eq, isNull } from 'drizzle-orm';
 import { db } from '../client';
 import { works, editions, editionWorks, paths, pathItems, storyEdges, userLibrary } from '../schema';
+import { BATMAN_ARC_EDGES } from './catalog.batman-arc.edges';
 import {
   CATALOG_WORKS, CATALOG_EDITIONS, CATALOG_EDITION_WORKS, CATALOG_PATHS, CATALOG_PATH_ITEMS, CATALOG_EDGES,
   DEV_LIBRARY_ENTRIES, FINGERPRINT_PROMPT_VERSION,
 } from './catalog';
 import { newId } from '../../util/id';
+import { DEV_SHELF_KEY, getMeta, setMeta } from '../queries/meta';
+import { CHARACTER_SUPPLEMENT } from './characterSupplement';
 
 /** Gate for the dev-only personal library claim. In this local-only pass
  *  there is exactly one device and one implicit user, so this is always the
@@ -67,9 +70,24 @@ export function seedCatalogIfEmpty(): void {
   const newEdges = CATALOG_EDGES.filter((edge) => newWorkIds.has(edge.fromWork) || newWorkIds.has(edge.toWork));
   if (newEdges.length) {
     db.insert(storyEdges).values(
-      newEdges.map((e) => ({ id: newId(), fromWork: e.fromWork, toWork: e.toWork, type: e.type, confirmed: e.confirmed, source: 'seed' })),
+      newEdges.map((e) => ({ id: newId(), fromWork: e.fromWork, toWork: e.toWork, type: e.type, strength: e.strength ?? 'optional', confirmed: e.confirmed, source: 'seed' })),
     ).run();
   }
+}
+
+/** Arc edges reference OLD works too (year-one -> long-halloween), so the
+ *  "insert edges for genuinely new works" rule above can't deliver them to a
+ *  device seeded before the arc builder existed. This adds any arc edge not
+ *  already present, keyed on (from, to, type) — one SELECT per bootstrap. */
+export function seedArcEdgesIfMissing(): void {
+  const workIds = new Set(db.select({ id: works.id }).from(works).all().map((w) => w.id));
+  const have = new Set(db.select().from(storyEdges).all().map((e) => `${e.fromWork}|${e.toWork}|${e.type}`));
+  const missing = BATMAN_ARC_EDGES.filter((e) =>
+    workIds.has(e.fromWork) && workIds.has(e.toWork) && !have.has(`${e.fromWork}|${e.toWork}|${e.type}`));
+  if (!missing.length) return;
+  db.insert(storyEdges).values(
+    missing.map((e) => ({ id: newId(), fromWork: e.fromWork, toWork: e.toWork, type: e.type, strength: e.strength ?? 'optional', confirmed: true, source: 'seed' })),
+  ).run();
 }
 
 /** publisher was added to the catalog after this app's first seed passes
@@ -90,10 +108,23 @@ export function backfillPublishers(): void {
   }
 }
 
+/** The character supplement was added after some devices were first seeded, and
+ *  seeding only ever INSERTs new work ids. Update the affected rows once. */
+export function backfillCharacterSupplement(): void {
+  if (getMeta('characters_supplement_v1') === '1') return;
+  for (const w of CATALOG_WORKS) {
+    if (CHARACTER_SUPPLEMENT[w.id]) db.update(works).set({ characters: w.characters }).where(eq(works.id, w.id)).run();
+  }
+  setMeta('characters_supplement_v1', '1');
+}
+
 export function claimDevLibraryIfEmpty(): void {
   if (!isDevSeedUser()) return;
+  // Once the demo shelf has been seeded — or the reader cleared their data —
+  // never seed it again, or "clear" would silently undo itself on next launch.
+  if (getMeta(DEV_SHELF_KEY) === '1') return;
   const existing = db.select().from(userLibrary).limit(1).all();
-  if (existing.length > 0) return;
+  if (existing.length > 0) { setMeta(DEV_SHELF_KEY, '1'); return; }
 
   const now = new Date().toISOString();
   db.insert(userLibrary).values(
@@ -102,10 +133,25 @@ export function claimDevLibraryIfEmpty(): void {
       rating: null, finishedAt: null, updatedAt: now,
     })),
   ).run();
+  setMeta(DEV_SHELF_KEY, '1');
+}
+
+/** Put the testing shelf back (dev builds only). Used when a different person
+ *  signs up on this phone, so a "new account" starts from the same known shelf. */
+export function restoreDemoShelf(): void {
+  if (!isDevSeedUser()) return;
+  const now = new Date().toISOString();
+  db.delete(userLibrary).run();
+  db.insert(userLibrary).values(
+    DEV_LIBRARY_ENTRIES.map((e) => ({ workId: e.workId, own: e.own, status: e.status, rating: null, finishedAt: null, updatedAt: now })),
+  ).run();
+  setMeta(DEV_SHELF_KEY, '1');
 }
 
 export function bootstrap(): void {
   seedCatalogIfEmpty();
+  seedArcEdgesIfMissing();
   backfillPublishers();
+  backfillCharacterSupplement();
   claimDevLibraryIfEmpty();
 }

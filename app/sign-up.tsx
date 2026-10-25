@@ -1,1 +1,5 @@
-import { AuthScreen } from '../src/features/entry/EntryScreens'; export default function SignUp() { return <AuthScreen kind="sign-up" />; }
+import AuthScreen from '../src/features/auth/AuthScreens';
+
+export default function SignUp() {
+  return <AuthScreen kind="sign-up" />;
+}

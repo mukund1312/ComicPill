@@ -1,1 +1,5 @@
-import { AuthScreen } from '../src/features/entry/EntryScreens'; export default function ForgotPassword() { return <AuthScreen kind="forgot-password" />; }
+import AuthScreen from '../src/features/auth/AuthScreens';
+
+export default function ForgotPassword() {
+  return <AuthScreen kind="forgot-password" />;
+}

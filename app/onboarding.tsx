@@ -1,1 +1,1 @@
-export { OnboardingScreen as default } from '../src/features/entry/EntryScreens';
+export { default } from '../src/features/onboarding/OnboardingFlow';

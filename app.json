@@ -40,10 +40,13 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "ComicPill needs access to your photos to import screenshots of your digital library."
+          "photosPermission": "ComicPill needs access to your photos to import screenshots of your digital library.",
+          "cameraPermission": "ComicPill uses the camera so you can take a profile photo."
         }
       ],
-      "expo-splash-screen"
+      "expo-notifications",
+      "expo-splash-screen",
+      "expo-secure-store"
     ]
   }
 }

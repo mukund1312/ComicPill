@@ -1,5 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
-import { compareWorks, type CompareOutcome } from '../../lib/db/queries/compare';
+import { compareForRead, type ReadCompareOutcome } from '../../lib/db/queries/compare';
+import { useTravelMode } from '../../lib/state/travelMode';
+import type { Intent } from '../../lib/engines/compare/decide/types';
 import { searchWorks } from '../../lib/db/queries/search';
 import { isAccessible } from '../../lib/util/own';
 import { useLibrary } from '../library/useLibrary';
@@ -28,7 +30,11 @@ function groupFor(own: SearchCandidate['own']): SearchCandidate['group'] {
 export function useReadCompare() {
   const library = useLibrary();
   const [slots, setSlots] = useState<(string | null)[]>([null, null]);
-  const [outcome, setOutcome] = useState<CompareOutcome | null>(null);
+  const [outcome, setOutcome] = useState<ReadCompareOutcome | null>(null);
+  const [intent, setIntent] = useState<Intent>('best');
+  const [rereads, setRereads] = useState(false);
+  const [mood, setMood] = useState<string | null>(null);
+  const digitalOnly = useTravelMode((s) => s.digitalOnly);
   const byId = useMemo(() => new Map(library.items.map((item) => [item.workId, item])), [library.items]);
 
   const addSlot = useCallback(() => setSlots((current) => current.length < 6 ? [...current, null] : current), []);
@@ -54,10 +60,18 @@ export function useReadCompare() {
   }, [byId]);
   const selected = slots.map((id) => id ? byId.get(id) ?? null : null);
   const canCompare = slots.filter((id): id is string => id !== null).length >= 2;
-  const run = useCallback((mood: string | null = null) => {
+  const compute = useCallback((next: { intent: Intent; rereads: boolean; mood: string | null }) => {
     const workIds = slots.filter((id): id is string => id !== null);
-    if (workIds.length >= 2) setOutcome(compareWorks(workIds, new Date(), mood));
-  }, [slots]);
+    if (workIds.length < 2) return;
+    setOutcome(compareForRead(workIds, {
+      now: new Date(), mood: next.mood, intent: next.intent, rereadsAllowed: next.rereads,
+      travelMode: digitalOnly ? 'digital' : 'any',
+    }));
+  }, [slots, digitalOnly]);
+  const run = useCallback((nextMood: string | null = null) => { setMood(nextMood); compute({ intent, rereads, mood: nextMood }); }, [compute, intent, rereads]);
+  // "What matters tonight?" and "consider rereads" re-run the decision in place.
+  const chooseIntent = useCallback((next: Intent) => { setIntent(next); compute({ intent: next, rereads, mood }); }, [compute, rereads, mood]);
+  const toggleRereads = useCallback(() => { const next = !rereads; setRereads(next); compute({ intent, rereads: next, mood }); }, [compute, intent, rereads, mood]);
 
-  return { slots, selected, outcome, canCompare, addSlot, setSlot, addCandidate, search, run };
+  return { slots, selected, outcome, canCompare, addSlot, setSlot, addCandidate, search, run, intent, chooseIntent, rereads, toggleRereads, travelDigital: digitalOnly };
 }

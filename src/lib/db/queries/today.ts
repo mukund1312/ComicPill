@@ -5,10 +5,14 @@ import { db } from '../client';
 import { paths, pathItems } from '../schema';
 import { loadAllScorableWorks, loadAllEdges, loadAllWorkContexts } from './library';
 import { getProfile } from './profile';
+import { emptyProfile } from '../../engines/taste/profile';
+import { useSettings } from '../../state/settings';
 import { loadAllEvents, loadRecentNotTonight } from './events';
 import { nextInPath, type LibraryIndex } from '../../engines/graph/path';
 import type { TodayInput } from '../../types/engine-io';
 import type { ReadStatus } from '../../types/domain';
+import { loadNextSteps } from './arc';
+import { applyArcNextSteps } from '../../engines/arc/today';
 
 const SIXTY_DAYS_MS = 60 * 24 * 60 * 60 * 1000;
 
@@ -20,7 +24,8 @@ export function loadTodayInput(
   const worksById = loadAllScorableWorks();
   const works = [...worksById.values()];
   const edges = loadAllEdges();
-  const profile = getProfile(now);
+  // "Personalized recommendations" off = a neutral profile: nothing learned is used.
+  const profile = useSettings.getState().personalizedRecommendations ? getProfile(now) : emptyProfile();
   const contexts = loadAllWorkContexts();
 
   const statusByWork = new Map(contexts.map((c) => [c.work.id, (c.library?.status ?? 'none') as ReadStatus]));
@@ -40,6 +45,10 @@ export function loadTodayInput(
     pathStatus[p.pathKey] = isReading ? 'reading' : hasStarted ? 'unstarted' : 'not_in_path';
     nextWorkIdByBucket[p.pathKey] = nextInPath(items, libIndex);
   }
+
+  // A journey the reader asked for is an actively-read path: its next step
+  // steers its lane the same way any path in progress does.
+  const arcLanes = applyArcNextSteps(pathStatus, nextWorkIdByBucket, new Map(contexts.map((c) => [c.work.id, c.bucket])), loadNextSteps());
 
   // Finished reads, most recent first, for fatigue/novelty/appetite.
   const recentFinished = contexts
@@ -68,7 +77,7 @@ export function loadTodayInput(
   }
 
   return {
-    works, edges, profile, pathStatus, nextWorkIdByBucket, ownedOnly, formatFilter,
+    works, edges, profile, pathStatus: arcLanes.pathStatus, nextWorkIdByBucket: arcLanes.nextWorkIdByBucket, ownedOnly, formatFilter,
     recentFinished, recentNotTonight, excludedWorkIds,
   };
 }

@@ -9,16 +9,24 @@ and the hooks a screen calls to get real data.
 
 ## Status
 
-The engine layer and local data layer are built and tested. **No screens exist
-yet beyond `app/index.tsx`**, a placeholder that proves the pipeline works —
-replace it with the real Today screen (and the rest of the page tree) per
-`docs/frontend-blueprint.md`. Auth and cloud sync (Supabase) are not wired in
-this pass; the app is local-only (one implicit user, one SQLite database).
+ComicPill is a working local-first app: Today, Discover, Library, Paths and
+personal **reading journeys**, Compare (a real read-order decision, not a score
+table), Playlists with shareable links, the Comic Wallet, Profile & Settings,
+and photo **Scan**. There is no account and no ComicPill server; everything is
+stored on the phone (SQLite + secure storage).
+
+Optional AI features run on the reader's **own API key** (Claude or OpenAI),
+added in Settings → AI assistant, and only when a button that needs it is
+tapped. Without a key the app works fully; journeys fall back to an offline
+reader and Scan explains that it needs a key.
+
+Releasing (APK, Play Store, update notices): see `docs/RELEASING.md`.
+Privacy policy: `docs/privacy.html`.
 
 ```
 npm install
 npx expo start        # scan the QR with Expo Go on your phone
-npm test               # engine unit tests (vitest, ~50 tests)
+npm test               # unit tests (vitest, ~600 tests)
 npx tsc --noEmit        # typecheck
 npx expo-doctor         # verify Expo config/deps
 ```
@@ -214,17 +222,17 @@ matching the query, shortest first) — the latter is what lets the UI detect
 "you typed a character name" and offer to build their journey instead of (or
 alongside) plain search results.
 
-**Honest data-scale caveat:** with the current 600-book seed catalog, most
+**Honest data-scale caveat:** with the current 1,000-book seed catalog, most
 characters have 1–3 books, not the 10–15 a "journey" implies at full scale —
 e.g. Iron Man has exactly one seed entry right now, and Martian Manhunter has
 none. `characterJourney()` still does the right thing (returns what exists,
 correctly ordered, or nothing if the character isn't in the catalog yet) —
 this gets visibly better as the catalog scales, it isn't a bug to fix now.
 
-### The catalog: 600 real, fingerprinted books, ready on day one
+### The catalog: 1,000 real, fingerprinted books, ready on day one
 
 `src/lib/db/seed/catalog.data.json`, `catalog.popular.data.json`,
-`catalog.more.ts` + `catalog.ts` hold 600 real comics: the Longbox library plus vetted classics
+`catalog.more.ts`, `catalog.marvel-dc.ts` + `catalog.ts` hold 1,000 real comics: the Longbox library plus vetted classics
 and popular-reading expansions. They have hand-authored
 fingerprints, genres, creators, characters, and reading-order edges where a
 real sequential relationship exists — this is **global
@@ -259,10 +267,10 @@ render instantly with zero network dependency (see `docs/PERFORMANCE.md`).
   plenty of works (mocks, unmatched scan results) never get a real cover.
 - `docs/cover-sources.json` records what was matched and where each cover
   came from, for the Sources & Transparency screen the blueprint calls for.
-- Currently 50/600 seed books have a bundled cover (Open Library's title-only
-  search doesn't confidently match every collected-edition title — some
-  omnibus/absolute/"complete collection" titles need a cleaner query or a
-  second source). **Google Books would likely recover more of the misses**
+- Currently 875/1,000 seed books have a bundled cover. Open Library did not
+  return a usable cover for the remaining 125 collected-edition titles, so
+  they intentionally keep the app's graceful placeholder rather than showing
+  unrelated art. A second source can be used later to recover those misses.
   (better coverage of modern collected editions specifically) but needs an
   API key with a real quota — the unauthenticated public endpoint used during
   development returned `RESOURCE_EXHAUSTED` with a zero daily quota. Get a

@@ -24,7 +24,7 @@ export function ComicCover({ title, workId, size = 'grid', status, onPress, recy
     {asset ? (
       <Image source={asset} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" recyclingKey={recyclingKey} transition={120} />
     ) : (
-      <><View style={[styles.moon, { backgroundColor: c.accent }]} /><Text numberOfLines={4} style={[styles.coverTitle, { color: c.textPrimary, fontFamily: typography.display }, size === 'tiny' && { fontSize: 7 }]}>{title}</Text><View style={[styles.coverRule, { backgroundColor: c.primary }]} /></>
+      <><View style={[styles.moon, { backgroundColor: c.secondary }]} /><Text numberOfLines={4} style={[styles.coverTitle, { color: c.textPrimary, fontFamily: typography.display }, size === 'tiny' && { fontSize: 7 }]}>{title}</Text><View style={[styles.coverRule, { backgroundColor: c.primary }]} /></>
     )}
     {status ? <View style={[styles.status, { backgroundColor: c.success }]}><Text style={[styles.statusText, { color: c.primaryForeground, fontFamily: typography.bodySemibold }]}>{status}</Text></View> : null}
   </Pressable>;

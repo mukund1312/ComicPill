@@ -1,19 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useCompare, type CompareCandidate, type FormatPrice } from './useCompare';
 import { useReadCompare, type SearchCandidate } from './useReadCompare';
-import type { CompareChallenge, CompareResult } from '../../lib/engines/compare/verdict';
+import ReadDecisionView from './ReadDecisionView';
 import { AppShell } from '../../ui/AppShell';
 import { ComicRow } from '../../ui/comic';
 import { Button, Eyebrow, Input, Pill, Progress, PurchaseBadge, SectionHeader, Sheet } from '../../ui/primitives';
 import { color, font, radius, space, type } from '../../ui/tokens';
 
 const money = (paise: number) => `₹${Math.round(paise / 100).toLocaleString('en-IN')}`;
-const CATEGORY_LABEL: Record<CompareResult['category'], string> = { read_first: 'READ FIRST', read_next: 'READ NEXT', save_for_later: 'SAVE FOR LATER', skip_for_now: 'SKIP FOR NOW' };
-const CATEGORY_RANK: Record<CompareResult['category'], number> = { read_first: 0, read_next: 1, save_for_later: 2, skip_for_now: 3 };
-const DIMENSION_LABEL: Record<CompareResult['dimensions'][number]['key'], string> = { readiness: 'Readiness', tasteMatch: 'Taste Match', moodMatch: 'Mood Match', storyFit: 'Story Fit', artwork: 'Artwork', characterInterest: 'Character Interest', commitment: 'Reading Commitment', availability: 'Collection', pathRelevance: 'Path Relevance', variety: 'Variety' };
 
 export default function CompareScreen() {
   const [mode, setMode] = useState<'read' | 'buy'>('read');
@@ -22,15 +19,13 @@ export default function CompareScreen() {
 
 function ReadCompare() {
   const { workId, mood } = useLocalSearchParams<{ workId?: string; mood?: string }>();
-  const read = useReadCompare(); const [showFull, setShowFull] = useState(false);
+  const read = useReadCompare();
   const { addCandidate } = read;
   const prefilledId = Array.isArray(workId) ? workId[0] : workId;
   const selectedMood = Array.isArray(mood) ? mood[0] : mood ?? null;
   useEffect(() => { if (prefilledId) addCandidate(prefilledId); }, [prefilledId, addCandidate]);
-  const ranked = useMemo(() => read.outcome ? [...read.outcome.results].sort((a, b) => CATEGORY_RANK[a.category] - CATEGORY_RANK[b.category] || b.overallScore - a.overallScore) : [], [read.outcome]);
-  const titleFor = (id: string) => read.selected.find((item) => item?.workId === id)?.title ?? 'Comic';
 
-  if (read.outcome) return <ReadResults ranked={ranked} titleFor={titleFor} challenge={read.outcome.challenge} showFull={showFull} setShowFull={setShowFull} onEdit={() => read.setSlot(0, read.slots[0])} />;
+  if (read.outcome) return <ReadDecisionView outcome={read.outcome} intent={read.intent} onIntent={read.chooseIntent} rereads={read.rereads} onToggleRereads={read.toggleRereads} travelDigital={read.travelDigital} onEdit={() => read.setSlot(0, read.slots[0])} />;
   return <FlashList data={read.slots} keyExtractor={(_, index) => `compare-slot-${index}`} getItemType={() => 'compare-slot'} contentContainerStyle={styles.content} renderItem={({ item, index }) => <CandidateSlot index={index} selectedId={item} selected={read.selected[index]} search={read.search} onSelect={(id) => read.setSlot(index, id)} onClear={() => read.setSlot(index, null)} />} ListHeaderComponent={<><Text style={styles.readIntro}>What should you read next?</Text><Text style={styles.readCopy}>Compare a few real options. ComicPill will give you a clear order, not a score.</Text></>} ListFooterComponent={<>{read.slots.length < 6 ? <Button kind="secondary" style={{ marginTop: 8 }} onPress={read.addSlot}>+ Compare another</Button> : null}<Button disabled={!read.canCompare} style={{ marginTop: 12 }} onPress={() => read.run(selectedMood)}>Compare</Button></>} />;
 }
 
@@ -44,15 +39,6 @@ function ownershipLabel(candidate: Pick<SearchCandidate, 'own' | 'status'>) {
   const own = candidate.own === 'physical' ? 'Physical' : candidate.own === 'digital' ? 'Digital' : candidate.own === 'both' ? 'Physical & digital' : candidate.own === 'subscription' ? 'Subscription' : candidate.own === 'wishlist' ? 'Wishlist' : candidate.own === 'ordered' ? 'Ordered' : 'Not owned';
   const status = candidate.status === 'none' ? 'Unread' : candidate.status === 'done' ? 'Finished' : candidate.status;
   return `${own} · ${status}`;
-}
-
-function ReadResults({ ranked, titleFor, challenge, showFull, setShowFull, onEdit }: { ranked: CompareResult[]; titleFor: (workId: string) => string; challenge: CompareChallenge | null; showFull: boolean; setShowFull: (next: boolean) => void; onEdit: () => void }) {
-  const winner = ranked[0];
-  return <FlashList data={ranked} keyExtractor={(item) => item.workId} getItemType={() => 'read-result'} contentContainerStyle={styles.content} renderItem={({ item, index }) => <Pressable onPress={() => router.push(`/comic/${item.workId}`)} style={styles.resultRow}><Text style={styles.rank}>{index + 1}</Text><View style={styles.resultBody}><Text numberOfLines={2} style={styles.resultTitle}>{titleFor(item.workId)}</Text><Text style={[styles.category, item.category === 'read_first' && styles.categoryFirst]}>{CATEGORY_LABEL[item.category]}</Text></View><Text style={styles.resultChevron}>›</Text></Pressable>} ListHeaderComponent={<>{challenge ? <View style={styles.challenge}><Eyebrow>ComicPill challenge</Eyebrow><Text style={styles.challengeCopy}>{challenge.message}</Text>{challenge.betterAlternativeWorkId ? <Button kind="secondary" style={{ marginTop: 12 }} onPress={() => router.push(`/comic/${challenge.betterAlternativeWorkId}`)}>View the better option</Button> : null}</View> : null}<Text style={styles.resultsHeading}>Your reading order</Text>{winner ? <View style={styles.winner}><Eyebrow>Why read this first?</Eyebrow><Text style={styles.winnerTitle}>{titleFor(winner.workId)}</Text>{winner.reasons.map((reason) => <Text key={reason} style={styles.reason}>• {reason}</Text>)}</View> : null}<SectionHeader title="Ranked choices" /></>} ListFooterComponent={<><Pressable onPress={() => setShowFull(!showFull)} style={styles.fullToggle}><Text style={styles.fullToggleText}>{showFull ? 'Hide full comparison' : 'See full comparison'}</Text></Pressable>{showFull ? <DimensionTable results={ranked} titleFor={titleFor} /> : null}<Button kind="secondary" style={{ marginTop: 18 }} onPress={onEdit}>Edit choices</Button></>} />;
-}
-
-function DimensionTable({ results, titleFor }: { results: CompareResult[]; titleFor: (workId: string) => string }) {
-  return <View style={styles.table}>{results[0]?.dimensions.map((dimension) => <View key={dimension.key} style={styles.dimension}><Text style={styles.dimensionName}>{DIMENSION_LABEL[dimension.key]}</Text>{results.map((result) => <View key={result.workId} style={styles.dimensionValue}><Text numberOfLines={1} style={styles.dimensionComic}>{titleFor(result.workId)}</Text><Text style={styles.dimensionLabel}>{result.dimensions.find((item) => item.key === dimension.key)?.label}</Text></View>)}</View>)}</View>;
 }
 
 function BuyCompare() { const data = useCompare(); const [tab, setTab] = useState<'single' | 'multiple'>('single'); const [budget, setBudget] = useState(false); const [pick, setPick] = useState(false); const first = data.candidates[0]; const listData = tab === 'multiple' ? data.candidates : first ? [first] : []; const pickedFormatPrices = data.pick ? data.candidates.find((candidate) => candidate.id === data.pick!.id)?.formatPrices ?? [] : [];

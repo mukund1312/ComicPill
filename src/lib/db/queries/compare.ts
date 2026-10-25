@@ -1,20 +1,22 @@
 // The query/assembly layer for the Compare "what should I read?" engine —
 // same seam as today.ts: this does every join and SQLite-specific lookup,
 // the pure engine in engines/compare never sees a row.
-import { db } from '../client';
-import { paths, pathItems } from '../schema';
-import { loadAllScorableWorks, loadAllWorkContexts } from './library';
+import { loadAllEdges, loadAllScorableWorks, loadAllWorkContexts } from './library';
 import { getProfile } from './profile';
-import { nextInPath, type LibraryIndex } from '../../engines/graph/path';
-import { rankForRead, challengeWithAlternative } from '../../engines/compare/verdict';
-import type { CompareContext, CompareWorkInput } from '../../engines/compare/dimensions';
-import type { CompareChallenge, CompareResult } from '../../engines/compare/verdict';
+import { emptyProfile } from '../../engines/taste/profile';
+import { useSettings } from '../../state/settings';
 import { isAccessible } from '../../util/own';
+import { loadActiveArcs, loadMemberships } from './arc';
+import { primaryMembership } from '../../engines/arc/membership';
+import { decideRead } from '../../engines/compare/decide/decide';
+import { candidateFor, indexPredecessors, journeyFromMembership, type World } from '../../engines/compare/decide/build';
+import { challengeFor, type Challenge } from '../../engines/compare/decide/challenge';
+import type { ComparisonContext, Intent, ReadDecision, ReadingState, TravelMode } from '../../engines/compare/decide/types';
 import type { ReadStatus } from '../../types/domain';
-import type { ScorableWork } from '../../types/engine-io';
+import type { FinishedRead, ScorableWork } from '../../types/engine-io';
 
-function buildContext(now: Date, mood: string | null): CompareContext {
-  const profile = getProfile(now);
+function buildContext(now: Date, mood: string | null): { profile: ReturnType<typeof getProfile>; mood: string | null; recentFinished: FinishedRead[] } {
+  const profile = useSettings.getState().personalizedRecommendations ? getProfile(now) : emptyProfile();
   const contexts = loadAllWorkContexts();
   const recentFinished = contexts
     .filter((c) => c.library?.status === 'done' && c.library.rating != null && c.library.finishedAt)
@@ -26,82 +28,64 @@ function buildContext(now: Date, mood: string | null): CompareContext {
   return { profile, mood, recentFinished };
 }
 
-/** For every work that's the very-next unread item in some path: whether
- *  that path is currently being actively read, just sitting unstarted, or
- *  (a third real case) partway through without anything marked 'reading' —
- *  which counts as 'none' here, exactly like Today's P score treats it. */
-function buildPathStandingByWorkId(): Map<string, 'reading' | 'unstarted' | 'none'> {
-  const contexts = loadAllWorkContexts();
-  const statusByWork = new Map(contexts.map((c) => [c.work.id, (c.library?.status ?? 'none') as ReadStatus]));
-  const libIndex: LibraryIndex = { status: statusByWork };
-  const allPaths = db.select().from(paths).all();
-  const allPathItems = db.select().from(pathItems).all();
+// ---- Compare V2 -------------------------------------------------------------
 
-  const standing = new Map<string, 'reading' | 'unstarted' | 'none'>();
-  for (const p of allPaths) {
-    const items = allPathItems.filter((pi) => pi.pathId === p.id).map((pi) => ({ workId: pi.workId, position: pi.position }));
-    const next = nextInPath(items, libIndex);
-    if (!next) continue;
-    const isReading = items.some((i) => statusByWork.get(i.workId) === 'reading');
-    const hasStarted = items.some((i) => (statusByWork.get(i.workId) ?? 'none') !== 'none');
-    if (isReading) standing.set(next, 'reading');
-    else if (!hasStarted) standing.set(next, 'unstarted');
-  }
-  return standing;
+export interface ReadCompareOptions {
+  now: Date;
+  mood: string | null;
+  intent: Intent;
+  travelMode: TravelMode;
+  rereadsAllowed: boolean;
 }
 
-function readinessFor(work: ScorableWork, doneWorkIds: Set<string>, titleById: Map<string, string>): { isReady: boolean; blockedByTitles: string[] } {
-  const blocked = work.requiredParentIds.filter((id) => !doneWorkIds.has(id));
-  return { isReady: blocked.length === 0, blockedByTitles: blocked.map((id) => titleById.get(id) ?? id) };
+export interface ReadCompareOutcome {
+  decision: ReadDecision;
+  /** A better book the reader already has, outside the chosen set. */
+  challenge: Challenge | null;
 }
 
-function buildInputFor(work: ScorableWork, doneWorkIds: Set<string>, titleById: Map<string, string>, pathStandingByWorkId: Map<string, 'reading' | 'unstarted' | 'none'>): CompareWorkInput {
-  const { isReady, blockedByTitles } = readinessFor(work, doneWorkIds, titleById);
-  return { work, isReady, blockedByTitles, pathStanding: pathStandingByWorkId.get(work.id) ?? 'none' };
-}
+const stateFrom = (status: ReadStatus): ReadingState =>
+  status === 'done' ? 'finished' : status === 'none' ? 'unread' : status;
 
-export interface CompareOutcome {
-  results: CompareResult[];
-  challenge: CompareChallenge | null;
-}
-
-/** The one entrypoint the Compare screen needs: rank the chosen works for
- *  "what should I read", and separately check whether a book the reader
- *  already owns (but didn't add to the comparison) beats all of them. */
-export function compareWorks(workIds: string[], now: Date, mood: string | null = null): CompareOutcome {
+/** "What should I read next?" for the chosen books: eligibility, hard
+ *  constraints, the reader's active journeys, pairwise reasoning and a real
+ *  order — see engines/compare/decide. */
+export function compareForRead(workIds: string[], opts: ReadCompareOptions): ReadCompareOutcome {
   const worksById = loadAllScorableWorks();
   const contexts = loadAllWorkContexts();
-  const doneWorkIds = new Set(contexts.filter((c) => c.library?.status === 'done').map((c) => c.work.id));
-  const titleById = new Map(contexts.map((c) => [c.work.id, c.work.title]));
-  const pathStandingByWorkId = buildPathStandingByWorkId();
-  const ctx = buildContext(now, mood);
+  const statusById = new Map(contexts.map((c) => [c.work.id, (c.library?.status ?? 'none') as ReadStatus]));
+  const arcs = loadActiveArcs();
+  const memberships = loadMemberships(arcs);
 
-  const inputs = workIds
-    .map((id) => worksById.get(id))
-    .filter((w): w is ScorableWork => !!w)
-    .map((w) => buildInputFor(w, doneWorkIds, titleById, pathStandingByWorkId));
+  const world: World = {
+    works: worksById,
+    state: (id) => stateFrom(statusById.get(id) ?? 'none'),
+    predecessorEdges: indexPredecessors(loadAllEdges()),
+    journey: (id) => journeyFromMembership(primaryMembership(memberships.get(id))),
+  };
 
-  const results = rankForRead(inputs, ctx);
+  const base = buildContext(opts.now, opts.mood);
+  const ctx: ComparisonContext = {
+    profile: base.profile,
+    recentFinished: base.recentFinished,
+    mood: opts.mood,
+    intent: opts.intent,
+    travelMode: opts.travelMode,
+    rereadsAllowed: opts.rereadsAllowed,
+    currentlyReading: contexts.filter((c) => c.library?.status === 'reading').map((c) => ({ workId: c.work.id, title: c.work.title })),
+    activeJourneys: arcs.map((a) => a.plan.title),
+    titleById: new Map(contexts.map((c) => [c.work.id, c.work.title])),
+  };
 
-  // The challenge candidate: among everything NOT already in the compared
-  // set, owned, and unread/not-dropped, whichever ranks best on the exact
-  // same scoring this comparison just used. Bounded by the same catalog
-  // pickToday already scores every open, so this stays well inside the
-  // existing performance budget.
-  const excludeIds = new Set(workIds);
-  const alternativeCandidates = contexts
-    .filter((c) => !excludeIds.has(c.work.id) && isAccessible((c.library?.own ?? 'none') as ScorableWork['own']) && c.library?.status !== 'done' && c.library?.status !== 'dropped')
-    .map((c) => worksById.get(c.work.id))
-    .filter((w): w is ScorableWork => !!w)
-    .map((w) => buildInputFor(w, doneWorkIds, titleById, pathStandingByWorkId));
+  const chosen = workIds.flatMap((id) => { const c = candidateFor(id, world); return c ? [c] : []; });
+  const decision = decideRead(chosen, ctx);
 
-  let bestAlternative: CompareWorkInput | null = null;
-  if (alternativeCandidates.length) {
-    const rankedAlternatives = rankForRead(alternativeCandidates, ctx);
-    const topId = rankedAlternatives.reduce((best, r) => (r.overallScore > best.overallScore ? r : best), rankedAlternatives[0]).workId;
-    bestAlternative = alternativeCandidates.find((c) => c.work.id === topId) ?? null;
-  }
+  // Anything the reader already has and hasn't finished, that isn't in the set.
+  const chosenIds = new Set(workIds);
+  const pool = [...worksById.keys()]
+    .filter((id) => !chosenIds.has(id) && isAccessible(worksById.get(id)!.own) && world.state(id) !== 'finished' && world.state(id) !== 'dropped')
+    .flatMap((id) => { const c = candidateFor(id, world); return c ? [c] : []; });
+  const challenge = pool.length ? challengeFor(decision, decideRead(pool, { ...ctx, rereadsAllowed: false })) : null;
 
-  const challenge = bestAlternative ? challengeWithAlternative(results, bestAlternative, ctx) : null;
-  return { results, challenge: challenge?.shouldChallenge ? challenge : null };
+  return { decision, challenge };
 }

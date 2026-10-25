@@ -1,0 +1,472 @@
+{
+  "creator:jim-lee": {
+    "name": "Jim Lee",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Jim_Lee",
+    "file": "Jim_Lee_at_San_Diego_Comic_Con_2026-1.jpg",
+    "licence": "CC BY 4.0",
+    "author": "Kevin Paul",
+    "licenceUrl": "https://creativecommons.org/licenses/by/4.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:Jim_Lee_at_San_Diego_Comic_Con_2026-1.jpg"
+  },
+  "creator:alex-ross": {
+    "name": "Alex Ross",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Alex_Ross",
+    "file": "Alexross_comicstore_2003.jpg",
+    "licence": "CC BY-SA 2.0",
+    "author": "Ruby Bradford",
+    "licenceUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:Alexross_comicstore_2003.jpg"
+  },
+  "creator:greg-capullo": {
+    "name": "Greg Capullo",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Greg_Capullo",
+    "file": "Greg_Capullo_by_Gage_Skidmore_2.jpg",
+    "licence": "CC BY-SA 3.0",
+    "author": "Gage Skidmore",
+    "licenceUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:Greg_Capullo_by_Gage_Skidmore_2.jpg"
+  },
+  "creator:david-mazzucchelli": {
+    "name": "David Mazzucchelli",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/David_Mazzucchelli",
+    "file": "6.28.12DavidMazzuchelliByLuigiNovi1.jpg",
+    "licence": "CC BY 3.0",
+    "author": "Luigi Novi",
+    "licenceUrl": "https://creativecommons.org/licenses/by/3.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:6.28.12DavidMazzuchelliByLuigiNovi1.jpg"
+  },
+  "creator:tim-sale": {
+    "name": "Tim Sale",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Tim_Sale_%28artist%29",
+    "file": "10.15.11TimSaleByLuigiNovi.jpg",
+    "licence": "CC BY 3.0",
+    "author": "Luigi Novi",
+    "licenceUrl": "https://creativecommons.org/licenses/by/3.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:10.15.11TimSaleByLuigiNovi.jpg"
+  },
+  "creator:frank-quitely": {
+    "name": "Frank Quitely",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Frank_Quitely",
+    "file": "10.14.11FrankQuitelyByLuigiNovi.jpg",
+    "licence": "CC BY 4.0",
+    "author": "Luigi Novi",
+    "licenceUrl": "https://creativecommons.org/licenses/by/4.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:10.14.11FrankQuitelyByLuigiNovi.jpg"
+  },
+  "creator:bill-sienkiewicz": {
+    "name": "Bill Sienkiewicz",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Bill_Sienkiewicz",
+    "file": "Bill_Sienkiewicz_by_Gage_Skidmore.jpg",
+    "licence": "CC BY-SA 3.0",
+    "author": "Gage Skidmore",
+    "licenceUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:Bill_Sienkiewicz_by_Gage_Skidmore.jpg"
+  },
+  "creator:fiona-staples": {
+    "name": "Fiona Staples",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Fiona_Staples",
+    "file": "4.4.14FionaStaplesByLuigiNovi1.jpg",
+    "licence": "CC BY 3.0",
+    "author": "Nightscream",
+    "licenceUrl": "https://creativecommons.org/licenses/by/3.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:4.4.14FionaStaplesByLuigiNovi1.jpg"
+  },
+  "creator:darwyn-cooke": {
+    "name": "Darwyn Cooke",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Darwyn_Cooke",
+    "file": "10.12.13DarwynCookeByLuigiNovi1.jpg",
+    "licence": "CC BY 3.0",
+    "author": "Luigi Novi",
+    "licenceUrl": "https://creativecommons.org/licenses/by/3.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:10.12.13DarwynCookeByLuigiNovi1.jpg"
+  },
+  "creator:sean-murphy": {
+    "name": "Sean Murphy",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Sean_Murphy_%28artist%29",
+    "file": "Sean_Gordon_Murphy_by_Gage_Skidmore.jpg",
+    "licence": "CC BY-SA 3.0",
+    "author": "Gage Skidmore",
+    "licenceUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:Sean_Gordon_Murphy_by_Gage_Skidmore.jpg"
+  },
+  "creator:mike-mignola": {
+    "name": "Mike Mignola",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Mike_Mignola",
+    "file": "MikeMignolaJune2011.jpg",
+    "licence": "CC BY-SA 2.0",
+    "author": "5of7",
+    "licenceUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:MikeMignolaJune2011.jpg"
+  },
+  "creator:dave-mckean": {
+    "name": "Dave McKean",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Dave_McKean",
+    "file": "Dave_McKean_-_Lucca_Comics_&_Games_2018_01.jpg",
+    "licence": "CC BY-SA 4.0",
+    "author": "Niccolò Caranti",
+    "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:Dave_McKean_-_Lucca_Comics_%26_Games_2018_01.jpg"
+  },
+  "creator:esad-ribic": {
+    "name": "Esad Ribic",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Esad_Ribi%C4%87",
+    "file": "10.12.12EsadRibicByLuigiNovi1.jpg",
+    "licence": "CC BY 3.0",
+    "author": "Luigi Novi",
+    "licenceUrl": "https://creativecommons.org/licenses/by/3.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:10.12.12EsadRibicByLuigiNovi1.jpg"
+  },
+  "creator:george-perez": {
+    "name": "George Pérez",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/George_P%C3%A9rez",
+    "file": "10.13.12GeorgePérezByLuigiNovi1.jpg",
+    "licence": "CC BY 3.0",
+    "author": "Nightscream",
+    "licenceUrl": "https://creativecommons.org/licenses/by/3.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:10.13.12GeorgeP%C3%A9rezByLuigiNovi1.jpg"
+  },
+  "creator:jock": {
+    "name": "Jock",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Jock_%28cartoonist%29",
+    "file": "Mike_Carey,_Andy_Diggle_and_Jock_(cropped).jpg",
+    "licence": "CC BY 2.0",
+    "author": "surprise truck",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:Mike_Carey,_Andy_Diggle_and_Jock_(cropped).jpg"
+  },
+  "creator:david-aja": {
+    "name": "David Aja",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/David_Aja",
+    "file": "David_Aja.jpg",
+    "licence": "CC BY-SA 4.0",
+    "author": "Jose Emilio Amo",
+    "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:David_Aja.jpg"
+  },
+  "creator:john-romita-jr": {
+    "name": "John Romita Jr.",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/John_Romita_Jr.",
+    "file": "John_Romita_Jr._Comic_Con_Cape_Town_2026_01.jpg",
+    "licence": "CC BY-SA 4.0",
+    "author": "EGilham",
+    "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:John_Romita_Jr._Comic_Con_Cape_Town_2026_01.jpg"
+  },
+  "creator:jae-lee": {
+    "name": "Jae Lee",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Jae_Lee",
+    "file": "Jae_Lee_by_Gage_Skidmore_2.jpg",
+    "licence": "CC BY-SA 3.0",
+    "author": "Gage Skidmore",
+    "licenceUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:Jae_Lee_by_Gage_Skidmore_2.jpg"
+  },
+  "creator:jack-kirby": {
+    "name": "Jack Kirby",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Jack_Kirby",
+    "file": "Jack-Kirby_art-of-jack-kirby_wyman-skaar.jpg",
+    "licence": "CC BY-SA 3.0",
+    "author": "Susan Skaar",
+    "licenceUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:Jack-Kirby_art-of-jack-kirby_wyman-skaar.jpg"
+  },
+  "creator:alan-moore": {
+    "name": "Alan Moore",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Alan_Moore",
+    "file": "Alan_Moore_(2).jpg",
+    "licence": "CC BY 2.0",
+    "author": "Fimb",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:Alan_Moore_(2).jpg"
+  },
+  "creator:frank-miller": {
+    "name": "Frank Miller",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Frank_Miller",
+    "file": "FrankMiller_JimLee_DC's_2018PopUpShop2.jpg",
+    "licence": "CC BY 2.0",
+    "author": "Daniel Benavides",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:FrankMiller_JimLee_DC%27s_2018PopUpShop2.jpg"
+  },
+  "creator:grant-morrison": {
+    "name": "Grant Morrison",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Grant_Morrison",
+    "file": "Grant_morrison2.jpg",
+    "licence": "CC BY 2.0",
+    "author": "PDH",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:Grant_morrison2.jpg"
+  },
+  "creator:scott-snyder": {
+    "name": "Scott Snyder",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Scott_Snyder",
+    "file": "5.22.24ScottSnyderByLuigiNovi1.jpg",
+    "licence": "CC BY 4.0",
+    "author": "Luigi Novi",
+    "licenceUrl": "https://creativecommons.org/licenses/by/4.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:5.22.24ScottSnyderByLuigiNovi1.jpg"
+  },
+  "creator:tom-king": {
+    "name": "Tom King",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Tom_King_%28writer%29",
+    "file": "Tom_King_at_San_Diego_Comic_Con_2026-1.jpg",
+    "licence": "CC BY 4.0",
+    "author": "Kevin Paul",
+    "licenceUrl": "https://creativecommons.org/licenses/by/4.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:Tom_King_at_San_Diego_Comic_Con_2026-1.jpg"
+  },
+  "creator:mark-waid": {
+    "name": "Mark Waid",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Mark_Waid",
+    "file": "Mark_Waid_at_Big_Lick_ComicCon_2026_01.jpg",
+    "licence": "CC BY-SA 4.0",
+    "author": "John Manard",
+    "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:Mark_Waid_at_Big_Lick_ComicCon_2026_01.jpg"
+  },
+  "creator:jonathan-hickman": {
+    "name": "Jonathan Hickman",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Jonathan_Hickman",
+    "file": "JonathanHickman.jpg",
+    "licence": "CC BY-SA 4.0",
+    "author": "DiScOrD tHe LuNaTiC",
+    "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:JonathanHickman.jpg"
+  },
+  "creator:chip-zdarsky": {
+    "name": "Chip Zdarsky",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Chip_Zdarsky",
+    "file": "Chip_Zdarsky_at_Galaxy_Con_Richmond_-_55184797974_(cropped).jpg",
+    "licence": "CC BY-SA 4.0",
+    "author": "John Manard",
+    "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:Chip_Zdarsky_at_Galaxy_Con_Richmond_-_55184797974_(cropped).jpg"
+  },
+  "creator:ed-brubaker": {
+    "name": "Ed Brubaker",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Ed_Brubaker",
+    "file": "6.21.10EdBrubakerByLuigiNovi1.jpg",
+    "licence": "CC BY 3.0",
+    "author": "Luigi Novi",
+    "licenceUrl": "https://creativecommons.org/licenses/by/3.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:6.21.10EdBrubakerByLuigiNovi1.jpg"
+  },
+  "creator:brian-k-vaughan": {
+    "name": "Brian K. Vaughan",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Brian_K._Vaughan",
+    "file": "8.1.19BrianKVaughanByLuigiNovi1.jpg",
+    "licence": "CC BY 4.0",
+    "author": "Luigi Novi",
+    "licenceUrl": "https://creativecommons.org/licenses/by/4.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:8.1.19BrianKVaughanByLuigiNovi1.jpg"
+  },
+  "creator:jeph-loeb": {
+    "name": "Jeph Loeb",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Jeph_Loeb",
+    "file": "Jeph_Loeb_San_Diego_Comic_Con_2019.jpg",
+    "licence": "CC BY-SA 2.0",
+    "author": "Gage Skidmore from Peoria, AZ, United States of America",
+    "licenceUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:Jeph_Loeb_San_Diego_Comic_Con_2019.jpg"
+  },
+  "creator:gail-simone": {
+    "name": "Gail Simone",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Gail_Simone",
+    "file": "Gail_Simone_at_Rose_City_Comic_Con_01.jpg",
+    "licence": "CC BY-SA 4.0",
+    "author": "Joe Peacock",
+    "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:Gail_Simone_at_Rose_City_Comic_Con_01.jpg"
+  },
+  "creator:neil-gaiman": {
+    "name": "Neil Gaiman",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Neil_Gaiman",
+    "file": "Kyle-cassidy-neil-gaiman-April-2013.jpg",
+    "licence": "CC BY-SA 3.0",
+    "author": "Kyle Cassidy",
+    "licenceUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:Kyle-cassidy-neil-gaiman-April-2013.jpg"
+  },
+  "creator:geoff-johns": {
+    "name": "Geoff Johns",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Geoff_Johns",
+    "file": "8.31.11GeoffJohnsNew52ByLuigiNovi1.jpg",
+    "licence": "CC BY 4.0",
+    "author": "Luigi Novi",
+    "licenceUrl": "https://creativecommons.org/licenses/by/4.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:8.31.11GeoffJohnsNew52ByLuigiNovi1.jpg"
+  },
+  "creator:greg-rucka": {
+    "name": "Greg Rucka",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Greg_Rucka",
+    "file": "Greg_Rucka_2025.jpg",
+    "licence": "CC0",
+    "author": "Ruckawriter",
+    "licenceUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:Greg_Rucka_2025.jpg"
+  },
+  "creator:warren-ellis": {
+    "name": "Warren Ellis",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Warren_Ellis",
+    "file": "Warren_Ellis_by_Gage_Skidmore.jpg",
+    "licence": "CC BY-SA 3.0",
+    "author": "Gage Skidmore",
+    "licenceUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:Warren_Ellis_by_Gage_Skidmore.jpg"
+  },
+  "creator:jason-aaron": {
+    "name": "Jason Aaron",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Jason_Aaron",
+    "file": "Jason_Aaron_Press_Photo.jpg",
+    "licence": "CC BY-SA 4.0",
+    "author": "Stephanie Manning",
+    "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:Jason_Aaron_Press_Photo.jpg"
+  },
+  "creator:kelly-sue-deconnick": {
+    "name": "Kelly Sue DeConnick",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Kelly_Sue_DeConnick",
+    "file": "Kelly_Sue_DeConnick_at_CCBP_2025.jpg",
+    "licence": "CC BY 4.0",
+    "author": "Kevin Paul",
+    "licenceUrl": "https://creativecommons.org/licenses/by/4.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:Kelly_Sue_DeConnick_at_CCBP_2025.jpg"
+  },
+  "creator:g-willow-wilson": {
+    "name": "G. Willow Wilson",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/G._Willow_Wilson",
+    "file": "G_Willow_Wilson_cropped.jpg",
+    "licence": "CC BY-SA 2.0",
+    "author": "Flickr user Brad Searles",
+    "licenceUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:G_Willow_Wilson_cropped.jpg"
+  },
+  "creator:al-ewing": {
+    "name": "Al Ewing",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Al_Ewing",
+    "file": "6.13.19AlEwingByLuigiNovi7.jpg",
+    "licence": "CC BY 4.0",
+    "author": "Luigi Novi",
+    "licenceUrl": "https://creativecommons.org/licenses/by/4.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:6.13.19AlEwingByLuigiNovi7.jpg"
+  },
+  "creator:garth-ennis": {
+    "name": "Garth Ennis",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Garth_Ennis",
+    "file": "6.1.19GarthEnnisByLuigiNovi1.jpg",
+    "licence": "CC BY 4.0",
+    "author": "Luigi Novi",
+    "licenceUrl": "https://creativecommons.org/licenses/by/4.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:6.1.19GarthEnnisByLuigiNovi1.jpg"
+  },
+  "creator:jeff-lemire": {
+    "name": "Jeff Lemire",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Jeff_Lemire",
+    "file": "Jeff_Lemire_-_Lucca_2017.jpg",
+    "licence": "CC BY-SA 4.0",
+    "author": "Niccolò Caranti",
+    "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:Jeff_Lemire_-_Lucca_2017.jpg"
+  },
+  "creator:brian-michael-bendis": {
+    "name": "Brian Michael Bendis",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Brian_Michael_Bendis",
+    "file": "Brian_Michael_Bendis_at_Rose_City_Comic_Con_2026_01.jpg",
+    "licence": "CC BY-SA 4.0",
+    "author": "Joe Peacock",
+    "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:Brian_Michael_Bendis_at_Rose_City_Comic_Con_2026_01.jpg"
+  },
+  "creator:james-tynion-iv": {
+    "name": "James Tynion IV",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/James_Tynion_IV",
+    "file": "James_tynion_IV_1563015.jpg",
+    "licence": "CC BY-SA 4.0",
+    "author": "Gérald Garitan",
+    "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:James_tynion_IV_1563015.jpg"
+  },
+  "creator:mark-millar": {
+    "name": "Mark Millar",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Mark_Millar",
+    "file": "10.2.10MarkMillarByLuigiNovi.jpg",
+    "licence": "CC BY 3.0",
+    "author": "Luigi Novi",
+    "licenceUrl": "https://creativecommons.org/licenses/by/3.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:10.2.10MarkMillarByLuigiNovi.jpg"
+  },
+  "creator:chris-claremont": {
+    "name": "Chris Claremont",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Chris_Claremont",
+    "file": "Chris_Claremont_at_Galaxy_Con_Richmond_-_55175609845.jpg",
+    "licence": "CC BY-SA 4.0",
+    "author": "John Manard",
+    "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:Chris_Claremont_at_Galaxy_Con_Richmond_-_55175609845.jpg"
+  },
+  "creator:kurt-busiek": {
+    "name": "Kurt Busiek",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Kurt_Busiek",
+    "file": "Kurt_Busiek_Stumptown.jpg",
+    "licence": "CC BY 2.0",
+    "author": "Joshin Yamada",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:Kurt_Busiek_Stumptown.jpg"
+  },
+  "creator:matt-fraction": {
+    "name": "Matt Fraction",
+    "wikipediaPage": "https://en.wikipedia.org/wiki/Matt_Fraction",
+    "file": "Matt_Fraction_at_San_Diego_Comic_Con_2025.jpg",
+    "licence": "CC BY 4.0",
+    "author": "Kevin Paul",
+    "licenceUrl": "https://creativecommons.org/licenses/by/4.0",
+    "nonFree": false,
+    "page": "https://commons.wikimedia.org/wiki/File:Matt_Fraction_at_San_Diego_Comic_Con_2025.jpg"
+  }
+}

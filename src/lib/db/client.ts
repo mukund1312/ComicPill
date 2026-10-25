@@ -6,7 +6,7 @@ import { openDatabaseSync } from 'expo-sqlite';
 import { drizzle } from 'drizzle-orm/expo-sqlite';
 import * as schema from './schema';
 
-const sqlite = openDatabaseSync('comicpill.db');
+export const sqlite = openDatabaseSync('comicpill.db');
 
 export const db = drizzle(sqlite, { schema });
 
@@ -137,6 +137,22 @@ CREATE TABLE IF NOT EXISTS feedback (
 );
 CREATE INDEX IF NOT EXISTS feedback_created_at ON feedback(created_at);
 
+CREATE TABLE IF NOT EXISTS user_arcs (
+  id TEXT PRIMARY KEY, template_key TEXT NOT NULL, goal_text TEXT NOT NULL,
+  depth TEXT NOT NULL DEFAULT 'recommended', intent TEXT, parent_arc_id TEXT,
+  status TEXT NOT NULL DEFAULT 'active',
+  created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS rabbit_holes (
+  id TEXT PRIMARY KEY, topic TEXT NOT NULL, source_work_id TEXT,
+  status TEXT NOT NULL DEFAULT 'saved', created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS app_meta (
+  key TEXT PRIMARY KEY, value TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS user_library (
   work_id TEXT PRIMARY KEY, own TEXT NOT NULL DEFAULT 'none', owned_edition_id TEXT,
   status TEXT NOT NULL DEFAULT 'none',
@@ -166,6 +182,12 @@ CREATE TABLE IF NOT EXISTS shown (
 CREATE TABLE IF NOT EXISTS not_tonight (
   id TEXT PRIMARY KEY, work_id TEXT NOT NULL, at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS taste_signals (
+  id TEXT PRIMARY KEY, entity_type TEXT NOT NULL, entity_id TEXT NOT NULL, signal TEXT NOT NULL,
+  source TEXT NOT NULL, strength REAL NOT NULL, created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS taste_signals_source ON taste_signals(source);
 `;
 
 let bootstrapped = false;
@@ -192,7 +214,7 @@ export function resetDatabase(): void {
     DELETE FROM editions; DELETE FROM edition_works; DELETE FROM edition_issues;
     DELETE FROM story_edges; DELETE FROM paths;
     DELETE FROM path_items; DELETE FROM playlists; DELETE FROM playlist_items;
-    DELETE FROM user_library; DELETE FROM events; DELETE FROM taste_profiles;
+    DELETE FROM user_library; DELETE FROM user_arcs; DELETE FROM rabbit_holes; DELETE FROM events; DELETE FROM taste_profiles;
     DELETE FROM shown; DELETE FROM not_tonight;
     DELETE FROM wallet_config; DELETE FROM wallet_ledger; DELETE FROM piggy_banks;
     DELETE FROM saving_rules; DELETE FROM retailers; DELETE FROM comic_prices;
