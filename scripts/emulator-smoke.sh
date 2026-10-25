@@ -55,7 +55,8 @@ wait_for() { local n=0; while [ $n -lt ${2:-60} ]; do adb shell uiautomator dump
 
 import_file() {  # $1 = file name; success means the comic really appeared on the shelf
   local file=$1 title=${1%.*}
-  tap "Import files" || { log "  ! no import button"; return 1; }
+  # The shelf has one "Add" (＋) button; its menu holds "Import files…".
+  { tapx "Add" && sleep 1 && tap "Import files"; } || { log "  ! no import button"; return 1; }
   wait_for 'documentsui' 40 || { log "  ! the file picker never opened for $file"; return 1; }
   sleep 2
   # The roots drawer works the same on every Android version; searching doesn't (older pickers have no search icon).
@@ -77,7 +78,7 @@ if [ $n -ge 2 ]; then log "  Read Files imports appear in the Library ($n of 3 v
 shot shelf
 for t in "Nightwatch 01" Test7z Test4 Test; do
   adb shell am start -a android.intent.action.VIEW -d "comicpill:///reader" $PKG >/dev/null; sleep 4
-  tap "Search title"; sleep 1; adb shell input text "$(echo "${t%% *}" | sed 's/ /%s/g')"; adb shell input keyevent 4; sleep 2
+  tapx "Search"; sleep 1; tap "Search title"; sleep 1; adb shell input text "$(echo "${t%% *}" | sed 's/ /%s/g')"; adb shell input keyevent 4; sleep 2
   if tapx "$t"; then sleep 12; adb shell input swipe 900 1200 150 1200 200; sleep 2; shot "read_$(echo $t | tr ' ' '_')"; if screen_has "Preparing pages" || screen_has "could not"; then log "  ! $t did not open"; else log "  opened $t"; fi; adb shell input keyevent 4; sleep 2; else log "  ! could not find $t on the shelf"; fi
 done
 
