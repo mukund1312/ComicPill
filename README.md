@@ -315,6 +315,26 @@ ComicPill can also read comic files from the phone, Panels-style. Route: **Libra
 Rules this part follows: `formats` knows nothing about UI; the UI never opens a file itself;
 anything outside the plan's scope goes in a later list, not the code.
 
+### Reader features, side by side with Panels' feature list
+
+| Panels offers | In ComicPill |
+| --- | --- |
+| CBR, CBZ, 7z, PDF, comic EPUB | ✓ (CBR is RAR4 only; RAR5 shows a clear message). CBR/7z/PDF need the full app, not Expo Go |
+| Text selection, copy, translate | ✓ whole-page: reads the text on the phone, then Copy / Translate (opens Google Translate) / Share |
+| Character stickers | ✗ not built. "Share this panel" in guided view is the nearest |
+| Sync progress across devices | ✗ needs a server; ComicPill has none by design |
+| Reading modes, scroll direction, page animations | ✓ left-to-right, manga, webtoon, two-page landscape; slide / fade / 3-D page flip (not a true page curl) |
+| One-finger zoom | ✓ double-tap, hold, drag |
+| Panel-by-panel view | ✓ on-device detection, falls back to the whole page |
+| Presets (manhwa, manga, comics) | ✓ built-in and custom, per comic or folder |
+| Image filters, remove borders | ✓ brightness, sepia, black & white, invert, contrast (the last three need Android 12+); trim borders. No sharpen filter |
+| Import from anywhere (Dropbox, OneDrive) | ✓ through Android's file picker, if those apps are installed |
+| OPDS | ✓ browse, search, download (with a login). Downloads rather than page-by-page streaming |
+| iCloud Drive sync | ✗ Apple only |
+| Lock a comic or folder with a password | ✓ (a privacy lock that hides and gates; the file itself is not encrypted) |
+| Themes and views | ✓ follows the app theme; grid and list |
+| Thousands of comics | ✓ virtualized list; zip archives are read without loading them into memory |
+
 ## Mind Space: screenshots in, a weekly reading plan out (`src/lib/mind`, `src/features/mind`)
 
 Route: **Library → Mind Space** (`/mind`). It watches one album, finds comics in the screenshots you save, matches them to real

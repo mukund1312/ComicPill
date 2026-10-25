@@ -62,10 +62,13 @@ import_file() {  # $1 = file name; success means the comic really appeared on th
   log "  ! $file never appeared on the shelf"; return 1
 }
 # One bundle zip holds all four, so a single trip through the picker imports every format (and tests bundle import).
-import_file "Bundle.zip"; for t in "Nightwatch 01" Test7z Test4 Test; do wait_for "text=\"$t\"" 90 && log "  bundle gave: $t" || log "  ! bundle did not give: $t"; done; shot shelf
-
-for t in "Nightwatch 01" Test7z Test4 "Test"; do
-  if tapx "$t"; then sleep 12; adb shell input swipe 900 1200 150 1200 200; sleep 2; shot "read_$(echo $t | tr ' ' '_')"; adb shell input keyevent 4; sleep 2; else log "  ! could not open $t"; fi
+import_file "Bundle.zip"
+if wait_for 'text="4 comics"' 180; then log "  bundle imported all 4 comics (CBZ, 7z, RAR, PDF)"; else log "  ! bundle did not give 4 comics: $(adb exec-out cat /sdcard/ui.xml | python3 -c "import sys,re;print(re.findall(r'text=\"([0-9]+ comics?)\"',sys.stdin.read()))")"; fi
+shot shelf
+for t in "Nightwatch 01" Test7z Test4 Test; do
+  adb shell am start -a android.intent.action.VIEW -d "comicpill:///reader" $PKG >/dev/null; sleep 4
+  tap "Search title"; sleep 1; adb shell input text "$(echo "${t%% *}" | sed 's/ /%s/g')"; adb shell input keyevent 4; sleep 2
+  if tapx "$t"; then sleep 12; adb shell input swipe 900 1200 150 1200 200; sleep 2; shot "read_$(echo $t | tr ' ' '_')"; if screen_has "Preparing pages" || screen_has "could not"; then log "  ! $t did not open"; else log "  opened $t"; fi; adb shell input keyevent 4; sleep 2; else log "  ! could not find $t on the shelf"; fi
 done
 
 # Mind Space: watch the album, scan, OCR gate

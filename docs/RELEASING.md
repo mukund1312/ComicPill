@@ -121,3 +121,43 @@ cd android && ./gradlew assembleDebug -PreactNativeArchitectures=arm64-v8a
 - **Play Console.** Account, internal-testing track and store screenshots are yours to create. Check
   Google's current closed-testing rule for new personal accounts before planning a public launch.
 - **RAR5.** junrar 7.5 reads RAR4 only. Supporting RAR5 means swapping in libarchive through the NDK.
+
+## Building the signed APK / AAB yourself (no EAS needed)
+
+Release builds are minified (R8), carry a startup baseline profile, and are signed with **your** key.
+
+```bash
+# one-time: a JDK 17 and the Android SDK (see "The file reader" above), then
+npx expo prebuild --platform android          # regenerates android/ and applies the signing + profile plugins
+cd android && ./gradlew assembleRelease bundleRelease -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+# → app/build/outputs/apk/release/app-release.apk   (share this file directly)
+# → app/build/outputs/bundle/release/app-release.aab (upload this to Google Play)
+```
+
+**The signing key** lives in `~/.comicpill-signing/` (`comicpill-release.keystore` + `keystore.properties`), outside the repo.
+The build picks it up automatically; with no key present it falls back to the debug key so builds never break.
+**Back that folder up somewhere safe.** Google Play ties your app to this key: lose it and the app can never be updated.
+Check what an APK is signed with: `$ANDROID_HOME/build-tools/*/apksigner verify --print-certs app-release.apk`
+(the SHA-256 should match `keytool -list -keystore ~/.comicpill-signing/comicpill-release.keystore`).
+
+Raise `android.versionCode` in `app.json` for every build you hand out: Android refuses to install a lower or equal one over a newer one.
+
+## Trying the app in Expo Go
+
+```bash
+npx expo start --go          # same Wi-Fi as your phone: scan the QR code with Expo Go
+npx expo start --go --tunnel # different networks (installs a tunnel helper the first time)
+```
+Expo Go can run almost everything: reading CBZ/EPUB/ZIP, folders, collections, locks, OPDS, Mind Space by title, the new display options.
+It can't run code that is not inside Expo Go itself, so these say "needs the full app" instead: CBR, CB7 and PDF reading,
+watching a screenshot album, reading text from pages, guided panel view, and background syncing.
+
+## Trying OPDS without a server
+
+`python3 scripts/opds-test-server.py <folder with .cbz files>` starts a small catalog (user `demo`, password `demo`).
+In ComicPill: Library → Read Files → OPDS → add `10.0.2.2:8090/opds` (Android emulator) or `<your-computer-ip>:8090/opds` (phone).
+
+## Testing on several Android versions
+
+`scripts/emulator-smoke.sh <avd> <apk> <fixtures-dir> <out-dir>` boots an emulator, installs the APK, imports a bundle of CBZ + 7z + RAR + PDF
+through the real file picker, opens each, runs the on-device OCR scan, and records cold-start time and memory.

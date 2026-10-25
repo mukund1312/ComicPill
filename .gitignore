@@ -42,3 +42,6 @@ yarn-error.*
 
 # Local native module build output
 modules/*/android/build/
+
+# Signed builds
+/release/
