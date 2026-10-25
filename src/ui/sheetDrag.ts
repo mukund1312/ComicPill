@@ -14,7 +14,7 @@ export function useSheetDrag(onClose?: () => void) {
   const gesture = Gesture.Pan()
     .enabled(!!onClose)
     // Only a clearly vertical drag counts, so taps, text fields and sideways swipes inside the sheet still work.
-    .activeOffsetY([10, 10000])
+    .activeOffsetY([-10000, 10]) // [low, high]: activates only once the finger has moved 10px DOWN; the old [10, 10000] activated immediately and stole every tap
     .failOffsetX([-24, 24])
     .onUpdate((e) => { y.value = Math.max(0, e.translationY); })
     .onEnd((e) => {

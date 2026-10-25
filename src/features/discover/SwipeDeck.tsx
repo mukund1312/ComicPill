@@ -12,7 +12,6 @@ type DeckCard = ReturnType<typeof buildDeck>[number];
 
 const SWIPE_DISTANCE = 0.26; // of the screen width
 const SWIPE_VELOCITY = 800;
-const RATE_DISTANCE = 110;
 
 /**
  * Tinder-style card: drag it and it tilts and follows your finger; let go past the edge and it flies off.
@@ -24,17 +23,14 @@ export function SwipeDeck({ card, next, onPass, onSave, onRate }: { card: DeckCa
   const away = width * 1.5;
 
   const pan = Gesture.Pan()
-    // Sideways drags and upward drags belong to the card; a downward drag is the page scrolling.
-    .activeOffsetX([-12, 12]).activeOffsetY([-18, 10000])
-    .onUpdate((e) => { x.value = e.translationX; y.value = Math.min(0, e.translationY * 0.6); })
+    // Only sideways drags belong to the card; a drag that goes up or down first is the page scrolling, so it fails and the list takes it.
+    .activeOffsetX([-12, 12]).failOffsetY([-24, 24])
+    .onUpdate((e) => { x.value = e.translationX; y.value = e.translationY * 0.25; })
     .onEnd((e) => {
       if (e.translationX > width * SWIPE_DISTANCE || e.velocityX > SWIPE_VELOCITY) {
         x.value = withTiming(away, { duration: 220 }, (done) => { if (done) scheduleOnRN(onSave); });
       } else if (e.translationX < -width * SWIPE_DISTANCE || e.velocityX < -SWIPE_VELOCITY) {
         x.value = withTiming(-away, { duration: 220 }, (done) => { if (done) scheduleOnRN(onPass); });
-      } else if (e.translationY < -RATE_DISTANCE || e.velocityY < -900) {
-        scheduleOnRN(onRate);
-        x.value = withSpring(0); y.value = withSpring(0);
       } else {
         x.value = withSpring(0, { damping: 16, stiffness: 190 }); y.value = withSpring(0, { damping: 16, stiffness: 190 });
       }
@@ -53,7 +49,6 @@ export function SwipeDeck({ card, next, onPass, onSave, onRate }: { card: DeckCa
   }));
   const saveStamp = useAnimatedStyle(() => ({ opacity: interpolate(x.value, [16, 110], [0, 1], 'clamp') }));
   const passStamp = useAnimatedStyle(() => ({ opacity: interpolate(x.value, [-110, -16], [1, 0], 'clamp') }));
-  const rateStamp = useAnimatedStyle(() => ({ opacity: interpolate(y.value, [-RATE_DISTANCE, -30], [1, 0], 'clamp') }));
 
   return (
     <>
@@ -64,7 +59,6 @@ export function SwipeDeck({ card, next, onPass, onSave, onRate }: { card: DeckCa
             <CardFace card={card} />
             <Animated.View pointerEvents="none" style={[styles.stamp, styles.stampSave, saveStamp]}><Text style={[styles.stampText, { color: color.positive }]}>{isAccessible(card.work.own) ? 'CONTINUE' : 'SAVE'}</Text></Animated.View>
             <Animated.View pointerEvents="none" style={[styles.stamp, styles.stampPass, passStamp]}><Text style={[styles.stampText, { color: color.accent }]}>PASS</Text></Animated.View>
-            <Animated.View pointerEvents="none" style={[styles.stamp, styles.stampRate, rateStamp]}><Text style={[styles.stampText, { color: color.collectGold }]}>RATE</Text></Animated.View>
           </Animated.View>
         </GestureDetector>
       </View>
@@ -73,7 +67,7 @@ export function SwipeDeck({ card, next, onPass, onSave, onRate }: { card: DeckCa
         <Pressable accessibilityRole="button" onPress={onRate} style={styles.rate}><Text style={styles.rateIcon}>↑</Text><Text style={styles.controlText}>Rate</Text></Pressable>
         <Pressable accessibilityRole="button" onPress={() => fly('right')} style={styles.read}><Text style={styles.readIcon}>♥</Text><Text style={styles.controlText}>{isAccessible(card.work.own) ? 'Continue' : 'Read'}</Text></Pressable>
       </View>
-      <Text style={styles.help}>Swipe the card left to pass, right to save, up to rate.</Text>
+      <Text style={styles.help}>Swipe the card left to pass or right to save.</Text>
     </>
   );
 }
@@ -107,7 +101,6 @@ const styles = StyleSheet.create({
   stamp: { position: 'absolute', top: 22, borderWidth: 3, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 2 },
   stampSave: { left: 18, borderColor: color.positive, transform: [{ rotate: '-12deg' }] },
   stampPass: { right: 18, borderColor: color.accent, transform: [{ rotate: '12deg' }] },
-  stampRate: { alignSelf: 'center', top: 10, borderColor: color.collectGold },
   stampText: { fontFamily: font.display, fontSize: 24, letterSpacing: 1.5 },
   controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 28, marginTop: 10 },
   pass: { alignItems: 'center', gap: 4 },

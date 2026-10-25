@@ -42,7 +42,8 @@ for m in re.finditer(r'<node[^>]*>',x):
         ok=(t and w in t.group(1)) or (d and w in d.group(1))
     if ok:
         print((int(b.group(1))+int(b.group(3)))//2,(int(b.group(2))+int(b.group(4)))//2); break" "$1" "$2")
-  if [ -n "$xy" ]; then adb shell input tap $xy; sleep 1.5; return 0; fi; return 1
+  # A real fingertip never lands perfectly still: wobble 2px over 90ms so gesture handlers that steal taps are caught.
+  if [ -n "$xy" ]; then set -- $xy; adb shell input swipe $1 $2 $(($1 + 1)) $(($2 + 2)) 90; sleep 1.5; return 0; fi; return 1
 }
 tap() { _tap "$1" 0; }
 tapx() { _tap "$1" 1; }
