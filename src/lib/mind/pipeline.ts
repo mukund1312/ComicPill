@@ -93,7 +93,7 @@ function baseTags(ext: ExternalSeries): Tags {
 
 const toInput = (ext: ExternalSeries, over: Partial<SeriesInput> = {}): SeriesInput => ({
   id: seriesId(ext.source, ext.externalId), source: ext.source, externalId: ext.externalId, title: ext.title, medium: ext.medium, year: ext.year ?? null,
-  runStatus: ext.status, units: ext.units, unitName: ext.unitName, tags: baseTags(ext), creators: ext.creators, description: ext.description, coverUrl: ext.coverUrl ?? null,
+  runStatus: ext.status, units: ext.units, unitName: ext.unitName, tags: baseTags(ext), creators: ext.creators, description: ext.description, coverUrl: ext.coverUrl ?? (ext.source === 'local' ? `local:${ext.externalId}` : null),
   publisher: ext.publisher ?? null, artDriven: ext.hints?.artDriven ?? false, printStatus: 'unknown', priceRising: false, verified: ext.source !== 'ai', stub: false, judged: false, ...over,
 });
 
@@ -251,4 +251,35 @@ export function settleScreenshot(shotId: string, store: MindStore): void {
   const open = store.listCaptures(shotId).some((c) => c.status === 'needs_review' || c.status === 'needs_choice' || c.status === 'unmatched');
   const shot = store.getScreenshot(shotId);
   if (shot && (shot.status === 'needs_review' || shot.status === 'ready')) store.updateScreenshot(shotId, { status: open ? 'needs_review' : 'ready' });
+}
+
+/** The reader fixed a shaky read by typing the title. Search again with it; ask if it is still unclear. */
+export async function reresolveCapture(capture: CaptureRow, title: string, deps: Deps): Promise<'matched' | 'needs_choice' | 'unmatched' | 'offline'> {
+  const { store } = deps;
+  const shot = store.getScreenshot(capture.screenshotId);
+  const takenAt = shot?.takenAt ?? deps.now();
+  let ranked: Ranked[];
+  try { ranked = rankCandidates({ title, creators: capture.creators, medium: capture.medium }, await findCandidates(title, capture.medium, deps)); }
+  catch (e) { if (e instanceof LookupError) return 'offline'; ranked = []; }
+  const decision = decideMatch(ranked);
+  store.updateCapture(capture.id, { title });
+  let result: 'matched' | 'needs_choice' | 'unmatched';
+  if (decision.kind === 'confident') {
+    const r = await enrichSeries(decision.best.series, deps, takenAt);
+    store.updateCapture(capture.id, { status: 'matched', seriesId: r.id, options: null }); result = 'matched';
+  } else if (decision.kind === 'ambiguous') {
+    store.updateCapture(capture.id, { status: 'needs_choice', options: decision.options.map((o) => ({ series: o.series, score: o.score })) }); result = 'needs_choice';
+  } else {
+    const ext: ExternalSeries = { source: 'ai', externalId: norm(title).replace(/\s+/g, '-'), title, altTitles: [], medium: capture.medium, status: 'unknown', units: 0, unitName: 'volumes', genres: [], tags: [], creators: capture.creators, description: '', relations: [] };
+    const id = store.upsertSeries(toInput(ext)); store.markFound(id, takenAt);
+    store.updateCapture(capture.id, { status: 'unmatched', seriesId: id, options: null }); result = 'unmatched';
+  }
+  settleScreenshot(capture.screenshotId, store);
+  return result;
+}
+
+/** Keep an unverified card as it is: the reader has seen it and accepts it. */
+export function keepUnverified(capture: CaptureRow, store: MindStore): void {
+  store.updateCapture(capture.id, { status: 'matched' });
+  settleScreenshot(capture.screenshotId, store);
 }

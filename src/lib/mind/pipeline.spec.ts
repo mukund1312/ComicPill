@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import berserk from './remote/fixtures/anilist-berserk.json';
 import { memoryStore } from './memoryStore';
-import { approveScreenshots, chooseOption, drainQueue, enrichSeries, gateNewScreenshot, processQueued, type Deps } from './pipeline';
+import { approveScreenshots, chooseOption, drainQueue, enrichSeries, gateNewScreenshot, keepUnverified, processQueued, reresolveCapture, type Deps } from './pipeline';
 import type { ExternalSeries, FetchLike } from './remote/types';
 
 vi.mock('./remote/extract', async (orig) => ({ ...(await orig<typeof import('./remote/extract')>()), extractCaptures: vi.fn() }));
@@ -216,5 +216,37 @@ describe('relations', () => {
     const r = await enrichSeries(series(), mkDeps(), clock);
     expect(r.networkDown).toBe(true);
     expect(store.getSeries('comicvine:9')).toMatchObject({ judged: false, title: 'Paper Girls' });
+  });
+});
+
+describe('resolving what needed the reader’s eye', () => {
+  const lowConfidence = async () => {
+    extract.mockResolvedValue(reply(cand('Berzerk', 'low')));
+    const id = shot(); store.updateScreenshot(id, { status: 'queued', ocrText: 'x' });
+    await processQueued(id, mkDeps());
+    return { id, capture: store.dump().captures[0] };
+  };
+
+  it('a corrected title is searched again and becomes a verified series', async () => {
+    const { id, capture } = await lowConfidence();
+    judge.mockResolvedValue(judged());
+    expect(await reresolveCapture(capture, 'Berserk', mkDeps())).toBe('matched');
+    expect(store.getCapture(capture.id)).toMatchObject({ status: 'matched', seriesId: 'anilist:30002', title: 'Berserk' });
+    expect(store.getScreenshot(id)?.status).toBe('ready');
+  });
+
+  it('offline during the re-search changes nothing', async () => {
+    const { capture } = await lowConfidence();
+    expect(await reresolveCapture(capture, 'Berserk', mkDeps({ fetchImpl: async () => { throw new Error('offline'); } }))).toBe('offline');
+    expect(store.getCapture(capture.id)?.status).toBe('needs_review');
+  });
+
+  it('keeping an unverified card clears the screenshot’s Needs your eye', async () => {
+    extract.mockResolvedValue(reply(cand('Zzyzx Indie Zine Number Nine', 'high', 'comic')));
+    const id = shot(); store.updateScreenshot(id, { status: 'queued' });
+    await processQueued(id, mkDeps({ fetchImpl: async () => ({ ok: true, status: 200, json: async () => ({ data: { Page: { media: [] } } }) }) }));
+    expect(store.getScreenshot(id)?.status).toBe('needs_review');
+    keepUnverified(store.dump().captures[0], store);
+    expect(store.getScreenshot(id)?.status).toBe('ready');
   });
 });

@@ -20,4 +20,6 @@ dependencies {
   // 7z reader and its LZMA dependency.
   implementation "org.apache.commons:commons-compress:1.27.1"
   implementation "org.tukaani:xz:1.10"
+  // On-device text recognition (bundled model, no network, no Google Play services needed) for the Mind Space privacy gate.
+  implementation "com.google.mlkit:text-recognition:16.0.1"
 }

@@ -5,7 +5,7 @@ const live = (edges: PrereqEdge[]) => edges.filter((e) => !e.wrong);
 const byYearThenTitle = (a: Series, b: Series) => (a.year ?? 9999) - (b.year ?? 9999) || a.title.localeCompare(b.title);
 
 function toItem(s: Series, e: PrereqEdge): PlanItem {
-  return { id: s.id, title: s.title, units: unitsOf(s), importance: e.importance, confidence: e.confidence, status: s.status };
+  return { id: s.id, title: s.title, units: unitsOf(s), importance: e.importance, confidence: e.confidence, status: s.status, edge: { before: e.before, after: e.after } };
 }
 
 /**

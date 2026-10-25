@@ -20,6 +20,8 @@ import { installCrashLog } from '../src/lib/diagnostics/crashLog';
 import { color } from '../src/ui/tokens';
 import { AppearanceProvider, useAppearance } from '../src/ui/theme';
 import ReminderSync from '../src/features/settings/ReminderSync';
+import MindSync from '../src/features/mind/MindSync';
+import '../src/lib/mind/task';
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -44,7 +46,7 @@ export default function RootLayout() {
     );
   }
 
-  return <GestureHandlerRootView style={{ flex: 1 }}><AppearanceProvider><ReminderSync /><ThemedStack /></AppearanceProvider></GestureHandlerRootView>;
+  return <GestureHandlerRootView style={{ flex: 1 }}><AppearanceProvider><ReminderSync /><MindSync /><ThemedStack /></AppearanceProvider></GestureHandlerRootView>;
 }
 
 function ThemedStack() {

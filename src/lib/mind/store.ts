@@ -10,7 +10,7 @@ export interface MindStore {
 
   addCapture(c: Omit<CaptureRow, 'id' | 'createdAt'>): string;
   getCapture(id: string): CaptureRow | null;
-  updateCapture(id: string, patch: Partial<Pick<CaptureRow, 'status' | 'seriesId' | 'options'>>): void;
+  updateCapture(id: string, patch: Partial<Pick<CaptureRow, 'status' | 'seriesId' | 'options' | 'title'>>): void;
   listCaptures(screenshotId: string): CaptureRow[];
   deleteCaptures(screenshotId: string): void;
 

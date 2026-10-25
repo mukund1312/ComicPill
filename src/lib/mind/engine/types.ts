@@ -24,7 +24,11 @@ export type PrereqEdge = {
   wrong?: boolean;
 };
 
-export type PlanItem = { id: string; title: string; units: number; importance: Importance; confidence: Confidence; status: ReadStatus };
+export type PlanItem = {
+  id: string; title: string; units: number; importance: Importance; confidence: Confidence; status: ReadStatus;
+  /** The relation that put it in the list — what "looks wrong" flags. */
+  edge?: { before: string; after: string };
+};
 
 export type ReadingOrder = {
   /** Unfinished prerequisites, required ones first (oldest to newest), then helpful ones. */

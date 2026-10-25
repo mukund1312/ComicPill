@@ -13,6 +13,7 @@ type Native = {
   pdfPageSizes(path: string): Promise<number[][]>;
   renderPdfPage(path: string, index: number, dest: string, targetWidth: number): Promise<void>;
   grayThumbnail?(path: string, maxWidth: number): Promise<{ width: number; height: number; data: string }>;
+  recognizeText?(path: string): Promise<string>;
 };
 
 /** Optional: absent on iOS and in Expo Go, where guided view is simply unavailable. */

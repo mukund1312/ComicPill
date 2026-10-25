@@ -8,6 +8,10 @@ import android.net.Uri
 import android.os.ParcelFileDescriptor
 import android.util.Base64
 import com.github.junrar.Archive
+import com.google.android.gms.tasks.Tasks
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.github.junrar.exception.UnsupportedRarV5Exception
 import expo.modules.kotlin.exception.CodedException
 import expo.modules.kotlin.modules.Module
@@ -207,6 +211,24 @@ class ComicArchiveModule : Module() {
       decoded.recycle()
       return@AsyncFunction mapOf("width" to w, "height" to h, "data" to Base64.encodeToString(gray, Base64.NO_WRAP))
     }
+
+    // Text in a screenshot, read on the phone. Accepts file:// paths and content:// MediaStore uris.
+    AsyncFunction("recognizeText") { path: String ->
+      val context = appContext.reactContext ?: throw CodedException("NO_CONTEXT", "No Android context", null)
+      val uri = Uri.parse(path).let { if (it.scheme == null) Uri.fromFile(File(path)) else it }
+      val image = try {
+        InputImage.fromFilePath(context, uri)
+      } catch (e: Exception) {
+        throw CodedException("DECODE", "Cannot open image", e)
+      }
+      val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+      try {
+        return@AsyncFunction Tasks.await(recognizer.process(image)).text
+      } finally {
+        recognizer.close()
+      }
+    }
   }
 }
+
 

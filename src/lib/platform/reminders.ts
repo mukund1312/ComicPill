@@ -9,6 +9,7 @@ import { getPermission } from './permissions';
 import { reminderContent } from './remindersCore';
 
 const CHANNEL = 'reading-reminders';
+const DAILY_ID = 'daily-reminder';
 
 /** Call once at startup: show notifications while the app is open, and make
  *  sure Android has a channel to post them on. */
@@ -32,11 +33,13 @@ export async function syncReminder(
 ): Promise<SyncResult> {
   const N = getNotifications();
   if (!N) return 'unavailable';
-  await N.cancelAllScheduledNotificationsAsync();
+  // Only this reminder: other features (the weekly Mind Space digest) schedule their own.
+  await N.cancelScheduledNotificationAsync(DAILY_ID).catch(() => undefined);
   if (!s.remindersEnabled) return 'cancelled';
   if ((await getPermission('notifications')) !== 'granted') return 'no_permission';
 
   await N.scheduleNotificationAsync({
+    identifier: DAILY_ID,
     content: reminderContent(nextTitle),
     trigger: { type: N.SchedulableTriggerInputTypes.DAILY, hour: s.reminderHour, minute: s.reminderMinute, channelId: CHANNEL },
   });

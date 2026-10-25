@@ -49,6 +49,7 @@ export const sqliteStore: MindStore = {
     if (p.status !== undefined) sqlite.runSync('UPDATE ms_captures SET status = ? WHERE id = ?', p.status, id);
     if (p.seriesId !== undefined) sqlite.runSync('UPDATE ms_captures SET series_id = ? WHERE id = ?', p.seriesId, id);
     if (p.options !== undefined) sqlite.runSync('UPDATE ms_captures SET options_json = ? WHERE id = ?', p.options ? JSON.stringify(p.options) : null, id);
+    if (p.title !== undefined) sqlite.runSync('UPDATE ms_captures SET title = ? WHERE id = ?', p.title, id);
   },
   deleteCaptures: (sid) => { sqlite.runSync('DELETE FROM ms_captures WHERE screenshot_id = ?', sid); },
   listCaptures: (sid) => sqlite.getAllSync<CapR>('SELECT * FROM ms_captures WHERE screenshot_id = ? ORDER BY created_at', sid).map(cap),

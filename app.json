@@ -45,6 +45,14 @@
         }
       ],
       "expo-notifications",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "ComicPill looks only at the album you choose, to find comic screenshots for your reading plan.",
+          "granularPermissions": ["photo"],
+          "isAccessMediaLocationEnabled": false
+        }
+      ],
       "expo-splash-screen",
       "expo-secure-store",
       "expo-background-task"
