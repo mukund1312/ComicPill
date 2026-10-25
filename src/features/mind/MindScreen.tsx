@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { router } from 'expo-router';
 import DigestTab from './DigestTab';
 import InboxTab from './InboxTab';
 import LibraryTab from './LibraryTab';
@@ -14,9 +14,10 @@ import { color, font, radius, space, type } from '../../ui/tokens';
 
 type Tab = 'digest' | 'inbox' | 'library' | 'taste';
 
-export default function MindScreen() {
-  const params = useLocalSearchParams<{ tab?: string }>();
-  const [tab, setTab] = useState<Tab>((['digest', 'inbox', 'library', 'taste'] as const).find((t) => t === params.tab) ?? 'digest');
+export type MindTab = Tab;
+
+export default function MindScreen({ initialTab = 'digest' }: { initialTab?: Tab }) {
+  const [tab, setTab] = useState<Tab>(initialTab);
   const data = useMindData();
   const settings = useMindSettings();
   const waiting = data.shots.filter((s) => s.status === 'awaiting_approval' || s.status === 'needs_review').length;
@@ -39,7 +40,7 @@ export default function MindScreen() {
         ) : null}
         {tab === 'digest' ? <DigestTab data={data} refresh={data.refresh} /> : null}
         {tab === 'inbox' ? <InboxTab data={data} refresh={data.refresh} /> : null}
-        {tab === 'library' ? <LibraryTab data={data} /> : null}
+        {tab === 'library' ? <LibraryTab data={data} refresh={data.refresh} /> : null}
         {tab === 'taste' ? <TasteTab data={data} /> : null}
       </ScrollView>
     </AppShell>

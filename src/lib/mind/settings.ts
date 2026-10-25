@@ -27,12 +27,15 @@ export type MindSettings = {
   thresholds: Thresholds;
   weights: Weights;
   quizDone: boolean;
+  /** Most AI calls (screenshot reads + series tagging) per calendar month. */
+  aiCallsPerMonth: number;
+  aiCalls: { month: string; count: number };
 };
 
 export const DEFAULT_MIND_SETTINGS: MindSettings = {
   albumTitle: 'Screenshots', watching: false, autoSend: false, lastScanAt: 0, capacity: 4, readingDays: 7,
   digestEnabled: true, digestDay: 0, digestHour: 18, digestMinute: 0, monthlyBudget: null, typicalPrice: 15,
-  spent: { month: '', amount: 0 }, shelfTight: false, thresholds: DEFAULT_THRESHOLDS, weights: DEFAULT_WEIGHTS, quizDone: false,
+  spent: { month: '', amount: 0 }, shelfTight: false, thresholds: DEFAULT_THRESHOLDS, weights: DEFAULT_WEIGHTS, quizDone: false, aiCallsPerMonth: 300, aiCalls: { month: '', count: 0 },
 };
 
 const KEY = 'mind_settings';
@@ -42,7 +45,7 @@ const listeners = new Set<() => void>();
 function load(): MindSettings {
   try {
     const saved = JSON.parse(getMeta(KEY) ?? '{}') as Partial<MindSettings>;
-    return { ...DEFAULT_MIND_SETTINGS, ...saved, thresholds: { ...DEFAULT_THRESHOLDS, ...saved.thresholds }, weights: { ...DEFAULT_WEIGHTS, ...saved.weights }, spent: { ...DEFAULT_MIND_SETTINGS.spent, ...saved.spent } };
+    return { ...DEFAULT_MIND_SETTINGS, ...saved, thresholds: { ...DEFAULT_THRESHOLDS, ...saved.thresholds }, weights: { ...DEFAULT_WEIGHTS, ...saved.weights }, spent: { ...DEFAULT_MIND_SETTINGS.spent, ...saved.spent }, aiCalls: { ...DEFAULT_MIND_SETTINGS.aiCalls, ...saved.aiCalls } };
   } catch { return DEFAULT_MIND_SETTINGS; }
 }
 
@@ -87,3 +90,16 @@ export async function saveComicVineKey(key: string | null): Promise<void> {
   cvKey = key?.trim() || null;
   if (cvKey) await SecureStore.setItemAsync(CV_SLOT, cvKey); else await SecureStore.deleteItemAsync(CV_SLOT).catch(() => undefined);
 }
+
+/** The monthly cap on AI calls, counted on this phone. */
+export const aiBudget = {
+  allow(now: Date = new Date()): boolean {
+    const s = getMindSettings();
+    return (s.aiCalls.month === monthOf(now) ? s.aiCalls.count : 0) < s.aiCallsPerMonth;
+  },
+  spend(now: Date = new Date()): void {
+    const s = getMindSettings(); const month = monthOf(now);
+    updateMindSettings({ aiCalls: { month, count: (s.aiCalls.month === month ? s.aiCalls.count : 0) + 1 } });
+  },
+  used(now: Date = new Date()): number { const s = getMindSettings(); return s.aiCalls.month === monthOf(now) ? s.aiCalls.count : 0; },
+};

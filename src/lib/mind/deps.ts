@@ -5,7 +5,7 @@ import { prepareForScan } from '../scan/prepare';
 import { recognizeText } from './capture/ocr';
 import { searchCatalog } from './catalogDb';
 import type { Deps } from './pipeline';
-import { loadComicVineKey } from './settings';
+import { aiBudget, loadComicVineKey } from './settings';
 import { sqliteStore } from './sqliteStore';
 
 /** Everything the pipeline needs, with keys loaded. Works from the foreground and from the background task. */
@@ -22,5 +22,6 @@ export async function makeDeps(): Promise<Deps> {
     prepare: async (uri) => (await prepareForScan([uri]))[0] ?? null,
     ocr: recognizeText,
     now: () => Date.now(),
+    aiBudget: { allow: () => aiBudget.allow(), spend: () => aiBudget.spend() },
   };
 }

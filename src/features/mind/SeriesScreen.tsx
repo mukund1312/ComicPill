@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Card, ConfidenceTag, Cover, ScoreBadge, SectionTitle, SmallButton, VerdictChip } from './ui';
 import { useNotQuite } from './NotQuite';
 import { ActionSheet, PromptModal, type SheetOption } from '../reader/dialogs';
@@ -9,6 +9,8 @@ import { readingOrder } from '../../lib/mind/engine/readingPlanner';
 import { SIGNAL_LABEL } from '../../lib/mind/engine/tasteScorer';
 import type { ReadStatus } from '../../lib/mind/engine/types';
 import { buildAndSaveDigest } from '../../lib/mind/digestDb';
+import { findReaderComic } from '../../lib/mind/readerLink';
+import { listReaderComics } from '../../lib/reader/readerLibrary';
 import { getSeriesRow, loadGraph, markRelationWrong, rate, ratingOf, relationsDetail, setOverride, setReadStatus, sourcesOf } from '../../lib/mind/queries';
 import { recordSpend, useMindSettings } from '../../lib/mind/settings';
 import { makeScorer, verdictFor, volumesOf } from '../../lib/mind/taste';
@@ -36,14 +38,14 @@ export default function SeriesScreen() {
     const scored = scorer.score(row);
     return {
       row, scored, order: readingOrder(id, graph.series, graph.edges), titles: graph.series,
-      verdict: verdictFor(row, scored, settings), rating: ratingOf(id), sources: sourcesOf(id),
+      verdict: verdictFor(row, scored, settings), rating: ratingOf(id), sources: sourcesOf(id), readerId: findReaderComic(row.title, listReaderComics()),
       ignored: relationsDetail(id).filter((r) => r.wrong),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, tick, settings]);
 
   if (!view) return <SettingsPage title="Not found" subtitle="This comic isn’t in your Mind Space any more." />;
-  const { row, scored, order, verdict, rating, sources, ignored, titles } = view;
+  const { row, scored, order, verdict, rating, sources, ignored, titles, readerId } = view;
   const setStatus = (s: ReadStatus) => { setReadStatus(row.id, s); refresh(); };
 
   const why = () => setSheet({
@@ -69,6 +71,8 @@ export default function SeriesScreen() {
         </View>
         {!row.verified ? <Text style={styles.warn}>Not found in a comics database, so this is unverified: no reading order or details, and the score rests on little.</Text> : null}
         {row.description ? <Text style={[styles.body, { marginTop: space.md }]} numberOfLines={8}>{row.description}</Text> : null}
+
+        {readerId ? <View style={{ marginTop: space.md }}><SmallButton label="Read now — open your file" kind="primary" onPress={() => router.push(`/reader/${readerId}`)} /></View> : null}
 
         <SectionTitle>Where you are</SectionTitle>
         <View style={styles.row}>

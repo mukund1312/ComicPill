@@ -28,6 +28,8 @@ export type Deps = {
   /** On-device text. null = this phone can't read text. */
   ocr(uri: string): Promise<string | null>;
   now(): number;
+  /** A monthly cap on AI calls — the app's stand-in for a spending limit, since there is no server to hold one. */
+  aiBudget?: { allow(): boolean; spend(): void };
 };
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -122,6 +124,9 @@ export async function enrichSeries(ext: ExternalSeries, deps: Deps, foundAt: num
   }
   if (!needsAi) return { id };
 
+  // Over the monthly cap: keep the series untagged for now (it stays usable) and tag it when the limit resets.
+  if (deps.aiBudget && !deps.aiBudget.allow()) return { id, aiError: 'AI limit reached' };
+  deps.aiBudget?.spend();
   const judged = await judgeSeries(deps.ai, ext, deps.aiOptions);
   if (!judged.ok) return { id, aiError: judged.message, networkDown: judged.kind === 'network' };
   const j = judged.data;
@@ -148,7 +153,7 @@ export async function enrichSeries(ext: ExternalSeries, deps: Deps, foundAt: num
 
 // ---- step 2: approved screenshots go to the AI -------------------------------------------------------
 
-export type ProcessOutcome = 'done' | 'queued_offline' | 'needs_key' | 'failed';
+export type ProcessOutcome = 'done' | 'queued_offline' | 'needs_key' | 'limit_reached' | 'failed';
 
 /** Reuse a series the reader already has, instead of looking it up again. */
 function knownSeries(c: Candidate, deps: Deps): string | null {
@@ -169,6 +174,8 @@ export async function processQueued(shotId: string, deps: Deps): Promise<Process
   const image = await deps.prepare(shot.uri).catch(() => null);
   if (!image) { store.updateScreenshot(shotId, { status: 'error', error: 'This screenshot couldn’t be read (was it deleted?).' }); return 'failed'; }
 
+  if (deps.aiBudget && !deps.aiBudget.allow()) return requeue('This month’s limit of AI reads is used up. It resets next month, or raise it in settings.', 'limit_reached');
+  deps.aiBudget?.spend();
   const res = await extractCaptures(deps.ai, image, shot.ocrText ?? '', deps.aiOptions);
   if (!res.ok) {
     if (res.kind === 'no_key') return requeue(res.message, 'needs_key');
@@ -223,7 +230,7 @@ export async function drainQueue(deps: Deps): Promise<{ processed: number; stopp
   let processed = 0;
   for (const s of queued) {
     const out = await processQueued(s.id, deps);
-    if (out === 'queued_offline' || out === 'needs_key') return { processed, stoppedBy: out };
+    if (out === 'queued_offline' || out === 'needs_key' || out === 'limit_reached') return { processed, stoppedBy: out };
     processed++;
   }
   return { processed, stoppedBy: null };
@@ -283,3 +290,14 @@ export function keepUnverified(capture: CaptureRow, store: MindStore): void {
   store.updateCapture(capture.id, { status: 'matched' });
   settleScreenshot(capture.screenshotId, store);
 }
+
+/** "Add by title": search the catalog and the databases for something the reader typed, best matches first. */
+export async function searchForAdd(title: string, deps: Deps, medium: Medium = 'unknown'): Promise<Ranked[]> {
+  const q = title.trim();
+  if (!q) return [];
+  const found = await findCandidates(q, medium, deps);
+  return rankCandidates({ title: q, creators: [], medium }, found).filter((r) => r.score >= 0.4).slice(0, 6);
+}
+
+/** Put a chosen result into the library as a new find this week. */
+export const addFind = (ext: ExternalSeries, deps: Deps): Promise<EnrichResult> => enrichSeries(ext, deps, deps.now());

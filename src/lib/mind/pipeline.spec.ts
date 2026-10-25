@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import berserk from './remote/fixtures/anilist-berserk.json';
 import { memoryStore } from './memoryStore';
-import { approveScreenshots, chooseOption, drainQueue, enrichSeries, gateNewScreenshot, keepUnverified, processQueued, reresolveCapture, type Deps } from './pipeline';
+import { addFind, approveScreenshots, chooseOption, drainQueue, enrichSeries, gateNewScreenshot, keepUnverified, processQueued, reresolveCapture, searchForAdd, type Deps } from './pipeline';
 import type { ExternalSeries, FetchLike } from './remote/types';
 
 vi.mock('./remote/extract', async (orig) => ({ ...(await orig<typeof import('./remote/extract')>()), extractCaptures: vi.fn() }));
@@ -248,5 +248,64 @@ describe('resolving what needed the reader’s eye', () => {
     expect(store.getScreenshot(id)?.status).toBe('needs_review');
     keepUnverified(store.dump().captures[0], store);
     expect(store.getScreenshot(id)?.status).toBe('ready');
+  });
+});
+
+describe('the monthly cap on AI calls', () => {
+  const capped = (allowed: boolean[]) => { let i = 0; let spent = 0; return { budget: { allow: () => allowed[Math.min(i++, allowed.length - 1)], spend: () => { spent++; } }, spent: () => spent }; };
+
+  it('stops before reading a screenshot once the cap is reached, and keeps it queued', async () => {
+    const id = shot(); store.updateScreenshot(id, { status: 'queued', ocrText: 'x' });
+    const c = capped([false]);
+    expect(await processQueued(id, mkDeps({ aiBudget: c.budget }))).toBe('limit_reached');
+    expect(extract).not.toHaveBeenCalled();
+    expect(store.getScreenshot(id)).toMatchObject({ status: 'queued' });
+    expect(store.getScreenshot(id)?.error).toContain('limit');
+    expect(c.spent()).toBe(0);
+  });
+
+  it('counts each call it makes', async () => {
+    extract.mockResolvedValue(reply(cand('Berserk'))); judge.mockResolvedValue(judged());
+    const id = shot(); store.updateScreenshot(id, { status: 'queued', ocrText: 'x' });
+    const c = capped([true]);
+    await processQueued(id, mkDeps({ aiBudget: c.budget }));
+    expect(c.spent()).toBe(2); // one screenshot read + one series tagging
+  });
+
+  it('a series is still saved, untagged, when the cap lands between reading and tagging', async () => {
+    extract.mockResolvedValue(reply(cand('Berserk')));
+    const id = shot(); store.updateScreenshot(id, { status: 'queued', ocrText: 'x' });
+    await processQueued(id, mkDeps({ aiBudget: capped([true, false]).budget }));
+    expect(judge).not.toHaveBeenCalled();
+    expect(store.getSeries('anilist:30002')).toMatchObject({ judged: false, title: 'Berserk' });
+  });
+
+  it('draining stops at the cap instead of trying every screenshot', async () => {
+    shot('a'); shot('b'); store.listScreenshots().forEach((s) => store.updateScreenshot(s.id, { status: 'queued' }));
+    expect(await drainQueue(mkDeps({ aiBudget: capped([false]).budget }))).toEqual({ processed: 0, stoppedBy: 'limit_reached' });
+  });
+});
+
+describe('add by title', () => {
+  it('searches and lists the best matches, then adds the chosen one as a find', async () => {
+    judge.mockResolvedValue(judged());
+    const deps = mkDeps();
+    const options = await searchForAdd('Berserk', deps);
+    expect(options[0].series.title).toBe('Berserk');
+    expect(options.every((o) => o.score >= 0.4)).toBe(true);
+    const r = await addFind(options[0].series, deps);
+    expect(store.getSeries(r.id)).toMatchObject({ title: 'Berserk', readStatus: 'planned', foundAt: clock });
+  });
+  it('an empty search returns nothing and costs nothing', async () => {
+    expect(await searchForAdd('   ', mkDeps())).toEqual([]);
+    expect(fetchCalls).toBe(0);
+  });
+  it('works with no AI key: the series is saved with the database’s own genres', async () => {
+    judge.mockResolvedValue({ ok: false, kind: 'no_key', message: 'Add an API key in Settings first.' });
+    const deps = mkDeps({ ai: null });
+    const [first] = await searchForAdd('Berserk', deps);
+    const r = await addFind(first.series, deps);
+    expect(store.getSeries(r.id)?.tags.genre).toContain('action');
+    expect(store.getSeries(r.id)?.judged).toBe(false);
   });
 });

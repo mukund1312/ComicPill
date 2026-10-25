@@ -32,16 +32,16 @@ export async function scanNewScreenshots(store: MindStore, since?: number): Prom
   const album = await Album.get(s.albumTitle).catch(() => null);
   if (!album) return 0;
   const from = since ?? s.lastScanAt;
-  const assets = await new Query().album(album).gt(AssetField.CREATION_TIME, from).orderBy(AssetField.CREATION_TIME).limit(MAX_PER_SCAN).exe();
+  // Filter on modification time: it is always set, whereas a file added by a tool or a sync app can have no creation time at all.
+  const assets = await new Query().album(album).gt(AssetField.MODIFICATION_TIME, from).orderBy(AssetField.MODIFICATION_TIME).limit(MAX_PER_SCAN).exe();
   const rows: Array<{ assetId: string; uri: string; takenAt: number }> = [];
   let newest = from;
   for (const a of assets) {
     try {
       const info = await a.getInfo();
       if (info.mediaType !== MediaType.IMAGE) continue;
-      const takenAt = info.creationTime ?? Date.now();
-      rows.push({ assetId: a.id, uri: info.uri, takenAt });
-      newest = Math.max(newest, takenAt);
+      rows.push({ assetId: a.id, uri: info.uri, takenAt: info.creationTime ?? info.modificationTime ?? Date.now() });
+      newest = Math.max(newest, info.modificationTime ?? 0);
     } catch { /* an asset that vanished mid-scan is just skipped */ }
   }
   const added = rows.length ? store.addScreenshots(rows) : 0;

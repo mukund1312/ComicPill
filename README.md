@@ -315,6 +315,33 @@ ComicPill can also read comic files from the phone, Panels-style. Route: **Libra
 Rules this part follows: `formats` knows nothing about UI; the UI never opens a file itself;
 anything outside the plan's scope goes in a later list, not the code.
 
+## Mind Space: screenshots in, a weekly reading plan out (`src/lib/mind`, `src/features/mind`)
+
+Route: **Library → Mind Space** (`/mind`). It watches one album, finds comics in the screenshots you save, matches them to real
+series, orders what to read first, scores how likely you are to love each one, says whether to buy it in print, and turns the week's
+finds into a plan that fits how much you read.
+
+```
+screenshot ─► [phone] OCR + privacy gate ─► you approve ─► AI reads it ─► match (catalog / AniList / Comic Vine)
+          ─► relations (Verified or AI-suggested) ─► taste score ─► verdict rules ─► weekly digest + notification
+```
+
+| Part | Where | Notes |
+| --- | --- | --- |
+| Engine (pure, no phone types) | `lib/mind/engine/` | `readingPlanner` (read first / then, cycle-safe), `weekPlanner` (fit finds into your capacity, name the days), `tasteScorer` (five weighted signals, confidence, leave-one-out calibration), `verdictRules` (the rule table, first match wins), `digest`. |
+| Privacy gate | `capture/ocrFilter.ts` + native `recognizeText` | ML Kit reads the text on the phone. Private-looking screenshots are dropped before anything else happens. |
+| Lookups | `remote/` | AniList (no key), Comic Vine (your own key), the local 1,000-book catalog first. Responses cached 30 days. |
+| AI | `remote/extract.ts`, `remote/judge.ts` | One call per approved screenshot, one per new series. Output is validated like any untrusted input; the AI may only re-weigh relations a database stated. |
+| Pipeline | `pipeline.ts` | Everything outside (OCR, AI, network, clock) is injected, so offline queueing, rate limits, ambiguity and caching are unit-tested. |
+| Background | `task.ts`, `sync.ts`, `notify.ts` | WorkManager job via `expo-background-task` rescans and rebuilds the digest; one weekly notification. |
+
+Decisions worth knowing:
+- **No backend.** ComicPill is no-server by design, so the phone calls the AI and the databases directly with *your* keys (kept in secure
+  storage). The plan's spending cap becomes a monthly limit on AI calls, counted on the phone (Mind Space settings).
+- **Only comic screenshots can leave the phone, and only after you say so.** Auto-send is off by default.
+- **The verdict order is literal.** The plan's table puts "budget used" last, so a top-scoring, art-driven buy fires first; a test pins this.
+- **Phase 1's accuracy check needs your screenshots and key.** `MIND_EVAL_DIR=… ANTHROPIC_API_KEY=… npx vitest run src/lib/mind/eval.spec.ts`.
+
 ## Testing
 
 ```

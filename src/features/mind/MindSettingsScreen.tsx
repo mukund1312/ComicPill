@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { galleryAccess, listAlbumTitles, requestGalleryAccess } from '../../lib/mind/capture/scan';
@@ -8,7 +8,7 @@ import { DEFAULT_THRESHOLDS, type Thresholds } from '../../lib/mind/engine/verdi
 import { buildAndSaveDigest } from '../../lib/mind/digestDb';
 import { syncDigestNotification } from '../../lib/mind/notify';
 import { deleteAllMindData } from '../../lib/mind/queries';
-import { getMindSettings, loadComicVineKey, resetMindSettings, saveComicVineKey, updateMindSettings, useMindSettings } from '../../lib/mind/settings';
+import { aiBudget, getMindSettings, loadComicVineKey, resetMindSettings, saveComicVineKey, updateMindSettings, useMindSettings } from '../../lib/mind/settings';
 import { ratingEvents } from '../../lib/mind/taste';
 import { syncMindTask } from '../../lib/mind/task';
 import { requestPermission } from '../../lib/platform/permissions';
@@ -39,7 +39,7 @@ export default function MindSettingsScreen() {
   const [dayPicker, setDayPicker] = useState(false);
   const [cv, setCv] = useState('');
   const [cvSaved, setCvSaved] = useState<boolean | null>(null);
-  if (cvSaved === null) void loadComicVineKey().then((k) => setCvSaved(!!k));
+  useEffect(() => { void loadComicVineKey().then((k) => setCvSaved(!!k)); }, []);
 
   const resync = () => { try { const d = buildAndSaveDigest(); void syncDigestNotification(getMindSettings(), d); void syncMindTask(); } catch { /* nothing to plan yet */ } };
   const set = (patch: Parameters<typeof updateMindSettings>[0]) => { updateMindSettings(patch); resync(); };
@@ -106,11 +106,13 @@ export default function MindSettingsScreen() {
         <ActionRow label="Reset weights" onPress={() => set({ weights: DEFAULT_WEIGHTS })} last />
       </SettingsSection>
 
-      <SettingsSection title="Lookups" footer="Manga are looked up on AniList, no key needed. Western comics use Comic Vine, which needs your own free key from comicvine.gamespot.com/api. Claude or OpenAI keys are set under AI assistant.">
+      <SettingsSection title="Lookups" footer="One AI call per approved screenshot and one per new comic — the limit below is your spending guard. Manga are looked up on AniList, no key needed. Western comics use Comic Vine, which needs your own free key from comicvine.gamespot.com/api. Claude or OpenAI keys are set under AI assistant.">
         <TextField label={cvSaved ? 'Comic Vine key (saved — paste to replace)' : 'Comic Vine key'} value={cv} onChangeText={setCv} secure placeholder="Paste your key" />
         <ActionRow label="Save Comic Vine key" disabled={!cv.trim()} onPress={async () => { await saveComicVineKey(cv); setCv(''); setCvSaved(true); }} />
         {cvSaved ? <ActionRow label="Remove Comic Vine key" destructive onPress={async () => { await saveComicVineKey(null); setCvSaved(false); }} /> : null}
-        <LinkRow label="AI assistant (Claude / OpenAI key)" onPress={() => router.push('/ai-settings')} last />
+        <LinkRow label="AI assistant (Claude / OpenAI key)" onPress={() => router.push('/ai-settings')} />
+        <Stepper label="AI reads allowed per month" value={s.aiCallsPerMonth} min={20} max={2000} step={20} onChange={(v) => set({ aiCallsPerMonth: v })} />
+        <InfoRow label="Used this month" value={`${aiBudget.used()} of ${s.aiCallsPerMonth}`} last />
       </SettingsSection>
 
       <SettingsSection title="Privacy">

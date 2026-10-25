@@ -30,6 +30,7 @@ export default function InboxTab({ data, refresh }: { data: MindData; refresh: (
   const recent = useMemo(() => data.shots.filter((s) => s.takenAt > newest - 3 * DAY), [data.shots, newest]);
   const hidden = data.shots.filter((s) => s.status === 'skipped' || s.status === 'sensitive').length;
   const shown = data.shots.filter((s) => s.status !== 'skipped' && s.status !== 'sensitive' && s.status !== 'awaiting_approval');
+  const stuck = data.shots.filter((x) => x.status === 'queued');
   const selected = (id: string) => (picked ? picked.has(id) : true);
   const selectedIds = awaiting.filter((s) => selected(s.id)).map((s) => s.id);
 
@@ -105,6 +106,16 @@ export default function InboxTab({ data, refresh }: { data: MindData; refresh: (
         </Card>
       ) : null}
 
+      {stuck.length ? (
+        <Card>
+          <Text style={styles.reviewTitle}>{stuck.length} screenshot{stuck.length === 1 ? ' is' : 's are'} waiting to be read</Text>
+          <Text style={styles.small}>{stuck.find((x) => x.error)?.error ?? 'They send as soon as the phone is online.'}</Text>
+          <View style={styles.actions}>
+            {/key/i.test(stuck.find((x) => x.error)?.error ?? '') ? <SmallButton label="Add API key" kind="primary" onPress={() => router.push('/ai-settings')} /> : null}
+            <SmallButton label="Try again" disabled={!!busy} onPress={scanNow} />
+          </View>
+        </Card>
+      ) : null}
       {shown.length === 0 && !awaiting.length ? <EmptyState mark="◇" title="Inbox is clear" copy="Screenshot a comic and it shows up here within seconds of opening the app." /> : null}
       {shown.map((s) => (
         <Pressable key={s.id} onPress={() => resolve(s)}>

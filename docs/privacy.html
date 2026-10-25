@@ -29,11 +29,15 @@
   <h2>Reading your own comic files</h2>
   <p>You can open comic files (CBZ, CBR, CB7, ZIP, PDF and EPUB) that are already on your phone. ComicPill uses Android's system file picker, so it needs no storage permission and only sees the files you choose. Chosen files are copied into the app's private storage on your phone, and your reading progress, bookmarks, folders and collections are saved there too. None of it is uploaded anywhere. Removing a comic from the reader, or uninstalling the app, deletes the copy. Reading in incognito mode saves no progress at all.</p>
 
+  <h2>Mind Space: reading your comic screenshots (optional)</h2>
+  <p>If you turn on Mind Space, ComicPill watches <strong>one photo album you choose</strong> (usually “Screenshots”) and reads nothing else in your gallery. The text in each new screenshot is read <strong>on your phone</strong> first. Anything that looks private, such as one-time codes, bank messages, phone numbers or email addresses, is dropped on the spot: its text is not kept and it is never sent. Screenshots with nothing about comics are skipped too. The rest are shown to you, and <strong>only the ones you approve are sent</strong> (you can switch on auto-send later, and private ones are still never sent).</p>
+  <p>An approved screenshot is shrunk and re-saved (which removes location and camera details) and sent, with up to 1,500 characters of its text, straight from your phone to the AI provider you set up (Anthropic or OpenAI) using your own key. Comic titles are searched on AniList and, if you add a key, Comic Vine. Your ratings, scores, library and weekly plans stay on your phone. The weekly reading-plan notification is scheduled on your phone. “Delete all Mind Space data” in Mind Space settings clears all of this; your screenshots themselves are never touched.</p>
+
   <h2>Permissions, and why</h2>
   <ul>
     <li><strong>Camera</strong> — to take a profile photo and to photograph your comic shelf for scanning. Photos are used only when you take them.</li>
-    <li><strong>Photos</strong> — to choose a profile picture or screenshots of a digital library. Only the images you pick are read.</li>
-    <li><strong>Notifications</strong> — to send the daily reading reminder, if you turn it on. It is scheduled on your phone; nothing is sent from a server.</li>
+    <li><strong>Photos</strong> — to choose a profile picture or screenshots of a digital library (only the images you pick are read) and, only if you turn on Mind Space, to look at the one album you choose. ComicPill asks for access to images only, never video or audio. On Android 14 and later you can share just selected photos instead.</li>
+    <li><strong>Notifications</strong> — to send the daily reading reminder and the weekly Mind Space plan, if you turn them on. It is scheduled on your phone; nothing is sent from a server.</li>
   </ul>
   <p>You can change any of these at any time in your phone's Settings.</p>
 
