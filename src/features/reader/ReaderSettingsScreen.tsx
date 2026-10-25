@@ -8,6 +8,7 @@ import {
   BACKGROUND_LABEL, FIT_LABEL, MODE_LABEL, type Background, type Fit, type Preset,
 } from '../../lib/reader/presets';
 import type { ReaderMode } from '../../lib/reader/readerLibrary';
+import { clearCrash, lastCrash, type CrashRecord } from '../../lib/diagnostics/crashLog';
 import { createPreset, deletePreset, listPresets, loadReaderSettings, saveReaderSettings, type ReaderSettings } from '../../lib/reader/readerSettings';
 
 const describe = (p: Preset) => `${MODE_LABEL[p.mode]} · ${FIT_LABEL[p.fit]} · ${BACKGROUND_LABEL[p.background]}`;
@@ -22,6 +23,7 @@ export default function ReaderSettingsScreen() {
   const [fit, setFit] = useState<Fit>('contain');
   const [background, setBackground] = useState<Background>('dark');
   const [selected, setSelected] = useState<Preset | null>(null);
+  const [crash, setCrash] = useState<CrashRecord | null>(() => lastCrash());
 
   const patch = (p: Partial<ReaderSettings>) => setSettings(saveReaderSettings(p));
   const defaultPreset = presets.find((p) => p.id === settings.defaultPresetId) ?? presets[0];
@@ -66,6 +68,12 @@ export default function ReaderSettingsScreen() {
           <Button onPress={savePreset} disabled={!name.trim()}>Save preset</Button>
         </View>
       ) : null}
+
+      <SettingsSection title="Diagnostics" footer="ComicPill collects nothing. The last error is kept on this phone only, to help if you report a bug.">
+        {crash && crash.message
+          ? <ActionRow label="Last error" detail={`${new Date(crash.at).toLocaleString()} — ${crash.message.slice(0, 120)} · tap to clear`} onPress={() => { clearCrash(); setCrash(null); }} last />
+          : <InfoRow label="Last error" value="None" last />}
+      </SettingsSection>
 
       <ChoiceSheet
         visible={pickDefault} title="Default preset" selected={settings.defaultPresetId}

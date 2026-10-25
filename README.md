@@ -299,6 +299,22 @@ always be **one more event type**, handled in `applySignal`
 (`src/lib/engines/taste/profile.ts`) — not a direct mutation of
 `taste_profiles`. That's what keeps "rebuildable from events" true.
 
+## The file reader (`src/features/reader`, `src/lib/reader`, `modules/comic-archive`)
+
+ComicPill can also read comic files from the phone, Panels-style. Route: **Library → Read Files** (`/reader`).
+
+| Piece | Where | Notes |
+| --- | --- | --- |
+| Formats | `src/lib/reader/ComicSource.ts` | One interface: `getPageUri(i)`, `getPageSize(i)`, `scanSizes()`. The container is chosen by magic bytes, never the extension. |
+| ZIP / CBZ / EPUB | `ZipReader.ts` + `formats/zipIndex.ts` | Random-access zip reader: reads only the directory and the page asked for, so huge archives cost no memory. |
+| CBR / CB7 / PDF / panels | `modules/comic-archive` (Kotlin) | junrar (RAR4), commons-compress (7z), `PdfRenderer`, and a grayscale thumbnail for panel detection. Android only. |
+| Library data | `readerLibrary.ts`, `shelf.ts` | SQLite tables `reader_*`; filtering, sorting and Reading-now logic are pure and unit-tested. |
+| Reader UI | `ReaderScreen.tsx`, `ZoomableView.tsx` | Paged (LTR/RTL, one or two pages), webtoon, zoom, bookmarks, thumbnails, guided view. |
+| Guided view | `guided/panels.ts` | XY-cut on a thumbnail: find the gutter colour, split on gutter lines, order row by row. Falls back to the whole page. |
+
+Rules this part follows: `formats` knows nothing about UI; the UI never opens a file itself;
+anything outside the plan's scope goes in a later list, not the code.
+
 ## Testing
 
 ```

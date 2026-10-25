@@ -16,6 +16,7 @@ import {
 } from '@expo-google-fonts/playfair-display';
 import { BarlowCondensed_600SemiBold, BarlowCondensed_700Bold } from '@expo-google-fonts/barlow-condensed';
 import { initDatabase } from '../src/lib/db/client';
+import { installCrashLog } from '../src/lib/diagnostics/crashLog';
 import { color } from '../src/ui/tokens';
 import { AppearanceProvider, useAppearance } from '../src/ui/theme';
 import ReminderSync from '../src/features/settings/ReminderSync';
@@ -28,6 +29,7 @@ export default function RootLayout() {
   });
   const [dbReady] = useState(() => {
     initDatabase();
+    installCrashLog();
     return true;
   });
 

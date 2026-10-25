@@ -86,3 +86,38 @@ Anything that adds a native module still needs a new build.
   (`autoIncrement` + remote versioning). That is what lets a new APK install over an old one.
 - Expo Go can't run this app fully: notifications need a real build. The APK does.
 - iOS isn't set up; an Apple developer account (US$99/yr) and `-p ios` would be the path.
+
+## The file reader (Android)
+
+The reader that opens CBZ / CBR / CB7 / ZIP / PDF / EPUB files uses a small **local native module**
+(`modules/comic-archive`, Kotlin: junrar, commons-compress, `PdfRenderer`). It is picked up by
+autolinking, so a normal EAS build includes it — but it means **Expo Go can't open CBR, CB7 or PDF**
+and the reader's guided view needs a development or release build.
+
+Build on your own machine instead of EAS:
+```bash
+brew install openjdk@17                       # Gradle needs JDK 17, not the newest JDK
+export ANDROID_HOME=/opt/homebrew/share/android-commandlinetools   # or Android Studio's SDK
+export JAVA_HOME=/opt/homebrew/opt/openjdk@17
+npx expo prebuild --platform android          # generates the gitignored android/ folder
+cd android && ./gradlew assembleDebug -PreactNativeArchitectures=arm64-v8a
+```
+
+### Reader checklist before a release
+- [ ] Open one file of every kind: CBZ, a `.cbr` that is really a zip, real CBR, CB7, PDF, EPUB, a ZIP of CBZs.
+- [ ] RAR5 shows "not supported yet"; a password-protected archive shows its own message; a corrupt file never crashes.
+- [ ] Page through a 500-page CBZ and a file with 4000×6000 px pages; zoom in and out.
+- [ ] Webtoon mode on a file with very tall strips; close it and reopen — it resumes mid-page.
+- [ ] Rotate to landscape: two pages side by side, cover alone.
+- [ ] Guided view on a page with panels, and on a splash page (it falls back to the whole page).
+- [ ] Incognito: read a few pages, leave — the comic must not appear in *Reading now*.
+
+### Not done, needs you
+- **Crash reporting.** The app keeps the last error on the phone (Reader settings → Diagnostics) and
+  collects nothing. Firebase Crashlytics needs your own Firebase project and `google-services.json`;
+  adding it also means updating the privacy policy and the Play *Data safety* form.
+- **Baseline profile / R8.** Needs a release build plus a Macrobenchmark run; shrinking is off because
+  junrar and commons-compress would need keep rules written and tested first.
+- **Play Console.** Account, internal-testing track and store screenshots are yours to create. Check
+  Google's current closed-testing rule for new personal accounts before planning a public launch.
+- **RAR5.** junrar 7.5 reads RAR4 only. Supporting RAR5 means swapping in libarchive through the NDK.
