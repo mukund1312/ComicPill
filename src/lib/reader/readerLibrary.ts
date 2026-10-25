@@ -76,6 +76,8 @@ export const markComic = (id: string, read: boolean, pageCount: number): void =>
   else sqlite.runSync('UPDATE reader_comics SET progress_page = 0, progress_offset = 0, last_read_at = NULL WHERE id = ?', id);
 };
 
+export const renameReaderComic = (id: string, title: string): void => { sqlite.runSync('UPDATE reader_comics SET title = ? WHERE id = ?', title.trim(), id); };
+
 export const deleteReaderComic = (id: string): void => {
   sqlite.runSync('DELETE FROM reader_comics WHERE id = ?', id);
   sqlite.runSync('DELETE FROM reader_bookmarks WHERE comic_id = ?', id);
@@ -137,6 +139,8 @@ export const createCollection = (name: string): string => {
   sqlite.runSync('INSERT INTO reader_collections (id, name, created_at) VALUES (?, ?, ?)', id, name, Date.now());
   return id;
 };
+
+export const renameCollection = (id: string, name: string): void => { sqlite.runSync('UPDATE reader_collections SET name = ? WHERE id = ?', name.trim(), id); };
 
 export const deleteCollection = (id: string): void => {
   sqlite.runSync('DELETE FROM reader_collection_items WHERE collection_id = ?', id);

@@ -20,7 +20,12 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -49,13 +54,27 @@
         "expo-media-library",
         {
           "photosPermission": "ComicPill looks only at the album you choose, to find comic screenshots for your reading plan.",
-          "granularPermissions": ["photo"],
+          "granularPermissions": [
+            "photo"
+          ],
           "isAccessMediaLocationEnabled": false
         }
       ],
       "expo-splash-screen",
       "expo-secure-store",
-      "expo-background-task"
+      "expo-background-task",
+      "expo-build-properties",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "extraProguardRules": "# Archive readers used through reflection / ServiceLoader, and our own native module\n-keep class expo.modules.comicarchive.** { *; }\n-keep class com.github.junrar.** { *; }\n-keep class org.apache.commons.compress.archivers.** { *; }\n-keep class org.apache.commons.compress.compressors.** { *; }\n# Optional dependencies of commons-compress / junrar that are not shipped\n-dontwarn org.slf4j.**\n-dontwarn org.apache.commons.compress.**\n-dontwarn com.github.luben.zstd.**\n-dontwarn org.brotli.dec.**\n-dontwarn org.objectweb.asm.**\n-dontwarn org.tukaani.xz.**\n-dontwarn javax.annotation.**\n"
+          }
+        }
+      ],
+      "./plugins/withBaselineProfile"
     ]
   }
 }

@@ -8,7 +8,7 @@ import { EmptyState, Input, Pill, Progress } from '../../ui/primitives';
 import { color, font, radius, space, type } from '../../ui/tokens';
 import {
   collectionComicIds, collectionsForComic, createCollection, createFolder, deleteCollection, deleteFolder, listCollections, listFolders,
-  listReaderComics, markComic, renameFolder, setComicFolder, setComicPreset, setFolderPreset, toggleInCollection,
+  listReaderComics, markComic, renameCollection, renameFolder, renameReaderComic, setComicFolder, setComicPreset, setFolderPreset, toggleInCollection,
   type ReaderCollection, type ReaderComic, type ReaderFolder,
 } from '../../lib/reader/readerLibrary';
 import { pickAndImportComics, pickAndImportFolder, removeComic, type ImportResult } from '../../lib/reader/importComics';
@@ -102,6 +102,7 @@ export default function ReaderShelfScreen() {
     title: c.title,
     options: [
       { label: 'Open', onPress: () => router.push(`/reader/${c.id}`) },
+      { label: 'Rename', onPress: () => setPrompt({ title: 'Rename comic', initial: c.title, onSubmit: (name) => { renameReaderComic(c.id, name); refresh(); } }) },
       { label: isFinished(c) ? 'Mark as unread' : 'Mark as read', onPress: () => { markComic(c.id, !isFinished(c), c.pageCount); refresh(); } },
       { label: 'Add to collection…', onPress: () => pickCollectionFor(c) },
       { label: 'Move to folder…', onPress: () => pickFolderFor(c) },
@@ -121,7 +122,10 @@ export default function ReaderShelfScreen() {
 
   const collectionMenu = (col: ReaderCollection) => setSheet({
     title: col.name,
-    options: [{ label: 'Delete collection (keeps comics)', destructive: true, onPress: () => { deleteCollection(col.id); refresh(); } }],
+    options: [
+      { label: 'Rename', onPress: () => setPrompt({ title: 'Rename collection', initial: col.name, onSubmit: (name) => { renameCollection(col.id, name); refresh(); } }) },
+      { label: 'Delete collection (keeps comics)', destructive: true, onPress: () => { deleteCollection(col.id); refresh(); } },
+    ],
   });
 
   const addMenu = () => setSheet({
@@ -162,6 +166,11 @@ export default function ReaderShelfScreen() {
               <Pill label="Library" active={segment === 'library'} onPress={() => switchSegment('library')} />
               <Pill label="Collections" active={segment === 'collections'} onPress={() => switchSegment('collections')} />
             </ScrollView>
+            <View style={styles.quick}>
+              <Pressable accessibilityRole="button" disabled={busy} onPress={() => runImport(pickAndImportComics)} style={[styles.quickBtn, styles.quickPrimary]}><Text style={styles.quickPrimaryText}>{busy ? 'Importing…' : '＋ Import files'}</Text></Pressable>
+              <Pressable accessibilityRole="button" disabled={busy} onPress={() => runImport(pickAndImportFolder)} style={styles.quickBtn}><Text style={styles.quickText}>Import folder</Text></Pressable>
+              <Pressable accessibilityRole="button" onPress={() => setPrompt({ title: segment === 'collections' ? 'New collection' : 'New folder', submitLabel: 'Create', onSubmit: (name) => { if (segment === 'collections') createCollection(name); else createFolder(name); refresh(); } })} style={styles.quickBtn}><Text style={styles.quickText}>{segment === 'collections' ? 'New collection' : 'New folder'}</Text></Pressable>
+            </View>
             <Input placeholder="Search title, series or writer" value={query} onChangeText={setQuery} />
             {segment !== 'reading' ? (
               <View style={styles.subrow}>
@@ -209,6 +218,11 @@ const styles = StyleSheet.create({
   row: { gap: space.md, marginBottom: space.lg },
   header: { gap: space.md, marginBottom: space.md },
   pills: { gap: 8 },
+  quick: { flexDirection: 'row', gap: space.sm, flexWrap: 'wrap' },
+  quickBtn: { minHeight: 40, paddingHorizontal: space.md, borderRadius: radius.md, borderWidth: 1, borderColor: color.border, backgroundColor: color.surface2, alignItems: 'center', justifyContent: 'center' },
+  quickPrimary: { backgroundColor: color.accent, borderColor: color.accent },
+  quickText: { color: color.text, fontFamily: font.bodyMedium, fontSize: type.caption },
+  quickPrimaryText: { color: color.text, fontFamily: font.bodySemibold, fontSize: type.caption },
   subrow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   count: { color: color.muted, fontFamily: font.body, fontSize: type.caption },
   sort: { color: color.accent, fontFamily: font.bodyMedium, fontSize: type.caption },
