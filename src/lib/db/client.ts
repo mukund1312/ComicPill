@@ -188,6 +188,12 @@ CREATE TABLE IF NOT EXISTS taste_signals (
   source TEXT NOT NULL, strength REAL NOT NULL, created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS taste_signals_source ON taste_signals(source);
+
+CREATE TABLE IF NOT EXISTS reader_comics (
+  id TEXT PRIMARY KEY, title TEXT NOT NULL, path TEXT NOT NULL, format TEXT NOT NULL,
+  page_count INTEGER NOT NULL, cover_path TEXT, added_at INTEGER NOT NULL,
+  last_read_at INTEGER, progress_page INTEGER NOT NULL DEFAULT 0, mode TEXT NOT NULL DEFAULT 'ltr'
+);
 `;
 
 let bootstrapped = false;

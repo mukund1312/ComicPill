@@ -17,6 +17,7 @@ export default defineConfig({
       'src/lib/settings/**/*.spec.ts',
       'src/lib/state/**/*.spec.ts',
       'src/lib/platform/**/*.spec.ts',
+      'src/lib/reader/**/*.spec.ts',
     ],
   },
 });
