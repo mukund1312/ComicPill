@@ -16,9 +16,13 @@ adb emu kill >/dev/null 2>&1; sleep 3
 adb wait-for-device; until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; do sleep 3; done; sleep 8
 SDK=$(adb shell getprop ro.build.version.sdk | tr -d '\r'); log "== $AVD  (API $SDK, $(adb shell getprop ro.build.version.release | tr -d '\r'), RAM $(adb shell grep MemTotal /proc/meminfo | awk '{print int($2/1024)}') MB)"
 
+# A leftover build signed with another key (e.g. a debug build) would block the install and the old app would run instead.
+adb uninstall $PKG >/dev/null 2>&1
 adb install -r "$APK" 2>&1 | tail -1 | tee -a "$OUT/report.txt"
 if [ "$SDK" -ge 33 ]; then adb shell pm grant $PKG android.permission.READ_MEDIA_IMAGES; else adb shell pm grant $PKG android.permission.READ_EXTERNAL_STORAGE; fi
 adb shell mkdir -p /sdcard/Download /sdcard/Pictures/Screenshots
+# Only the fixtures may be in Downloads, or the picker's first screen no longer shows them. (Emulator storage only.)
+adb shell 'rm -rf /sdcard/Download/*'
 for f in "$FIX"/Bundle.zip; do [ -f "$f" ] && adb push "$f" /sdcard/Download/ >/dev/null && adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d "file:///sdcard/Download/$(basename "$f")" >/dev/null; done
 adb push "$FIX/post_manga.png" /sdcard/Pictures/Screenshots/ >/dev/null; adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Pictures/Screenshots/post_manga.png >/dev/null
 
@@ -55,15 +59,21 @@ import_file() {  # $1 = file name; success means the comic really appeared on th
   wait_for 'documentsui' 40 || { log "  ! the file picker never opened for $file"; return 1; }
   sleep 2
   # The roots drawer works the same on every Android version; searching doesn't (older pickers have no search icon).
-  tapx "Show roots"; sleep 1; tapx "Downloads"; sleep 3
-  tapx "$file" || { log "  ! picker did not list $file"; adb shell input keyevent 4; sleep 1; adb shell input keyevent 4; return 1; }
-  if wait_for "text=\"$title\"" 60; then log "  imported $file"; return 0; fi
+  # A freshly installed picker opens on Recent, which lists the pushed file; otherwise go through the roots drawer.
+  if ! tapx "$file"; then tapx "Show roots"; sleep 1; tapx "Downloads"; sleep 3; tapx "$file"; fi || { log "  ! picker did not list $file"; adb shell input keyevent 4; sleep 1; adb shell input keyevent 4; return 1; }
+  if wait_for "text=\"$title\"\\|text=\"[1-9][0-9]* comics\\?\"" 90; then log "  imported $file"; return 0; fi
   if screen_has "could not be imported"; then log "  ! import of $file failed: $(adb exec-out cat /sdcard/ui.xml | python3 -c "import sys,re;print(re.findall(r'text=\"([^\"]*could[^\"]*|[^\"]*: [^\"]*)\"',sys.stdin.read())[:2])")"; tapx "OK"; return 1; fi
   log "  ! $file never appeared on the shelf"; return 1
 }
 # One bundle zip holds all four, so a single trip through the picker imports every format (and tests bundle import).
 import_file "Bundle.zip"
 if wait_for 'text="4 comics"' 180; then log "  bundle imported all 4 comics (CBZ, 7z, RAR, PDF)"; else log "  ! bundle did not give 4 comics: $(adb exec-out cat /sdcard/ui.xml | python3 -c "import sys,re;print(re.findall(r'text=\"([0-9]+ comics?)\"',sys.stdin.read()))")"; fi
+shot shelf
+# Everything imported into Read Files must also be in the main Library (owned digitally).
+adb shell am start -a android.intent.action.VIEW -d "comicpill:///library" $PKG >/dev/null; sleep 5
+adb shell input swipe 540 1700 540 700 300; sleep 1
+n=0; for t in "Test7z" "Test4" "Nightwatch 01"; do screen_has "text=\"$t\"" && n=$((n+1)); done; shot library_link
+if [ $n -ge 2 ]; then log "  Read Files imports appear in the Library ($n of 3 visible)"; else log "  ! Library is missing imported comics ($n of 3 visible)"; fi
 shot shelf
 for t in "Nightwatch 01" Test7z Test4 Test; do
   adb shell am start -a android.intent.action.VIEW -d "comicpill:///reader" $PKG >/dev/null; sleep 4

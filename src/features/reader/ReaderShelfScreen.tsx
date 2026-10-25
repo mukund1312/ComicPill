@@ -49,7 +49,8 @@ export default function ReaderShelfScreen() {
   const [comics, setComics] = useState<ReaderComic[]>([]);
   const [folders, setFolders] = useState<ReaderFolder[]>([]);
   const [collections, setCollections] = useState<ReaderCollection[]>([]);
-  const [segment, setSegment] = useState<Segment>('library');
+  const [segment, setSegment] = useState<Segment>(() => (readingNow(listReaderComics()).length ? 'reading' : 'library'));
+  const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortKey>('recent');
   const [openFolderRaw, setOpenFolder] = useState<string | null>(null);
@@ -200,6 +201,15 @@ export default function ReaderShelfScreen() {
     ],
   });
 
+  const viewMenu = () => setSheet({
+    title: 'View',
+    options: [
+      { label: 'Grid', checked: view === 'grid', onPress: () => setView('grid') },
+      { label: 'List', checked: view === 'list', onPress: () => setView('list') },
+      ...SORTS.map((k) => ({ label: `Sort: ${SORT_LABEL[k]}`, checked: sort === k, onPress: () => setSort(k) })),
+    ],
+  });
+
   const switchSegment = (s: Segment) => { setSegment(s); setOpenFolder(null); setOpenCollection(null); };
 
   const empty = segment === 'reading'
@@ -242,7 +252,7 @@ export default function ReaderShelfScreen() {
   };
 
   return (
-    <AppShell active="read" title="Read now" right={<Pressable accessibilityRole="button" accessibilityLabel="Add" onPress={addMenu} disabled={busy}><Text style={styles.add}>{busy ? '…' : '＋'}</Text></Pressable>}>
+    <AppShell active="read" title="Read now" right={<View style={styles.headerActions}><Pressable accessibilityRole="button" accessibilityLabel="Search" onPress={() => { setSearchOpen((o) => !o); if (searchOpen) setQuery(''); }} hitSlop={8}><Text style={styles.searchIcon}>⌕</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel="Add" onPress={addMenu} disabled={busy} hitSlop={8}><Text style={styles.add}>{busy ? '…' : '＋'}</Text></Pressable></View>}>
       <FlashList
         key={`${view}-${columns}`}
         data={cells}
@@ -258,20 +268,11 @@ export default function ReaderShelfScreen() {
               <Pill label="Library" active={segment === 'library'} onPress={() => switchSegment('library')} />
               <Pill label="Collections" active={segment === 'collections'} onPress={() => switchSegment('collections')} />
             </ScrollView>
-            <View style={styles.quick}>
-              <PressableScale accessibilityRole="button" disabled={busy} onPress={importHere} style={[styles.quickBtn, styles.quickPrimary]}><Text style={styles.quickPrimaryText}>{busy ? 'Importing…' : openFolder ? '＋ Import here' : '＋ Import files'}</Text></PressableScale>
-              <PressableScale accessibilityRole="button" disabled={busy} onPress={() => runImport(pickAndImportFolder)} style={styles.quickBtn}><Text style={styles.quickText}>Import folder</Text></PressableScale>
-              <PressableScale accessibilityRole="button" onPress={() => router.push('/reader/opds')} style={styles.quickBtn}><Text style={styles.quickText}>OPDS</Text></PressableScale>
-              <PressableScale accessibilityRole="button" onPress={() => setPrompt({ title: segment === 'collections' ? 'New collection' : 'New folder', submitLabel: 'Create', onSubmit: (name) => { if (segment === 'collections') createCollection(name); else createFolder(name); refresh(); } })} style={styles.quickBtn}><Text style={styles.quickText}>{segment === 'collections' ? 'New collection' : 'New folder'}</Text></PressableScale>
-            </View>
-            <Input placeholder="Search title, series or writer" value={query} onChangeText={setQuery} />
+            {searchOpen || query ? <Input placeholder="Search title, series or writer" value={query} onChangeText={setQuery} /> : null}
             {segment !== 'reading' ? (
               <View style={styles.subrow}>
                 {inside ? <Pressable onPress={() => { setOpenFolder(null); setOpenCollection(null); }}><Text style={styles.back}>‹ {insideName}</Text></Pressable> : <Text style={styles.count}>{segment === 'collections' ? `${collections.length} ${collections.length === 1 ? 'collection' : 'collections'}` : `${comics.length} ${comics.length === 1 ? 'comic' : 'comics'}`}</Text>}
-                <View style={styles.subActions}>
-                  <Pressable accessibilityRole="button" accessibilityLabel={view === 'grid' ? 'Show as list' : 'Show as grid'} onPress={() => setView(view === 'grid' ? 'list' : 'grid')} hitSlop={8}><Text style={styles.sort}>{view === 'grid' ? '☰ List' : '▦ Grid'}</Text></Pressable>
-                  {!(segment === 'collections' && !openCollection) ? <Pressable onPress={() => setSort(SORTS[(SORTS.indexOf(sort) + 1) % SORTS.length])}><Text style={styles.sort}>Sort: {SORT_LABEL[sort]}</Text></Pressable> : null}
-                </View>
+                <Pressable accessibilityRole="button" accessibilityLabel="View and sort" onPress={viewMenu} hitSlop={8}><Text style={styles.sort}>{view === 'grid' ? '▦' : '☰'}  {SORT_LABEL[sort]} ▾</Text></Pressable>
               </View>
             ) : null}
           </Animated.View>
@@ -297,17 +298,13 @@ function makeStyles(c: ThemeColors, t: TypographyPreset) {
     content: { padding: space.lg, paddingBottom: 105 },
     header: { gap: space.md, marginBottom: space.md },
     pills: { gap: 8 },
-    quick: { flexDirection: 'row', gap: space.sm, flexWrap: 'wrap' },
-    quickBtn: { minHeight: 40, paddingHorizontal: space.md, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: c.surfaceRaised, alignItems: 'center', justifyContent: 'center' },
-    quickPrimary: { backgroundColor: c.secondary, borderColor: c.secondary },
-    quickText: { color: c.textPrimary, fontFamily: t.bodyMedium, fontSize: 13 },
-    quickPrimaryText: { color: c.secondaryForeground, fontFamily: t.bodySemibold, fontSize: 13 },
     subrow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    subActions: { flexDirection: 'row', gap: space.lg },
     count: { color: c.textSecondary, fontFamily: t.body, fontSize: 13 },
     sort: { color: c.primary, fontFamily: t.bodyMedium, fontSize: 13 },
     back: { color: c.primary, fontFamily: t.bodySemibold, fontSize: 16 },
     add: { color: c.primary, fontSize: 28 },
+    headerActions: { flexDirection: 'row', alignItems: 'center', gap: space.lg },
+    searchIcon: { color: c.primary, fontSize: 26 },
     cell: { gap: 6, marginBottom: space.lg, alignSelf: 'center' },
     cover: { aspectRatio: 2 / 3, borderRadius: radius.sm, backgroundColor: c.surfaceRaised, overflow: 'hidden', borderWidth: 1, borderColor: c.border, alignItems: 'center', justifyContent: 'center' },
     coverList: { width: 58, aspectRatio: undefined, height: 86 },

@@ -305,6 +305,10 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
   const rateThis = () => { if (comic.workId) router.push(`/check-in/${comic.workId}`); };
   const menuOptions: SheetOption[] = [
     ...(comic.workId ? [{ label: 'I’m done — rate this comic…', onPress: rateThis }] : []),
+    ...(guidedAvailable() && !webtoon && !spread ? [{ label: guided ? 'Turn off guided view' : 'Guided view (panel by panel)', onPress: () => { setGuided((g) => !g); setOverlay(false); } }] : []),
+    { label: 'All pages…', onPress: () => setGalleryOpen(true) },
+    { label: 'Bookmarks…', onPress: () => setBookmarksOpen(true) },
+    ...MODES.map(([m, label]) => ({ label: `Reading mode: ${label}`, checked: mode === m, onPress: () => changeMode(m) })),
     { label: 'Display, filters and page animation…', onPress: () => setDisplayOpen(true) },
     { label: 'Copy or translate text on this page…', onPress: () => { void readPageText(); } },
     { label: guidedActive ? 'Share this panel…' : 'Share this page…', onPress: () => { void sharePage(); } },
@@ -389,9 +393,6 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
           <Pressable accessibilityRole="button" accessibilityLabel={bookmarks.has(page) ? 'Remove bookmark' : 'Add bookmark'} onPress={onToggleBookmark} hitSlop={10}>
             <Text style={[styles.icon, bookmarks.has(page) && styles.iconActive]}>{bookmarks.has(page) ? '★' : '☆'}</Text>
           </Pressable>
-          {guidedAvailable() && !webtoon && !spread ? <Pressable accessibilityRole="button" accessibilityLabel="Guided view" accessibilityState={{ selected: guided }} onPress={() => { setGuided((g) => !g); setOverlay(false); }} hitSlop={10}><Text style={[styles.icon, guided && styles.iconActive]}>◎</Text></Pressable> : null}
-          <Pressable accessibilityRole="button" accessibilityLabel="All pages" onPress={() => setGalleryOpen(true)} hitSlop={10}><Text style={styles.icon}>▦</Text></Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel="Bookmarks" onPress={() => setBookmarksOpen(true)} hitSlop={10}><Text style={styles.icon}>☰</Text></Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel="More" onPress={() => setMenuOpen(true)} hitSlop={10}><Text style={styles.icon}>⋯</Text></Pressable>
         </Animated.View>
         <Animated.View entering={FadeInDown.duration(180)} exiting={FadeOutDown.duration(140)} style={[styles.bottom, { paddingBottom: insets.bottom + space.md }]}>
@@ -399,17 +400,10 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
           <Scrubber page={page} total={total} rtl={rtl} onSeek={(p) => goToPage(p, false)} />
           <View style={landscape ? styles.footerRow : undefined}>
             <Text style={styles.counter}>{page + 1} / {total}</Text>
-            <View style={styles.modes}>
-              {MODES.map(([m, label]) => (
-                <Pressable key={m} onPress={() => changeMode(m)} style={[styles.mode, mode === m && styles.modeActive]}>
-                  <Text style={[styles.modeText, mode === m && styles.modeTextActive]}>{label}</Text>
-                </Pressable>
-              ))}
-            </View>
           </View>
         </Animated.View>
       </> : null}
-      <ActionSheet visible={menuOpen} title="This page" options={menuOptions} onClose={() => setMenuOpen(false)} />
+      <ActionSheet visible={menuOpen} title={comic.title} options={menuOptions} onClose={() => setMenuOpen(false)} />
       <ReaderDisplaySheet visible={displayOpen} value={display} onChange={changeDisplay} onClose={() => setDisplayOpen(false)} />
       <PageTextSheet value={pageText} onClose={() => setPageText(null)} />
       <Modal visible={galleryOpen} animationType="slide" onRequestClose={() => setGalleryOpen(false)} statusBarTranslucent>
