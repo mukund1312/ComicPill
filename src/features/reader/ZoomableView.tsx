@@ -18,6 +18,8 @@ type Props = {
 const MAX_SCALE = 4;
 const DOUBLE_TAP_SCALE = 2.5;
 const EDGE_SLACK = 2;
+/** Finger travel before pan decides between moving the picture and handing off to the pager. */
+const DECIDE_AFTER = 8;
 
 /**
  * Pinch (about the fingers), double-tap (about the tap), and pan with momentum. At 1× — or when
@@ -26,7 +28,7 @@ const EDGE_SLACK = 2;
 export function ZoomableView({ width, height, contentWidth = width, contentHeight = height, onTap, children }: Props) {
   const scale = useSharedValue(1); const tx = useSharedValue(0); const ty = useSharedValue(0);
   const s0 = useSharedValue(1); const x0 = useSharedValue(0); const y0 = useSharedValue(0);
-  const lastTouchX = useSharedValue(0); const panning = useSharedValue(false);
+  const startTouchX = useSharedValue(0); const panning = useSharedValue(false);
 
   const maxX = (s: number) => { 'worklet'; return Math.max(0, (contentWidth * s - width) / 2); };
   const maxY = (s: number) => { 'worklet'; return Math.max(0, (contentHeight * s - height) / 2); };
@@ -47,12 +49,13 @@ export function ZoomableView({ width, height, contentWidth = width, contentHeigh
 
   const pan = Gesture.Pan()
     .manualActivation(true)
-    .onTouchesDown((e) => { lastTouchX.value = e.allTouches[0]?.x ?? 0; })
+    .onTouchesDown((e) => { startTouchX.value = e.allTouches[0]?.x ?? 0; })
     .onTouchesMove((e, manager) => {
       if (panning.value) return;
       if (scale.value <= 1.01) { manager.fail(); return; }
-      const x = e.allTouches[0]?.x ?? 0; const dx = x - lastTouchX.value; lastTouchX.value = x;
-      if (e.numberOfTouches === 1 && Math.abs(dx) > EDGE_SLACK) {
+      const dx = (e.allTouches[0]?.x ?? 0) - startTouchX.value;
+      if (e.numberOfTouches === 1) {
+        if (Math.abs(dx) < DECIDE_AFTER) return; // not enough movement to know where the finger is heading
         const limit = maxX(scale.value);
         // Pushing past an edge hands the swipe to the pager (next/previous page).
         if ((dx > 0 && tx.value >= limit - EDGE_SLACK) || (dx < 0 && tx.value <= -limit + EDGE_SLACK)) { manager.fail(); return; }

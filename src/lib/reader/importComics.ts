@@ -24,7 +24,9 @@ async function importFile(uri: string, name: string, result: ImportResult, depth
     } catch (e) {
       // A plain zip with no pages of its own may be a bundle of comics: import each one inside.
       if (e instanceof ComicOpenError && e.code === 'no-pages' && depth === 0) {
-        const nested = listNestedComics(stored.uri);
+        // Only zips can hold nested comics; anything else keeps its original "no pages" error.
+        let nested: string[] = [];
+        try { nested = listNestedComics(stored.uri); } catch { /* not a zip */ }
         if (nested.length) {
           for (const entry of nested) {
             const tmp = new File(Paths.cache, `nested-${randomUUID()}`);

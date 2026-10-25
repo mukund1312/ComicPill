@@ -87,7 +87,8 @@ function Reader({ comic, source, sizes }: { comic: ReaderComic; source: ComicSou
   const listRef = useRef<FlatList<number[]>>(null);
 
   const rtl = mode === 'rtl'; const webtoon = mode === 'webtoon';
-  const spread = width > height && !webtoon;
+  const landscape = width > height;
+  const spread = landscape && !webtoon;
   const sizeList: Sizes = useMemo(() => sizes ?? Array.from({ length: total }, () => null), [sizes, total]);
 
   const units = useMemo(() => buildUnits(sizeList, spread), [sizeList, spread]);
@@ -220,15 +221,17 @@ function Reader({ comic, source, sizes }: { comic: ReaderComic; source: ComicSou
           <Pressable accessibilityRole="button" accessibilityLabel="Bookmarks" onPress={() => setBookmarksOpen(true)} hitSlop={10}><Text style={styles.icon}>☰</Text></Pressable>
         </View>
         <View style={[styles.bottom, { paddingBottom: insets.bottom + space.md }]}>
-          <ThumbnailStrip key={rtl ? 'r' : 'l'} source={source} pages={allPages} current={page} bookmarks={bookmarks} onSelect={(p) => goToPage(p, false)} />
+          <ThumbnailStrip key={rtl ? 'r' : 'l'} compact={landscape} source={source} pages={allPages} current={page} bookmarks={bookmarks} onSelect={(p) => goToPage(p, false)} />
           <Scrubber page={page} total={total} rtl={rtl} onSeek={(p) => goToPage(p, false)} />
-          <Text style={styles.counter}>{page + 1} / {total}</Text>
-          <View style={styles.modes}>
-            {MODES.map(([m, label]) => (
-              <Pressable key={m} onPress={() => changeMode(m)} style={[styles.mode, mode === m && styles.modeActive]}>
-                <Text style={[styles.modeText, mode === m && styles.modeTextActive]}>{label}</Text>
-              </Pressable>
-            ))}
+          <View style={landscape ? styles.footerRow : undefined}>
+            <Text style={styles.counter}>{page + 1} / {total}</Text>
+            <View style={styles.modes}>
+              {MODES.map(([m, label]) => (
+                <Pressable key={m} onPress={() => changeMode(m)} style={[styles.mode, mode === m && styles.modeActive]}>
+                  <Text style={[styles.modeText, mode === m && styles.modeTextActive]}>{label}</Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
         </View>
       </> : null}
@@ -335,9 +338,10 @@ const styles = StyleSheet.create({
   icon: { color: color.text, fontSize: 24 },
   iconActive: { color: color.collectGold },
   bottom: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: space.lg, paddingTop: space.md, gap: space.md, backgroundColor: '#000000cc' },
-  track: { height: 28, justifyContent: 'center', backgroundColor: color.border, borderRadius: radius.pill, overflow: 'hidden' },
+  track: { height: 20, justifyContent: 'center', backgroundColor: color.border, borderRadius: radius.pill, overflow: 'hidden' },
   fillBar: { position: 'absolute', top: 0, bottom: 0, backgroundColor: color.accent },
   counter: { color: color.muted, fontFamily: font.bodyMedium, fontSize: type.caption, textAlign: 'center' },
+  footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   modes: { flexDirection: 'row', gap: space.sm, justifyContent: 'center' },
   mode: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: radius.pill, borderWidth: 1, borderColor: color.border },
   modeActive: { backgroundColor: color.accent, borderColor: color.accent },
