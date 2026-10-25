@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import { galleryAvailable } from '../../lib/mind/capture/mediaLibrary';
 import { galleryAccess, listAlbumTitles, requestGalleryAccess } from '../../lib/mind/capture/scan';
 import { DAY_NAMES } from '../../lib/mind/engine/weekPlanner';
 import { SIGNALS, SIGNAL_LABEL, DEFAULT_WEIGHTS, suggestWeights, type Signal } from '../../lib/mind/engine/tasteScorer';
@@ -46,6 +47,7 @@ export default function MindSettingsScreen() {
 
   const toggleWatching = async (on: boolean) => {
     if (!on) { set({ watching: false }); return; }
+    if (!galleryAvailable()) { Alert.alert('Needs the full app', 'Watching a screenshot album can’t run inside Expo Go. Install the ComicPill app (APK or development build) to use it. Adding comics by title works here.'); return; }
     let access = await galleryAccess();
     if (access === 'denied') access = await requestGalleryAccess();
     if (access === 'denied') { Alert.alert('Photos access is off', 'Allow photo access in your phone’s settings to let ComicPill watch one album.'); return; }
