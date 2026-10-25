@@ -1,6 +1,9 @@
 import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSheetDrag } from '../../ui/sheetDrag';
 import { color, font, radius, space, type } from '../../ui/tokens';
 
 export type PageText = { loading: boolean; text: string | null; unavailable?: boolean } | null;
@@ -10,11 +13,14 @@ export const translateUrl = (text: string) => `https://translate.google.com/?sl=
 /** Text read off the page on this phone, ready to copy, translate or share. */
 export function PageTextSheet({ value, onClose }: { value: PageText; onClose: () => void }) {
   const insets = useSafeAreaInsets();
+  const drag = useSheetDrag(onClose);
   const text = value?.text?.trim() ?? '';
   return (
     <Modal visible={!!value} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={[styles.sheet, { paddingBottom: insets.bottom + space.lg }]} onPress={() => undefined}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+<Pressable style={styles.backdrop} onPress={onClose}>
+<GestureDetector gesture={drag.gesture}>
+<Animated.View style={[styles.sheet, { paddingBottom: insets.bottom + space.lg }, drag.style]}>
           <View style={styles.handle} />
           <Text style={styles.heading}>Text on this page</Text>
           {value?.loading ? <ActivityIndicator color={color.accent} style={{ marginVertical: space.xl }} /> : value?.unavailable ? (
@@ -30,8 +36,10 @@ export function PageTextSheet({ value, onClose }: { value: PageText; onClose: ()
               <Text style={styles.note}>Translate opens Google Translate with this text. It is only sent if you tap it.</Text>
             </>
           )}
-        </Pressable>
+        </Animated.View>
+</GestureDetector>
       </Pressable>
+</GestureHandlerRootView>
     </Modal>
   );
 }

@@ -4,6 +4,7 @@ import { randomUUID } from 'expo-crypto';
 import { Directory, File, Paths } from 'expo-file-system';
 import { ComicOpenError, extractNestedComic, listNestedComics, openComicSource } from './ComicSource';
 import { parseComicInfo, displayTitle } from './formats/comicInfo';
+import { linkReaderComic, unlinkReaderComic } from './libraryLink';
 import { createFolder, deleteReaderComic, getReaderComic, insertReaderComic } from './readerLibrary';
 
 export type ImportResult = { imported: string[]; failed: Array<{ name: string; reason: string }> };
@@ -57,6 +58,8 @@ async function importFile(uri: string, name: string, result: ImportResult, opts:
       series: info.series ?? null, issue: info.number ?? null, writer: info.writer ?? null, folderId: opts.folderId ?? null,
       mode: info.rtl ? 'rtl' : 'ltr',
     });
+    // Into the library too, owned digitally — and into the catalog if it isn't there yet.
+    try { linkReaderComic({ id, title: displayTitle(info, titleOf(name)), series: info.series ?? null, writer: info.writer ?? null, coverPath, workId: null }); } catch { /* the file is still readable without the link */ }
     source.close();
     result.imported.push(name);
   } catch (e) {
@@ -84,6 +87,7 @@ export async function pickAndImportComics(opts: ImportOptions = {}): Promise<Imp
 export function removeComic(id: string): void {
   const comic = getReaderComic(id);
   if (comic) { try { const dir = new File(comic.path).parentDirectory; if (dir.exists) dir.delete(); } catch { /* ignore */ } }
+  try { unlinkReaderComic(id); } catch { /* the library entry is cosmetic; the file removal matters more */ }
   deleteReaderComic(id);
 }
 

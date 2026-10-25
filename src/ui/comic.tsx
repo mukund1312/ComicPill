@@ -3,6 +3,7 @@ import { Image } from 'expo-image';
 import { color, font, radius, space, type } from './tokens';
 import { PurchaseBadge } from './primitives';
 import { COVER_ASSETS } from './coverAssets';
+import { fileCoverFor } from './fileCovers';
 import { useAppearance } from './theme';
 
 const coverColors = ['#5b1015', '#421619', '#182b35', '#302042', '#5b351b', '#172b26', '#402121'];
@@ -19,7 +20,8 @@ export function ComicCover({ title, workId, size = 'grid', status, onPress, recy
   // This fixed 2:3 size leaves room for three equal library columns on
   // compact phones without asking FlashList to measure every cover.
   const dims = { tiny: [44, 66], list: [58, 86], grid: [96, 144], hero: [132, 198] }[size];
-  const asset = workId ? COVER_ASSETS[workId] : undefined;
+  const fileCover = workId ? fileCoverFor(workId) : undefined;
+  const asset = workId ? COVER_ASSETS[workId] ?? (fileCover ? { uri: fileCover } : undefined) : undefined;
   return <Pressable testID={recyclingKey ? `cover-${recyclingKey}` : undefined} accessibilityRole={onPress ? 'button' : undefined} onPress={onPress} style={({ pressed }) => [styles.cover, { width: dims[0], height: dims[1], backgroundColor: asset ? c.surfaceRaised : tint(title), borderColor: `${c.textPrimary}20` }, pressed && { transform: [{ scale: 0.98 }] }]}>
     {asset ? (
       <Image source={asset} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" recyclingKey={recyclingKey} transition={120} />

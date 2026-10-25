@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSheetDrag } from '../../ui/sheetDrag';
 import { color, font, radius, space, type } from '../../ui/tokens';
 
 export type SheetOption = { label: string; onPress: () => void; destructive?: boolean; checked?: boolean };
@@ -8,19 +11,28 @@ export type SheetOption = { label: string; onPress: () => void; destructive?: bo
 /** Bottom action sheet (Android has no Alert with more than three buttons). */
 export function ActionSheet({ visible, title, options, onClose }: { visible: boolean; title?: string; options: SheetOption[]; onClose: () => void }) {
   const insets = useSafeAreaInsets();
+  const drag = useSheetDrag(onClose);
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={[styles.sheet, { paddingBottom: insets.bottom + space.md }]} onPress={() => undefined}>
-          {title ? <Text numberOfLines={1} style={styles.title}>{title}</Text> : null}
-          {options.map((o) => (
-            <Pressable key={o.label} accessibilityRole="button" style={styles.row} onPress={() => { onClose(); o.onPress(); }}>
-              <Text style={[styles.rowText, o.destructive && styles.destructive]}>{o.label}</Text>
-              {o.checked ? <Text style={styles.check}>✓</Text> : null}
-            </Pressable>
-          ))}
+      {/* A Modal is its own window, so it needs its own gesture root. Tap outside, or drag the sheet down, to close. */}
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <Pressable style={styles.backdrop} onPress={onClose}>
+          <GestureDetector gesture={drag.gesture}>
+            <Animated.View style={[styles.sheet, { paddingBottom: insets.bottom + space.md }, drag.style]}>
+              <Pressable onPress={() => undefined}>
+                <View style={styles.grab} />
+                {title ? <Text numberOfLines={1} style={styles.title}>{title}</Text> : null}
+                {options.map((o) => (
+                  <Pressable key={o.label} accessibilityRole="button" style={styles.row} onPress={() => { onClose(); o.onPress(); }}>
+                    <Text style={[styles.rowText, o.destructive && styles.destructive]}>{o.label}</Text>
+                    {o.checked ? <Text style={styles.check}>✓</Text> : null}
+                  </Pressable>
+                ))}
+              </Pressable>
+            </Animated.View>
+          </GestureDetector>
         </Pressable>
-      </Pressable>
+      </GestureHandlerRootView>
     </Modal>
   );
 }
@@ -57,6 +69,7 @@ const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: '#000000aa', justifyContent: 'flex-end' },
   center: { justifyContent: 'center', padding: space.xl },
   sheet: { backgroundColor: color.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, paddingTop: space.md, paddingHorizontal: space.lg },
+  grab: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: color.border, marginBottom: space.sm },
   title: { color: color.muted, fontFamily: font.bodyMedium, fontSize: type.caption, marginBottom: space.sm },
   row: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: color.border },
   rowText: { color: color.text, fontFamily: font.bodyMedium, fontSize: type.body },

@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSheetDrag } from '../../ui/sheetDrag';
 import type { PageAnimation, ReaderFilter } from '../../lib/reader/readerSettings';
 import { color, font, radius, space, type } from '../../ui/tokens';
 
@@ -30,10 +33,13 @@ function Slider({ value, min, max, onChange }: { value: number; min: number; max
 
 export function ReaderDisplaySheet({ visible, value, onChange, onClose }: { visible: boolean; value: Display; onChange: (patch: Partial<Display>) => void; onClose: () => void }) {
   const insets = useSafeAreaInsets();
+  const drag = useSheetDrag(onClose);
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={[styles.sheet, { paddingBottom: insets.bottom + space.lg }]} onPress={() => undefined}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+<Pressable style={styles.backdrop} onPress={onClose}>
+<GestureDetector gesture={drag.gesture}>
+<Animated.View style={[styles.sheet, { paddingBottom: insets.bottom + space.lg }, drag.style]}>
           <View style={styles.handle} />
           <Text style={styles.heading}>Display</Text>
 
@@ -50,8 +56,10 @@ export function ReaderDisplaySheet({ visible, value, onChange, onClose }: { visi
           <Text style={styles.label}>Borders</Text>
           <View style={styles.row}><Chip label={value.trimBorders ? 'Trimmed' : 'Keep margins'} active={value.trimBorders} onPress={() => onChange({ trimBorders: !value.trimBorders })} /></View>
           <Text style={styles.note}>Trimming cuts the blank margin off single pages so the art fills the screen. Full-bleed pages are left alone.</Text>
-        </Pressable>
+        </Animated.View>
+</GestureDetector>
       </Pressable>
+</GestureHandlerRootView>
     </Modal>
   );
 }

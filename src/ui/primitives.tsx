@@ -1,4 +1,7 @@
 import type { PropsWithChildren, ReactNode } from 'react';
+import Animated from 'react-native-reanimated';
+import { GestureDetector } from 'react-native-gesture-handler';
+import { useSheetDrag } from './sheetDrag';
 import { Pressable, StyleSheet, Text, TextInput, View, type ViewStyle } from 'react-native';
 import { color, font, radius, space, type } from './tokens';
 import { useAppearance } from './theme';
@@ -43,8 +46,22 @@ export function Progress({ value }: { value: number }) {
   const { theme } = useAppearance(); return <View style={[styles.progressTrack, { backgroundColor: theme.colors.border }]}><View style={[styles.progressFill, { backgroundColor: theme.colors.progress, width: `${Math.max(0, Math.min(1, value)) * 100}%` }]} /></View>;
 }
 
-export function Sheet({ title, children }: PropsWithChildren<{ title?: string }>) {
-  const { theme, typography } = useAppearance(); return <View style={[styles.sheet, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}><View style={[styles.handle, { backgroundColor: theme.colors.textMuted }]} />{title ? <Text style={[styles.sheetTitle, { color: theme.colors.textPrimary, fontFamily: typography.display }]}>{title}</Text> : null}{children}</View>;
+/** A bottom sheet. With `onClose` it also closes when you tap outside it or drag it down. */
+export function Sheet({ title, children, onClose }: PropsWithChildren<{ title?: string; onClose?: () => void }>) {
+  const { theme, typography } = useAppearance();
+  const drag = useSheetDrag(onClose);
+  return (
+    <>
+      {onClose ? <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} style={StyleSheet.absoluteFill} /> : null}
+      <GestureDetector gesture={drag.gesture}>
+        <Animated.View style={[styles.sheet, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }, drag.style]}>
+          <View style={[styles.handle, { backgroundColor: theme.colors.textMuted }]} />
+          {title ? <Text style={[styles.sheetTitle, { color: theme.colors.textPrimary, fontFamily: typography.display }]}>{title}</Text> : null}
+          {children}
+        </Animated.View>
+      </GestureDetector>
+    </>
+  );
 }
 
 export function Input({ placeholder, value, onChangeText, secureTextEntry = false }: { placeholder: string; value?: string; onChangeText?: (text: string) => void; secureTextEntry?: boolean }) {

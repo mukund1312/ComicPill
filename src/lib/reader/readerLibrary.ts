@@ -9,6 +9,8 @@ export type ReaderComic = ShelfComic & {
   issue: string | null; folderId: string | null; presetId: string | null;
   /** Has a password. Whether it is open right now is tracked in `lock.ts`. */
   locked: boolean;
+  /** The catalog / library entry this file is also known as. */
+  workId: string | null;
   /** Webtoon only: how far into the progress page you had scrolled, 0..1. */
   progressOffset: number;
   sizes: Array<{ width: number; height: number } | null> | null;
@@ -19,7 +21,7 @@ type Row = {
   added_at: number; last_read_at: number | null; progress_page: number; mode: string;
   progress_offset: number; sizes_json: string | null;
   series: string | null; issue: string | null; writer: string | null; folder_id: string | null; preset_id: string | null;
-  lock_hash: string | null;
+  lock_hash: string | null; work_id: string | null;
 };
 
 const parseSizes = (json: string | null): ReaderComic['sizes'] => {
@@ -30,7 +32,7 @@ const map = (r: Row): ReaderComic => ({
   id: r.id, title: r.title, path: r.path, format: r.format, pageCount: r.page_count, coverPath: r.cover_path,
   addedAt: r.added_at, lastReadAt: r.last_read_at, progressPage: r.progress_page, mode: r.mode as ReaderMode,
   progressOffset: r.progress_offset ?? 0, sizes: parseSizes(r.sizes_json),
-  series: r.series, issue: r.issue, writer: r.writer, folderId: r.folder_id, presetId: r.preset_id, locked: !!r.lock_hash,
+  series: r.series, issue: r.issue, writer: r.writer, folderId: r.folder_id, presetId: r.preset_id, locked: !!r.lock_hash, workId: r.work_id,
 });
 
 const uid = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;

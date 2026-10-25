@@ -16,6 +16,8 @@ import {
 } from '@expo-google-fonts/playfair-display';
 import { BarlowCondensed_600SemiBold, BarlowCondensed_700Bold } from '@expo-google-fonts/barlow-condensed';
 import { initDatabase } from '../src/lib/db/client';
+import { backfillReaderLinks } from '../src/lib/reader/libraryLink';
+import { loadFileCovers } from '../src/ui/fileCovers';
 import { installCrashLog } from '../src/lib/diagnostics/crashLog';
 import { color } from '../src/ui/tokens';
 import { AppearanceProvider, useAppearance } from '../src/ui/theme';
@@ -31,6 +33,8 @@ export default function RootLayout() {
   });
   const [dbReady] = useState(() => {
     initDatabase();
+    try { backfillReaderLinks(); } catch { /* the reader works without library links */ }
+    loadFileCovers();
     installCrashLog();
     return true;
   });

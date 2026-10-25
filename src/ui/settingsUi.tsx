@@ -4,6 +4,9 @@
 import type { PropsWithChildren, ReactNode } from 'react';
 import { Modal, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { space } from './tokens';
+import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated from 'react-native-reanimated';
+import { useSheetDrag } from './sheetDrag';
 import { useAppearance } from './theme';
 import { feedback } from '../lib/platform/feedback';
 
@@ -91,10 +94,13 @@ export function ChoiceSheet<T extends string>({ visible, title, message, choices
 }) {
   const { theme, typography } = useAppearance();
   const c = theme.colors;
+  const drag = useSheetDrag(onClose);
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+      <GestureHandlerRootView style={{ flex: 1 }}>
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close" accessibilityRole="button" />
-      <View style={[styles.sheet, { backgroundColor: c.surface, borderColor: c.border }]}>
+      <GestureDetector gesture={drag.gesture}>
+      <Animated.View style={[styles.sheet, { backgroundColor: c.surface, borderColor: c.border }, drag.style]}>
         <View style={[styles.handle, { backgroundColor: c.textMuted }]} />
         <Text style={[styles.sheetTitle, { color: c.textPrimary, fontFamily: typography.display }]}>{title}</Text>
         {message ? <Text style={[styles.detail, { color: c.textSecondary, fontFamily: typography.body, marginBottom: space.sm }]}>{message}</Text> : null}
@@ -120,7 +126,9 @@ export function ChoiceSheet<T extends string>({ visible, title, message, choices
         <Pressable accessibilityRole="button" onPress={onClose} style={styles.cancel}>
           <Text style={[styles.label, { color: c.textSecondary, fontFamily: typography.bodyMedium }]}>Cancel</Text>
         </Pressable>
-      </View>
+      </Animated.View>
+      </GestureDetector>
+      </GestureHandlerRootView>
     </Modal>
   );
 }

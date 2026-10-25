@@ -9,6 +9,8 @@ import { useKeepAwake } from 'expo-keep-awake';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { sqlite } from '../../lib/db/client';
+import { upsertLibraryEntry } from '../../lib/db/queries/library';
 import { ActionSheet, type SheetOption } from './dialogs';
 import { PageTextSheet, type PageText } from './PageTextSheet';
 import { ReaderDisplaySheet, supportsViewFilters, type Display } from './ReaderDisplaySheet';
@@ -138,6 +140,17 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
   const [bookmarks, setBookmarks] = useState<Set<number>>(() => new Set(listBookmarks(comic.id)));
   const startPage = Math.min(comic.progressPage, total - 1);
   const [page, setPage] = useState(startPage);
+  const askedRef = useRef(false);
+  // Opening a comic marks it as being read in the library; reaching the last page offers the rating survey once.
+  useEffect(() => {
+    if (!comic.workId) return;
+    try { const cur = sqlite.getFirstSync<{ status: string }>('SELECT status FROM user_library WHERE work_id = ?', comic.workId)?.status; if (!cur || cur === 'none') upsertLibraryEntry(comic.workId, { status: 'reading' }); } catch { /* library link is optional */ }
+  }, [comic.workId]);
+  useEffect(() => {
+    if (!comic.workId || askedRef.current || total < 3 || page < total - 1 || startPage >= total - 1) return;
+    askedRef.current = true;
+    Alert.alert('Finished?', 'Rate it and answer a quick taste survey so recommendations get better.', [{ text: 'Not yet', style: 'cancel' }, { text: 'Rate it', onPress: () => router.push(`/check-in/${comic.workId}`) }]);
+  }, [page, total, comic.workId, startPage]);
   const [anchor, setAnchor] = useState<Position>({ page: startPage, frac: comic.progressOffset });
   // Live position (updates every scroll); `anchor` is its last saved mirror, safe to read in render.
   const position = useRef<Position>({ page: startPage, frac: comic.progressOffset });
@@ -289,7 +302,9 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
     } catch { Alert.alert('Couldn’t share this page', 'Try again.'); }
   };
 
+  const rateThis = () => { if (comic.workId) router.push(`/check-in/${comic.workId}`); };
   const menuOptions: SheetOption[] = [
+    ...(comic.workId ? [{ label: 'I’m done — rate this comic…', onPress: rateThis }] : []),
     { label: 'Display, filters and page animation…', onPress: () => setDisplayOpen(true) },
     { label: 'Copy or translate text on this page…', onPress: () => { void readPageText(); } },
     { label: guidedActive ? 'Share this panel…' : 'Share this page…', onPress: () => { void sharePage(); } },

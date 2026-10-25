@@ -242,7 +242,7 @@ export default function ReaderShelfScreen() {
   };
 
   return (
-    <AppShell active="library" title="Read Files" right={<Pressable accessibilityRole="button" accessibilityLabel="Add" onPress={addMenu} disabled={busy}><Text style={styles.add}>{busy ? '…' : '＋'}</Text></Pressable>}>
+    <AppShell active="read" title="Read now" right={<Pressable accessibilityRole="button" accessibilityLabel="Add" onPress={addMenu} disabled={busy}><Text style={styles.add}>{busy ? '…' : '＋'}</Text></Pressable>}>
       <FlashList
         key={`${view}-${columns}`}
         data={cells}
