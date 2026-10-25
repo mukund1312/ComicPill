@@ -1,9 +1,10 @@
 // Root layout — minimal on purpose. This wires the app's boot sequence
 // (fonts, gesture root, local db init) but leaves screen composition to the
 // frontend build (see /docs for the design blueprint and API surface).
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import * as ScreenOrientation from 'expo-screen-orientation';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { View, ActivityIndicator } from 'react-native';
 import {
@@ -29,6 +30,9 @@ export default function RootLayout() {
     initDatabase();
     return true;
   });
+
+  // The app is portrait-only; app.json allows rotation so the reader can unlock it for two-page landscape.
+  useEffect(() => { ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => undefined); }, []);
 
   if (!fontsLoaded || !dbReady) {
     return (

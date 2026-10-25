@@ -194,6 +194,11 @@ CREATE TABLE IF NOT EXISTS reader_comics (
   page_count INTEGER NOT NULL, cover_path TEXT, added_at INTEGER NOT NULL,
   last_read_at INTEGER, progress_page INTEGER NOT NULL DEFAULT 0, mode TEXT NOT NULL DEFAULT 'ltr'
 );
+
+CREATE TABLE IF NOT EXISTS reader_bookmarks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, comic_id TEXT NOT NULL, page INTEGER NOT NULL, created_at INTEGER NOT NULL,
+  UNIQUE (comic_id, page)
+);
 `;
 
 let bootstrapped = false;
@@ -201,6 +206,10 @@ let bootstrapped = false;
 export function ensureSchema(): void {
   if (bootstrapped) return;
   sqlite.execSync(BOOTSTRAP_SQL);
+  // reader_comics gained columns after first release; CREATE IF NOT EXISTS won't add them.
+  const cols = sqlite.getAllSync<{ name: string }>('PRAGMA table_info(reader_comics)').map((c) => c.name);
+  if (!cols.includes('progress_offset')) sqlite.execSync('ALTER TABLE reader_comics ADD COLUMN progress_offset REAL NOT NULL DEFAULT 0');
+  if (!cols.includes('sizes_json')) sqlite.execSync('ALTER TABLE reader_comics ADD COLUMN sizes_json TEXT');
   bootstrapped = true;
 }
 

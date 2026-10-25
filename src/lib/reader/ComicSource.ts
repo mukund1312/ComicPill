@@ -1,119 +1,179 @@
 // The key abstraction: the reader asks for page N and never cares which container it came from.
 // eslint-disable-next-line import/no-unresolved -- package ships .ts source; tsc and Metro resolve it
-import { Directory, File, Paths } from 'expo-file-system';
-import { unzipSync } from 'fflate';
+import { Directory, File, FileMode, Paths } from 'expo-file-system';
 import { detectKind } from './formats/detect';
 import { extensionOf, selectImageEntries } from './formats/entries';
 import { findImageRef, parseContainer, parseOpf, resolvePath } from './formats/epub';
+import { readImageSize, type PageSize } from './formats/imageSize';
+import { ComicOpenError } from './errors';
+import { nativeArchive, translateNativeError, type NativeKind } from './nativeArchive';
+import { ZipReader } from './ZipReader';
 
-export type ComicFormat = 'cbz' | 'epub';
+export { ComicOpenError } from './errors';
+export type { PageSize } from './formats/imageSize';
 
-export class ComicOpenError extends Error {}
+export type ComicFormat = 'cbz' | 'epub' | 'cbr' | 'cb7';
 
 export type ComicSource = {
   format: ComicFormat;
   pageCount: number;
-  /** file:// uri of page `index`, decoded to the cache dir on first request. */
+  /** True when page sizes can be read without extracting whole pages (zip-based formats). */
+  cheapSizes: boolean;
+  /** file:// uri of page `index`, extracted to the cache dir on first request. */
   getPageUri(index: number): Promise<string>;
+  getPageSize(index: number): Promise<PageSize | null>;
+  /** Tell the source where the reader is so cache eviction never drops nearby pages. */
+  setFocus(index: number): void;
   close(): void;
 };
 
-const MIME_FREE_EXT: Record<string, string> = { jpeg: 'jpg' };
-
-function readEntry(data: Uint8Array, name: string): Uint8Array {
-  try {
-    const out = unzipSync(data, { filter: (f) => f.name === name });
-    const bytes = out[name];
-    if (!bytes) throw new Error('missing');
-    return bytes;
-  } catch {
-    throw new ComicOpenError(`Could not read "${name}" — the file may be corrupt or password-protected.`);
-  }
-}
-
-function listEntries(data: Uint8Array): string[] {
-  const names: string[] = [];
-  try {
-    unzipSync(data, { filter: (f) => { names.push(f.name); return false; } });
-  } catch {
-    throw new ComicOpenError('This file is corrupt or not a valid archive.');
-  }
-  return names;
-}
-
+const MAX_CACHED_PAGES = 40;
+const FOCUS_RADIUS = 4;
 const decoder = new TextDecoder();
 
-function epubPages(data: Uint8Array, names: string[]): string[] {
-  const nameSet = new Set(names);
-  const containerPath = 'META-INF/container.xml';
-  if (!nameSet.has(containerPath)) throw new ComicOpenError('EPUB is missing META-INF/container.xml.');
-  const opfPath = parseContainer(decoder.decode(readEntry(data, containerPath)));
-  if (!opfPath || !nameSet.has(opfPath)) throw new ComicOpenError('EPUB package file not found.');
-  const { manifest, spine } = parseOpf(decoder.decode(readEntry(data, opfPath)));
-  const pages: string[] = [];
-  for (const idref of spine) {
-    const item = manifest[idref];
-    if (!item) continue;
-    const full = resolvePath(opfPath, item.href);
-    if (item.mediaType.startsWith('image/')) { if (nameSet.has(full)) pages.push(full); continue; }
-    if (!nameSet.has(full)) continue;
-    const ref = findImageRef(decoder.decode(readEntry(data, full)));
-    if (!ref) continue;
-    const imagePath = resolvePath(full, ref);
-    if (nameSet.has(imagePath)) pages.push(imagePath);
-  }
-  return pages;
-}
+type Backend = {
+  format: ComicFormat;
+  pages: string[];
+  cheapSizes: boolean;
+  extract(entry: string, dest: File): Promise<void>;
+  head?(entry: string): Uint8Array;
+  dispose(): void;
+};
 
-function pageCacheDir(key: string): Directory {
-  const dir = new Directory(Paths.cache, 'reader', key);
+function makeSource(backend: Backend, cacheKey: string): ComicSource {
+  const dir = new Directory(Paths.cache, 'reader', cacheKey);
   if (!dir.exists) dir.create({ intermediates: true });
-  return dir;
-}
-
-/**
- * Open a comic file. Format is decided by magic bytes, not extension.
- * Whole archive is held in memory (fflate), pages are inflated one at a time — fine for
- * typical CBZ sizes; very large files will want a streaming reader later.
- */
-export async function openComicSource(fileUri: string, cacheKey: string): Promise<ComicSource> {
-  const file = new File(fileUri);
-  if (!file.exists) throw new ComicOpenError('File not found.');
-  const data = await file.bytes();
-  const kind = detectKind(data.subarray(0, 8));
-  if (kind === 'rar5') throw new ComicOpenError('RAR5 archives are not supported yet. Re-save the comic as CBZ.');
-  if (kind === 'rar4') throw new ComicOpenError('CBR (RAR) needs a native module that is not built yet. Re-save as CBZ for now.');
-  if (kind === 'sevenzip') throw new ComicOpenError('CB7 (7z) needs a native module that is not built yet. Re-save as CBZ for now.');
-  if (kind === 'pdf') throw new ComicOpenError('PDF needs a native renderer that is not built yet.');
-  if (kind !== 'zip') throw new ComicOpenError('Unrecognised file type.');
-
-  const names = listEntries(data);
-  const isEpub = names.includes('META-INF/container.xml');
-  const pages = isEpub ? epubPages(data, names) : selectImageEntries(names);
-  if (pages.length === 0) throw new ComicOpenError('No pages found in this file.');
-
-  const dir = pageCacheDir(cacheKey);
   const inflight = new Map<number, Promise<string>>();
+  const order: number[] = []; // extraction order, oldest first
+  const sizes = new Map<number, PageSize | null>();
+  let focus = 0;
+
+  const fileFor = (index: number) => new File(dir, `${index}.${extensionOf(backend.pages[index])}`);
+
+  const evict = () => {
+    while (order.length > MAX_CACHED_PAGES) {
+      const at = order.findIndex((i) => Math.abs(i - focus) > FOCUS_RADIUS);
+      if (at < 0) return;
+      const [victim] = order.splice(at, 1);
+      inflight.delete(victim);
+      try { const f = fileFor(victim); if (f.exists) f.delete(); } catch { /* cache is disposable */ }
+    }
+  };
 
   return {
-    format: isEpub ? 'epub' : 'cbz',
-    pageCount: pages.length,
+    format: backend.format,
+    pageCount: backend.pages.length,
+    cheapSizes: backend.cheapSizes,
     getPageUri(index) {
-      const cached = inflight.get(index);
-      if (cached) return cached;
+      const existing = inflight.get(index);
+      if (existing) return existing;
       const task = (async () => {
-        const entry = pages[index];
-        const ext = extensionOf(entry); const out = new File(dir, `${index}.${MIME_FREE_EXT[ext] ?? ext}`);
-        if (!out.exists) { out.create(); out.write(readEntry(data, entry)); }
+        const out = fileFor(index);
+        if (!out.exists) await backend.extract(backend.pages[index], out);
+        order.push(index); evict();
         return out.uri;
       })();
       inflight.set(index, task);
       task.catch(() => inflight.delete(index));
       return task;
     },
+    async getPageSize(index) {
+      if (sizes.has(index)) return sizes.get(index) ?? null;
+      let size: PageSize | null = null;
+      try { if (backend.head) size = readImageSize(backend.head(backend.pages[index])); } catch { size = null; }
+      sizes.set(index, size);
+      return size;
+    },
+    setFocus(index) { focus = index; },
     close() {
-      inflight.clear();
+      inflight.clear(); order.length = 0;
+      backend.dispose();
       try { if (dir.exists) dir.delete(); } catch { /* cache is disposable */ }
     },
   };
+}
+
+function epubPages(zip: ZipReader): string[] {
+  const containerPath = 'META-INF/container.xml';
+  const opfPath = parseContainer(decoder.decode(zip.readEntry(containerPath)));
+  if (!opfPath || !zip.has(opfPath)) throw new ComicOpenError('EPUB package file not found.');
+  const { manifest, spine } = parseOpf(decoder.decode(zip.readEntry(opfPath)));
+  const pages: string[] = [];
+  for (const idref of spine) {
+    const item = manifest[idref];
+    if (!item) continue;
+    const full = resolvePath(opfPath, item.href);
+    if (item.mediaType.startsWith('image/')) { if (zip.has(full)) pages.push(full); continue; }
+    if (!zip.has(full)) continue;
+    const ref = findImageRef(decoder.decode(zip.readEntry(full)));
+    if (!ref) continue;
+    const imagePath = resolvePath(full, ref);
+    if (zip.has(imagePath)) pages.push(imagePath);
+  }
+  return pages;
+}
+
+const writeBytes = (dest: File, bytes: Uint8Array) => { dest.create(); dest.write(bytes); };
+
+function zipBackend(file: File): Backend {
+  const zip = ZipReader.open(file);
+  try {
+    const isEpub = zip.has('META-INF/container.xml');
+    const pages = isEpub ? epubPages(zip) : selectImageEntries(zip.names());
+    if (pages.length === 0) throw new ComicOpenError('No pages found in this file.', 'no-pages');
+    return {
+      format: isEpub ? 'epub' : 'cbz', pages, cheapSizes: true,
+      extract: async (entry, dest) => writeBytes(dest, zip.readEntry(entry)),
+      head: (entry) => zip.readEntryHead(entry),
+      dispose: () => zip.close(),
+    };
+  } catch (e) { zip.close(); throw e; }
+}
+
+async function nativeBackend(file: File, kind: NativeKind): Promise<Backend> {
+  const native = nativeArchive(kind);
+  let names: string[];
+  try { names = await native.listEntries(file.uri, kind); } catch (e) { throw translateNativeError(e); }
+  const pages = selectImageEntries(names);
+  if (pages.length === 0) throw new ComicOpenError('No pages found in this file.', 'no-pages');
+  return {
+    format: kind === 'rar' ? 'cbr' : 'cb7', pages, cheapSizes: false,
+    extract: async (entry, dest) => {
+      try { await native.extractEntry(file.uri, kind, entry, dest.uri); } catch (e) { throw translateNativeError(e); }
+    },
+    dispose: () => undefined,
+  };
+}
+
+/** Open a comic file. The container is decided by magic bytes, never the extension. */
+export async function openComicSource(fileUri: string, cacheKey: string): Promise<ComicSource> {
+  const file = new File(fileUri);
+  if (!file.exists) throw new ComicOpenError('File not found.');
+  const handle = file.open(FileMode.ReadOnly);
+  let head: Uint8Array;
+  try { head = handle.readBytes(8); } finally { handle.close(); }
+  const kind = detectKind(head);
+
+  let backend: Backend;
+  if (kind === 'zip') backend = zipBackend(file);
+  else if (kind === 'rar4') backend = await nativeBackend(file, 'rar');
+  else if (kind === 'sevenzip') backend = await nativeBackend(file, '7z');
+  else if (kind === 'rar5') throw new ComicOpenError('RAR5 archives are not supported yet. Re-save the comic as CBZ.');
+  else if (kind === 'pdf') throw new ComicOpenError('PDF needs a native renderer that is not built yet.');
+  else throw new ComicOpenError('Unrecognised file type.');
+  return makeSource(backend, cacheKey);
+}
+
+const NESTED_COMIC = ['cbz', 'cbr', 'cb7', 'zip', 'epub'];
+
+/** Comic files packed inside a plain zip (a zip of CBZs, say). Empty unless the zip has no pages of its own. */
+export function listNestedComics(fileUri: string): string[] {
+  const zip = ZipReader.open(new File(fileUri));
+  try { return zip.names().filter((n) => !n.endsWith('/') && !n.split('/').some((p) => p.startsWith('.') || p === '__MACOSX') && NESTED_COMIC.includes(extensionOf(n))); }
+  finally { zip.close(); }
+}
+
+export function extractNestedComic(fileUri: string, entry: string, dest: File): void {
+  const zip = ZipReader.open(new File(fileUri));
+  try { writeBytes(dest, zip.readEntry(entry)); } finally { zip.close(); }
 }

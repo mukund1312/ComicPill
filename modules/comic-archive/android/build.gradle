@@ -1,0 +1,23 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'com.mukund.comicarchive'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.comicarchive"
+  defaultConfig {
+    versionCode 1
+    versionName "1.0.0"
+  }
+}
+
+dependencies {
+  // RAR4 reader (pure Java). RAR5 is not supported by junrar; the module reports that clearly.
+  implementation "com.github.junrar:junrar:7.5.5"
+  // 7z reader and its LZMA dependency.
+  implementation "org.apache.commons:commons-compress:1.27.1"
+  implementation "org.tukaani:xz:1.10"
+}
