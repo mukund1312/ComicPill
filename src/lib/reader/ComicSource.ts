@@ -12,13 +12,15 @@ import { ZipReader } from './ZipReader';
 export { ComicOpenError } from './errors';
 export type { PageSize } from './formats/imageSize';
 
-export type ComicFormat = 'cbz' | 'epub' | 'cbr' | 'cb7';
+export type ComicFormat = 'cbz' | 'epub' | 'cbr' | 'cb7' | 'pdf';
 
 export type ComicSource = {
   format: ComicFormat;
   pageCount: number;
-  /** True when page sizes can be read without extracting whole pages (zip-based formats). */
+  /** True when `scanSizes` is worth running (every format except ones with no size source). */
   cheapSizes: boolean;
+  /** Shapes of all pages, read without extracting them. Index-aligned; null where unreadable. */
+  scanSizes(isLive: () => boolean): Promise<Array<PageSize | null>>;
   /** file:// uri of page `index`, extracted to the cache dir on first request. */
   getPageUri(index: number): Promise<string>;
   getPageSize(index: number): Promise<PageSize | null>;
@@ -28,6 +30,8 @@ export type ComicSource = {
 };
 
 const MAX_CACHED_PAGES = 40;
+/** PDF pages are rasterised this wide: sharp on a phone, ~12 MB per page bitmap while rendering. */
+const PDF_RENDER_WIDTH = 1400;
 const FOCUS_RADIUS = 4;
 const decoder = new TextDecoder();
 
@@ -37,6 +41,8 @@ type Backend = {
   cheapSizes: boolean;
   extract(entry: string, dest: File): Promise<void>;
   head?(entry: string): Uint8Array;
+  /** Whole-archive size scan for backends where per-entry header reads would be quadratic. */
+  allSizes?(): Promise<Array<PageSize | null>>;
   dispose(): void;
 };
 
@@ -64,6 +70,16 @@ function makeSource(backend: Backend, cacheKey: string): ComicSource {
     format: backend.format,
     pageCount: backend.pages.length,
     cheapSizes: backend.cheapSizes,
+    async scanSizes(isLive) {
+      if (backend.allSizes) return backend.allSizes();
+      const out: Array<PageSize | null> = [];
+      for (let i = 0; i < backend.pages.length; i++) {
+        if (!isLive()) return out;
+        out.push(await this.getPageSize(i));
+        if (i % 25 === 24) await new Promise((r) => setTimeout(r, 0)); // keep the UI thread breathing
+      }
+      return out;
+    },
     getPageUri(index) {
       const existing = inflight.get(index);
       if (existing) return existing;
@@ -130,6 +146,25 @@ function zipBackend(file: File): Backend {
   } catch (e) { zip.close(); throw e; }
 }
 
+const toSize = (wh: number[]): PageSize | null => (wh[0] > 0 && wh[1] > 0 ? { width: wh[0], height: wh[1] } : null);
+
+async function pdfBackend(file: File): Promise<Backend> {
+  const native = nativeArchive('pdf');
+  let sizes: Array<PageSize | null>;
+  try { sizes = (await native.pdfPageSizes(file.uri)).map(toSize); } catch (e) { throw translateNativeError(e); }
+  if (sizes.length === 0) throw new ComicOpenError('No pages found in this file.', 'no-pages');
+  // Page "names" are just indices with a .jpg extension, so the cache layer treats them like any image.
+  const pages = sizes.map((_, i) => `${i}.jpg`);
+  return {
+    format: 'pdf', pages, cheapSizes: true,
+    allSizes: async () => sizes,
+    extract: async (entry, dest) => {
+      try { await native.renderPdfPage(file.uri, Number.parseInt(entry, 10), dest.uri, PDF_RENDER_WIDTH); } catch (e) { throw translateNativeError(e); }
+    },
+    dispose: () => undefined,
+  };
+}
+
 async function nativeBackend(file: File, kind: NativeKind): Promise<Backend> {
   const native = nativeArchive(kind);
   let names: string[];
@@ -137,7 +172,10 @@ async function nativeBackend(file: File, kind: NativeKind): Promise<Backend> {
   const pages = selectImageEntries(names);
   if (pages.length === 0) throw new ComicOpenError('No pages found in this file.', 'no-pages');
   return {
-    format: kind === 'rar' ? 'cbr' : 'cb7', pages, cheapSizes: false,
+    format: kind === 'rar' ? 'cbr' : 'cb7', pages, cheapSizes: true,
+    allSizes: async () => {
+      try { return (await native.imageSizes(file.uri, kind, pages)).map(toSize); } catch { return pages.map(() => null); }
+    },
     extract: async (entry, dest) => {
       try { await native.extractEntry(file.uri, kind, entry, dest.uri); } catch (e) { throw translateNativeError(e); }
     },
@@ -159,7 +197,7 @@ export async function openComicSource(fileUri: string, cacheKey: string): Promis
   else if (kind === 'rar4') backend = await nativeBackend(file, 'rar');
   else if (kind === 'sevenzip') backend = await nativeBackend(file, '7z');
   else if (kind === 'rar5') throw new ComicOpenError('RAR5 archives are not supported yet. Re-save the comic as CBZ.');
-  else if (kind === 'pdf') throw new ComicOpenError('PDF needs a native renderer that is not built yet.');
+  else if (kind === 'pdf') backend = await pdfBackend(file);
   else throw new ComicOpenError('Unrecognised file type.');
   return makeSource(backend, cacheKey);
 }

@@ -8,12 +8,18 @@ export type NativeKind = 'rar' | '7z';
 type Native = {
   listEntries(path: string, kind: NativeKind): Promise<string[]>;
   extractEntry(path: string, kind: NativeKind, entry: string, dest: string): Promise<void>;
+  /** [width, height] per entry, in one pass over the archive; [0, 0] when unreadable. */
+  imageSizes(path: string, kind: NativeKind, entries: string[]): Promise<number[][]>;
+  pdfPageSizes(path: string): Promise<number[][]>;
+  renderPdfPage(path: string, index: number, dest: string, targetWidth: number): Promise<void>;
 };
 
-export function nativeArchive(kind: NativeKind): Native {
+const LABEL = { rar: 'CBR', '7z': 'CB7', pdf: 'PDF' } as const;
+
+export function nativeArchive(kind: NativeKind | 'pdf'): Native {
   const mod = requireOptionalNativeModule<Native>('ComicArchive');
   if (!mod) {
-    throw new ComicOpenError(`${kind === 'rar' ? 'CBR' : 'CB7'} files need the Android development build of ComicPill. Re-save as CBZ to read it here.`);
+    throw new ComicOpenError(`${LABEL[kind]} files need the Android development build of ComicPill${kind === 'pdf' ? '' : '. Re-save as CBZ to read it here'}.`);
   }
   return mod;
 }

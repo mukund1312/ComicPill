@@ -26,12 +26,8 @@ const WEBTOON_FALLBACK_RATIO = 1.5;
 async function loadSizes(comic: ReaderComic, source: ComicSource, isLive: () => boolean): Promise<Sizes | null> {
   if (comic.sizes && comic.sizes.length === source.pageCount) return comic.sizes;
   if (!source.cheapSizes) return null;
-  const sizes: Sizes = [];
-  for (let i = 0; i < source.pageCount; i++) {
-    if (!isLive()) return null;
-    sizes.push(await source.getPageSize(i));
-    if (i % 25 === 24) await new Promise((r) => setTimeout(r, 0)); // keep the UI thread breathing
-  }
+  const sizes = await source.scanSizes(isLive);
+  if (!isLive()) return null;
   saveReaderSizes(comic.id, sizes);
   return sizes;
 }
