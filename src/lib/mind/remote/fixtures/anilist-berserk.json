@@ -1,0 +1,489 @@
+{
+ "data": {
+  "Page": {
+   "media": [
+    {
+     "id": 30002,
+     "title": {
+      "romaji": "Berserk",
+      "english": "Berserk",
+      "native": "\u30d9\u30eb\u30bb\u30eb\u30af"
+     },
+     "format": "MANGA",
+     "status": "RELEASING",
+     "volumes": null,
+     "chapters": null,
+     "genres": [
+      "Action",
+      "Adventure",
+      "Drama",
+      "Fantasy",
+      "Horror",
+      "Psychological"
+     ],
+     "tags": [
+      {
+       "name": "Tragedy",
+       "rank": 97
+      },
+      {
+       "name": "Seinen",
+       "rank": 95
+      },
+      {
+       "name": "Revenge",
+       "rank": 94
+      },
+      {
+       "name": "Male Protagonist",
+       "rank": 94
+      },
+      {
+       "name": "Demons",
+       "rank": 92
+      },
+      {
+       "name": "Cosmic Horror",
+       "rank": 90
+      },
+      {
+       "name": "Gore",
+       "rank": 88
+      },
+      {
+       "name": "Philosophy",
+       "rank": 86
+      }
+     ],
+     "description": "His name is Guts, the Black Swordsman, a feared warrior spoken of only in whispers. Bearer of a gigantic sword, an iron hand, and the scars of countless battles and tortures, his flesh is also indelibly marked with The Brand, an unholy symbol that draws the forces of darkness to him and dooms him as",
+     "coverImage": {
+      "large": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/medium/bx30002-Cul4OeN7bYtn.jpg"
+     },
+     "startDate": {
+      "year": 1989
+     },
+     "staff": {
+      "edges": [
+       {
+        "role": "Story & Art (vols 1-41)",
+        "node": {
+         "name": {
+          "full": "Kentarou Miura"
+         }
+        }
+       },
+       {
+        "role": "Supervisor (vols 41- )",
+        "node": {
+         "name": {
+          "full": "Kouji Mori"
+         }
+        }
+       },
+       {
+        "role": "Story & Art (vols 41- )",
+        "node": {
+         "name": {
+          "full": "Studio Gaga"
+         }
+        }
+       },
+       {
+        "role": "Translator (Spanish)",
+        "node": {
+         "name": {
+          "full": "Marc Bernab\u00e9"
+         }
+        }
+       }
+      ]
+     },
+     "relations": {
+      "edges": [
+       {
+        "relationType": "ADAPTATION",
+        "node": {
+         "id": 33,
+         "type": "ANIME",
+         "title": {
+          "romaji": "Kenpuu Denki Berserk",
+          "english": "Berserk"
+         },
+         "format": "TV",
+         "status": "FINISHED",
+         "volumes": null,
+         "startDate": {
+          "year": 1997
+         }
+        }
+       },
+       {
+        "relationType": "ADAPTATION",
+        "node": {
+         "id": 10218,
+         "type": "ANIME",
+         "title": {
+          "romaji": "Berserk: Ougon Jidai-hen I - Haou no Tamago",
+          "english": "Berserk: The Golden Age Arc I - The Egg of the King"
+         },
+         "format": "MOVIE",
+         "status": "FINISHED",
+         "volumes": null,
+         "startDate": {
+          "year": 2012
+         }
+        }
+       },
+       {
+        "relationType": "ADAPTATION",
+        "node": {
+         "id": 12113,
+         "type": "ANIME",
+         "title": {
+          "romaji": "Berserk: Ougon Jidai-hen II - Doldrey Kouryaku",
+          "english": "Berserk: The Golden Age Arc II - The Battle for Doldrey"
+         },
+         "format": "MOVIE",
+         "status": "FINISHED",
+         "volumes": null,
+         "startDate": {
+          "year": 2012
+         }
+        }
+       },
+       {
+        "relationType": "ADAPTATION",
+        "node": {
+         "id": 12115,
+         "type": "ANIME",
+         "title": {
+          "romaji": "Berserk: Ougon Jidai-hen III - Kourin",
+          "english": "Berserk: The Golden Age Arc III - The Advent"
+         },
+         "format": "MOVIE",
+         "status": "FINISHED",
+         "volumes": null,
+         "startDate": {
+          "year": 2013
+         }
+        }
+       },
+       {
+        "relationType": "ALTERNATIVE",
+        "node": {
+         "id": 36408,
+         "type": "MANGA",
+         "title": {
+          "romaji": "BERSERK THE PROTOTYPE",
+          "english": "Berserk: The Prototype"
+         },
+         "format": "ONE_SHOT",
+         "status": "FINISHED",
+         "volumes": null,
+         "startDate": {
+          "year": 1988
+         }
+        }
+       },
+       {
+        "relationType": "ADAPTATION",
+        "node": {
+         "id": 21560,
+         "type": "ANIME",
+         "title": {
+          "romaji": "Berserk",
+          "english": "Berserk (2016)"
+         },
+         "format": "TV",
+         "status": "FINISHED",
+         "volumes": null,
+         "startDate": {
+          "year": 2016
+         }
+        }
+       },
+       {
+        "relationType": "ADAPTATION",
+        "node": {
+         "id": 97643,
+         "type": "ANIME",
+         "title": {
+          "romaji": "Berserk 2",
+          "english": "Berserk 2"
+         },
+         "format": "TV",
+         "status": "FINISHED",
+         "volumes": null,
+         "startDate": {
+          "year": 2017
+         }
+        }
+       },
+       {
+        "relationType": "OTHER",
+        "node": {
+         "id": 95821,
+         "type": "MANGA",
+         "title": {
+          "romaji": "Berserk: Shinen no Kami 2",
+          "english": null
+         },
+         "format": "ONE_SHOT",
+         "status": "FINISHED",
+         "volumes": null,
+         "startDate": {
+          "year": 1996
+         }
+        }
+       },
+       {
+        "relationType": "CHARACTER",
+        "node": {
+         "id": 100299,
+         "type": "MANGA",
+         "title": {
+          "romaji": "Berserk: Honoo Ryuu no Kishi",
+          "english": "Berserk: The Flame Dragon Knight"
+         },
+         "format": "NOVEL",
+         "status": "FINISHED",
+         "volumes": 1,
+         "startDate": {
+          "year": 2017
+         }
+        }
+       },
+       {
+        "relationType": "ADAPTATION",
+        "node": {
+         "id": 155011,
+         "type": "ANIME",
+         "title": {
+          "romaji": "Berserk: Ougon Jidai-hen - MEMORIAL EDITION",
+          "english": "Berserk: The Golden Age Arc - Memorial Edition"
+         },
+         "format": "TV",
+         "status": "FINISHED",
+         "volumes": null,
+         "startDate": {
+          "year": 2022
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "id": 101625,
+     "title": {
+      "romaji": "Boushoku no Berserk: Ore Dake Level to Iu Gainen wo Toppa Suru THE COMIC",
+      "english": "Berserk of Gluttony",
+      "native": "\u66b4\u98df\u306e\u30d9\u30eb\u30bb\u30eb\u30af\uff5e\u4ffa\u3060\u3051\u30ec\u30d9\u30eb\u3068\u3044\u3046\u6982\u5ff5\u3092\u7a81\u7834\u3059\u308b\uff5e THE COMIC"
+     },
+     "format": "MANGA",
+     "status": "RELEASING",
+     "volumes": null,
+     "chapters": null,
+     "genres": [
+      "Action",
+      "Adventure",
+      "Drama",
+      "Fantasy",
+      "Romance"
+     ],
+     "tags": [
+      {
+       "name": "Shounen",
+       "rank": 85
+      },
+      {
+       "name": "Male Protagonist",
+       "rank": 82
+      },
+      {
+       "name": "Revenge",
+       "rank": 68
+      },
+      {
+       "name": "Female Harem",
+       "rank": 42
+      }
+     ],
+     "description": "Fate Graphite has never tasted true power. Born into a world with two kinds of people\u2014those with superior skills and those without\u2014he\u2019s been shunned his entire life. Fate\u2019s skill is Gluttony, a curse that leaves him constantly hungry\u2026 until he awakens its terrible potential. When he kills someone, h",
+     "coverImage": {
+      "large": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/medium/nx101625-kmxzdK6xnkUU.jpg"
+     },
+     "startDate": {
+      "year": 2018
+     },
+     "staff": {
+      "edges": [
+       {
+        "role": "Story & Art",
+        "node": {
+         "name": {
+          "full": "Daisuke Takino"
+         }
+        }
+       },
+       {
+        "role": "Original Story",
+        "node": {
+         "name": {
+          "full": "Ichika Isshiki"
+         }
+        }
+       },
+       {
+        "role": "Character Design",
+        "node": {
+         "name": {
+          "full": "Fame"
+         }
+        }
+       },
+       {
+        "role": "Translator (English, vols 1-8)",
+        "node": {
+         "name": {
+          "full": "Amanda Haley"
+         }
+        }
+       }
+      ]
+     },
+     "relations": {
+      "edges": [
+       {
+        "relationType": "ADAPTATION",
+        "node": {
+         "id": 100687,
+         "type": "MANGA",
+         "title": {
+          "romaji": "Boushoku no Berserk: Ore dake Level to Iu Gainen wo Toppa Suru",
+          "english": "Berserk of Gluttony"
+         },
+         "format": "NOVEL",
+         "status": "FINISHED",
+         "volumes": 8,
+         "startDate": {
+          "year": 2017
+         }
+        }
+       },
+       {
+        "relationType": "ALTERNATIVE",
+        "node": {
+         "id": 156039,
+         "type": "ANIME",
+         "title": {
+          "romaji": "Boushoku no Berserk",
+          "english": "Berserk of Gluttony"
+         },
+         "format": "TV",
+         "status": "FINISHED",
+         "volumes": null,
+         "startDate": {
+          "year": 2023
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "id": 36408,
+     "title": {
+      "romaji": "BERSERK THE PROTOTYPE",
+      "english": "Berserk: The Prototype",
+      "native": "BERSERK THE PROTOTYPE"
+     },
+     "format": "ONE_SHOT",
+     "status": "FINISHED",
+     "volumes": null,
+     "chapters": 1,
+     "genres": [
+      "Action",
+      "Adventure",
+      "Fantasy",
+      "Horror"
+     ],
+     "tags": [
+      {
+       "name": "Seinen",
+       "rank": 86
+      },
+      {
+       "name": "Gore",
+       "rank": 85
+      },
+      {
+       "name": "Fairy",
+       "rank": 79
+      },
+      {
+       "name": "Male Protagonist",
+       "rank": 72
+      },
+      {
+       "name": "Revenge",
+       "rank": 68
+      },
+      {
+       "name": "Elf",
+       "rank": 65
+      },
+      {
+       "name": "Demons",
+       "rank": 64
+      },
+      {
+       "name": "Travel",
+       "rank": 60
+      }
+     ],
+     "description": "The prototype chapter for <i>Berserk</i>, written by Kentarou Miura when he was a student. It was later collected in volume 14 of the main series.",
+     "coverImage": {
+      "large": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/medium/bx36408-RXe0JkIEUDv8.jpg"
+     },
+     "startDate": {
+      "year": 1988
+     },
+     "staff": {
+      "edges": [
+       {
+        "role": "Story & Art",
+        "node": {
+         "name": {
+          "full": "Kentarou Miura"
+         }
+        }
+       }
+      ]
+     },
+     "relations": {
+      "edges": [
+       {
+        "relationType": "ALTERNATIVE",
+        "node": {
+         "id": 30002,
+         "type": "MANGA",
+         "title": {
+          "romaji": "Berserk",
+          "english": "Berserk"
+         },
+         "format": "MANGA",
+         "status": "RELEASING",
+         "volumes": null,
+         "startDate": {
+          "year": 1989
+         }
+        }
+       }
+      ]
+     }
+    }
+   ]
+  }
+ }
+}

@@ -195,6 +195,51 @@ CREATE TABLE IF NOT EXISTS reader_comics (
   last_read_at INTEGER, progress_page INTEGER NOT NULL DEFAULT 0, mode TEXT NOT NULL DEFAULT 'ltr'
 );
 
+-- Comic Mind Space: screenshots -> captures -> series -> relations -> ratings -> scores -> verdicts -> digests
+CREATE TABLE IF NOT EXISTS ms_screenshots (
+  id TEXT PRIMARY KEY, asset_id TEXT NOT NULL UNIQUE, uri TEXT NOT NULL, taken_at INTEGER NOT NULL, added_at INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'new', gate TEXT, gate_reason TEXT, ocr_text TEXT, error TEXT, summary TEXT
+);
+CREATE INDEX IF NOT EXISTS ms_screenshots_status ON ms_screenshots(status, taken_at);
+
+CREATE TABLE IF NOT EXISTS ms_captures (
+  id TEXT PRIMARY KEY, screenshot_id TEXT NOT NULL, title TEXT NOT NULL, title_conf TEXT NOT NULL, creators_json TEXT NOT NULL DEFAULT '[]',
+  medium TEXT NOT NULL DEFAULT 'unknown', status TEXT NOT NULL, series_id TEXT, options_json TEXT, created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ms_captures_screenshot ON ms_captures(screenshot_id);
+
+CREATE TABLE IF NOT EXISTS ms_series (
+  id TEXT PRIMARY KEY, source TEXT NOT NULL, external_id TEXT NOT NULL, title TEXT NOT NULL, medium TEXT NOT NULL DEFAULT 'unknown',
+  year INTEGER, run_status TEXT NOT NULL DEFAULT 'unknown', units INTEGER NOT NULL DEFAULT 0, unit_name TEXT NOT NULL DEFAULT 'volumes',
+  tags_json TEXT NOT NULL DEFAULT '{}', creators_json TEXT NOT NULL DEFAULT '[]', description TEXT NOT NULL DEFAULT '', cover_url TEXT,
+  publisher TEXT, art_driven INTEGER NOT NULL DEFAULT 0, print_status TEXT NOT NULL DEFAULT 'unknown', price_rising INTEGER NOT NULL DEFAULT 0,
+  verified INTEGER NOT NULL DEFAULT 0, stub INTEGER NOT NULL DEFAULT 0, judged INTEGER NOT NULL DEFAULT 0,
+  read_status TEXT NOT NULL DEFAULT 'planned', created_at INTEGER NOT NULL, found_at INTEGER,
+  UNIQUE (source, external_id)
+);
+
+CREATE TABLE IF NOT EXISTS ms_relations (
+  before_id TEXT NOT NULL, after_id TEXT NOT NULL, importance TEXT NOT NULL, confidence TEXT NOT NULL, note TEXT,
+  wrong INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL,
+  PRIMARY KEY (before_id, after_id)
+);
+
+CREATE TABLE IF NOT EXISTS ms_ratings (
+  series_id TEXT PRIMARY KEY, rating INTEGER NOT NULL, dropped INTEGER NOT NULL DEFAULT 0, override_score INTEGER, rated_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ms_verdict_overrides (
+  series_id TEXT PRIMARY KEY, overrides_json TEXT NOT NULL, updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ms_digests (
+  week TEXT PRIMARY KEY, json TEXT NOT NULL, created_at INTEGER NOT NULL, notified_at INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS ms_cache (
+  key TEXT PRIMARY KEY, json TEXT NOT NULL, fetched_at INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS reader_folders (
   id TEXT PRIMARY KEY, name TEXT NOT NULL, preset_id TEXT, created_at INTEGER NOT NULL
 );
