@@ -17,7 +17,7 @@ async function importFile(uri: string, name: string, result: ImportResult, depth
   try {
     dir.create();
     const stored = new File(dir, 'book');
-    new File(uri).copy(stored);
+    await new File(uri).copy(stored); // async in SDK 57: opening before it resolves reads a partial file
     let source;
     try {
       source = await openComicSource(stored.uri, `import-${id}`);
@@ -41,7 +41,7 @@ async function importFile(uri: string, name: string, result: ImportResult, depth
     try {
       const first = new File(await source.getPageUri(0));
       const cover = new File(dir, `cover.${first.extension.replace('.', '') || 'jpg'}`);
-      first.copy(cover);
+      await first.copy(cover);
       coverPath = cover.uri;
     } catch { /* a missing cover is not fatal */ }
     insertReaderComic({ id, title: titleOf(name), path: stored.uri, format: source.format, pageCount: source.pageCount, coverPath });

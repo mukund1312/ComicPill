@@ -36,7 +36,7 @@ export default function ReaderShelfScreen() {
         keyExtractor={(c) => c.id}
         contentContainerStyle={styles.content}
         columnWrapperStyle={styles.row}
-        ListEmptyComponent={<EmptyState title="No files yet" copy="Import CBZ or comic EPUB files from your phone to read them here." action="Import comics" onAction={onImport} />}
+        ListEmptyComponent={<EmptyState title="No files yet" copy="Import CBZ, CBR, CB7, ZIP, PDF or comic EPUB files from your phone to read them here." action="Import comics" onAction={onImport} />}
         renderItem={({ item }) => (
           <Pressable style={styles.cell} onPress={() => router.push(`/reader/${item.id}`)} onLongPress={() => onLongPress(item)}>
             <View style={styles.cover}>{item.coverPath ? <Image source={{ uri: item.coverPath }} style={styles.coverImage} contentFit="cover" recyclingKey={item.id} /> : null}</View>
