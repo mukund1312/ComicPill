@@ -100,6 +100,34 @@ export function detectPanels(gray: Uint8Array, w: number, h: number, opts: { rtl
   return panels.length >= 2 ? panels : [FULL_PAGE];
 }
 
+/**
+ * The part of a page that is not margin: the box around everything that differs from the page's border colour.
+ * Used by "trim borders". Null when the page has no clear border (full-bleed art) or nothing worth trimming.
+ */
+export function contentBox(gray: Uint8Array, w: number, h: number): Panel | null {
+  if (w < 8 || h < 8 || gray.length < w * h) return null;
+  const gutter = findGutterGray(gray, w, h);
+  if (gutter == null) return null;
+  const rows = new Array<number>(h).fill(0); const cols = new Array<number>(w).fill(0);
+  let nonGutter = 0;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (Math.abs(gray[y * w + x] - gutter) > TOLERANCE) { rows[y]++; cols[x]++; nonGutter++; }
+  }
+  const total = w * h;
+  // A real margin is a good slice of the page; textured full-bleed art has none.
+  if (nonGutter / total < 0.05 || 1 - nonGutter / total < 0.07) return null; // all margin and no art, or all art and no margin
+  // A row or column only counts as content if more than a few specks sit in it (scanner dust is not art).
+  const rowMin = Math.max(2, Math.round(w * 0.02)); const colMin = Math.max(2, Math.round(h * 0.02));
+  const y0 = rows.findIndex((n) => n >= rowMin); const x0 = cols.findIndex((n) => n >= colMin);
+  let y1 = h - 1; while (y1 >= 0 && rows[y1] < rowMin) y1--;
+  let x1 = w - 1; while (x1 >= 0 && cols[x1] < colMin) x1--;
+  if (y0 < 0 || x0 < 0 || y1 < y0 || x1 < x0) return null;
+  const box: Panel = { x: x0 / w, y: y0 / h, w: (x1 - x0 + 1) / w, h: (y1 - y0 + 1) / h };
+  // Only worth it when a real margin goes away, and never trim into a sliver.
+  if (box.w * box.h > 0.93 || box.w < 0.3 || box.h < 0.3) return null;
+  return box;
+}
+
 /** Decode the base64 grayscale payload the native module returns. */
 export function decodeBase64(b64: string): Uint8Array {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';

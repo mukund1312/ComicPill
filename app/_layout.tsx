@@ -55,5 +55,9 @@ function ThemedStack() {
   const background = theme.colors.background;
   const value = Number.parseInt(background.slice(1), 16);
   const brightness = ((value >> 16) & 255) * 0.299 + ((value >> 8) & 255) * 0.587 + (value & 255) * 0.114;
-  return <><StatusBar style={brightness > 150 ? 'dark' : 'light'} animated /><Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: background } }} /></>;
+  return <><StatusBar style={brightness > 150 ? 'dark' : 'light'} animated /><Stack screenOptions={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: background } }}>
+      {/* The five bottom tabs replace each other, so they cross-fade instead of sliding like a new page. */}
+      {['index', 'library', 'paths', 'compare', 'discover'].map((name) => <Stack.Screen key={name} name={name} options={{ animation: 'fade' }} />)}
+      <Stack.Screen name="reader/[id]" options={{ animation: 'fade' }} />
+    </Stack></>;
 }

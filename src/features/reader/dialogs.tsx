@@ -25,25 +25,25 @@ export function ActionSheet({ visible, title, options, onClose }: { visible: boo
   );
 }
 
-export function PromptModal({ visible, title, initial = '', placeholder, submitLabel = 'Save', onSubmit, onClose }: {
-  visible: boolean; title: string; initial?: string; placeholder?: string; submitLabel?: string; onSubmit: (value: string) => void; onClose: () => void;
+export function PromptModal({ visible, title, initial = '', placeholder, submitLabel = 'Save', secure = false, onSubmit, onClose }: {
+  visible: boolean; title: string; initial?: string; placeholder?: string; submitLabel?: string; secure?: boolean; onSubmit: (value: string) => void; onClose: () => void;
 }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
       {/* Mounted only while visible, so the field starts from `initial` every time. */}
-      <PromptBody title={title} initial={initial} placeholder={placeholder} submitLabel={submitLabel} onSubmit={onSubmit} onClose={onClose} />
+      <PromptBody key={title} title={title} initial={initial} placeholder={placeholder} submitLabel={submitLabel} secure={secure} onSubmit={onSubmit} onClose={onClose} />
     </Modal>
   );
 }
 
-function PromptBody({ title, initial, placeholder, submitLabel, onSubmit, onClose }: { title: string; initial: string; placeholder?: string; submitLabel: string; onSubmit: (value: string) => void; onClose: () => void }) {
+function PromptBody({ title, initial, placeholder, submitLabel, secure, onSubmit, onClose }: { title: string; initial: string; placeholder?: string; submitLabel: string; secure: boolean; onSubmit: (value: string) => void; onClose: () => void }) {
   const [value, setValue] = useState(initial);
   const submit = () => { const v = value.trim(); if (v) { onClose(); onSubmit(v); } };
   return (
     <Pressable style={[styles.backdrop, styles.center]} onPress={onClose}>
       <Pressable style={styles.dialog} onPress={() => undefined}>
         <Text style={styles.title}>{title}</Text>
-        <TextInput autoFocus value={value} onChangeText={setValue} placeholder={placeholder} placeholderTextColor={color.faint} style={styles.input} onSubmitEditing={submit} returnKeyType="done" />
+        <TextInput autoFocus value={value} onChangeText={setValue} secureTextEntry={secure} autoCapitalize="none" autoCorrect={false} placeholder={placeholder} placeholderTextColor={color.faint} style={styles.input} onSubmitEditing={submit} returnKeyType="done" />
         <View style={styles.buttons}>
           <Pressable onPress={onClose} style={styles.button}><Text style={styles.buttonText}>Cancel</Text></Pressable>
           <Pressable onPress={submit} style={[styles.button, styles.primary]}><Text style={styles.primaryText}>{submitLabel}</Text></Pressable>

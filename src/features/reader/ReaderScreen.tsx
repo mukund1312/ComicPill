@@ -1,15 +1,26 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, FlatList, Modal, Pressable, StyleSheet, Text, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent, type ViewToken } from 'react-native';
+import { ActivityIndicator, Alert, AppState, FlatList, Modal, Pressable, StyleSheet, Text, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent, type ViewToken } from 'react-native';
 import { Image } from 'expo-image';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
+import * as Sharing from 'expo-sharing';
+import Animated, { FadeInDown, FadeInUp, FadeOutDown, FadeOutUp, useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 import { StatusBar } from 'expo-status-bar';
 import { useKeepAwake } from 'expo-keep-awake';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ActionSheet, type SheetOption } from './dialogs';
+import { PageTextSheet, type PageText } from './PageTextSheet';
+import { ReaderDisplaySheet, supportsViewFilters, type Display } from './ReaderDisplaySheet';
 import { Thumb, ThumbnailStrip } from './ThumbnailStrip';
+import { TransitionPage } from './PageTransition';
+import { UnlockGate } from './UnlockGate';
 import { ZoomableView, type ZoomHandle } from './ZoomableView';
 import { detectPagePanels, guidedAvailable } from '../../lib/reader/guided/detect';
-import { FULL_PAGE, type Panel } from '../../lib/reader/guided/panels';
+import { contentBox, decodeBase64, FULL_PAGE, type Panel } from '../../lib/reader/guided/panels';
+import { isUnlocked } from '../../lib/reader/lock';
+import { recognizeText } from '../../lib/mind/capture/ocr';
+import { optionalNative } from '../../lib/reader/nativeArchive';
 import { ComicOpenError, openComicSource, type ComicSource, type PageSize } from '../../lib/reader/ComicSource';
 import { buildUnits, unitIndexOf } from '../../lib/reader/formats/spreads';
 import { BACKGROUND_COLORS, resolveReading, type Fit, type Reading } from '../../lib/reader/presets';
@@ -17,7 +28,7 @@ import {
   getFolder, getReaderComic, listBookmarks, saveReaderMode, saveReaderProgress, saveReaderSizes, setComicPreset, toggleBookmark,
   type ReaderComic, type ReaderMode,
 } from '../../lib/reader/readerLibrary';
-import { listPresets, loadReaderSettings, type ReaderSettings } from '../../lib/reader/readerSettings';
+import { listPresets, loadReaderSettings, saveReaderSettings, type ReaderSettings } from '../../lib/reader/readerSettings';
 import { color, font, radius, space, type } from '../../ui/tokens';
 
 type Sizes = Array<PageSize | null>;
@@ -53,6 +64,18 @@ export default function ReaderScreen() {
 
   useKeepAwake();
 
+  // A locked comic (or one inside a locked folder) asks for its password first, however it was reached.
+  const [unlockTick, setUnlockTick] = useState(0);
+  const gate = useMemo(() => {
+    if (!comic) return null;
+    if (comic.locked && !isUnlocked('comic', comic.id)) return { kind: 'comic' as const, id: comic.id, name: comic.title };
+    const folder = comic.folderId ? getFolder(comic.folderId) : null;
+    if (folder?.locked && !isUnlocked('folder', folder.id)) return { kind: 'folder' as const, id: folder.id, name: folder.name };
+    return null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [comic, unlockTick]);
+  const gateKey = gate ? `${gate.kind}:${gate.id}` : '';
+
   // The app is portrait-only elsewhere; the reader may rotate so landscape can show two pages.
   useEffect(() => {
     ScreenOrientation.unlockAsync().catch(() => undefined);
@@ -60,7 +83,7 @@ export default function ReaderScreen() {
   }, []);
 
   useEffect(() => {
-    if (!comic) return;
+    if (!comic || gateKey) return; // nothing is opened until the password is right
     let live = true; let opened: ComicSource | null = null;
     (async () => {
       try {
@@ -74,14 +97,24 @@ export default function ReaderScreen() {
       }
     })();
     return () => { live = false; opened?.close(); };
-  }, [comic]);
+  }, [comic, gateKey]);
 
+  if (gate) return <UnlockGate kind={gate.kind} id={gate.id} name={gate.name} onUnlocked={() => setUnlockTick((t) => t + 1)} />;
   if (error) return <View style={styles.center}><Text style={styles.errorText}>{error}</Text><Pressable onPress={() => router.back()} style={styles.button}><Text style={styles.buttonText}>Back</Text></Pressable></View>;
   if (!comic || !source || sizes === undefined || !reading) return <View style={styles.center}><ActivityIndicator color={color.accent} /><Text style={styles.errorText}>Preparing pages…</Text></View>;
   return <Reader comic={comic} source={source} sizes={sizes} reading={reading} settings={settings} />;
 }
 
 type Position = { page: number; frac: number };
+
+/** GPU colour filters (Android 12+). Sepia and brightness are overlays, so they work everywhere. */
+function displayFilter(f: Display['filter']) {
+  if (!supportsViewFilters) return undefined;
+  if (f === 'gray') return { filter: [{ grayscale: 1 }] };
+  if (f === 'invert') return { filter: [{ invert: 1 }] };
+  if (f === 'contrast') return { filter: [{ contrast: 1.35 }] };
+  return undefined;
+}
 
 function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComic; source: ComicSource; sizes: Sizes | null; reading: Reading; settings: ReaderSettings }) {
   const { width, height } = useWindowDimensions();
@@ -93,6 +126,14 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
   const bg = BACKGROUND_COLORS[reading.background];
   const fit = reading.fit;
   const [overlay, setOverlay] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [displayOpen, setDisplayOpen] = useState(false);
+  const [pageText, setPageText] = useState<PageText>(null);
+  const [display, setDisplay] = useState<Display>({ brightness: settings.brightness, filter: settings.filter, pageAnimation: settings.pageAnimation, trimBorders: settings.trimBorders });
+  const [trimBoxes, setTrimBoxes] = useState<Record<number, Panel | null>>({});
+  const trimAsked = useRef(new Set<number>());
+  const scrollX = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler({ onScroll: (e) => { scrollX.value = e.contentOffset.x; } });
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const [bookmarks, setBookmarks] = useState<Set<number>>(() => new Set(listBookmarks(comic.id)));
   const startPage = Math.min(comic.progressPage, total - 1);
@@ -101,6 +142,7 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
   // Live position (updates every scroll); `anchor` is its last saved mirror, safe to read in render.
   const position = useRef<Position>({ page: startPage, frac: comic.progressOffset });
   const listRef = useRef<FlatList<number[]>>(null);
+  const changeDisplay = (patch: Partial<Display>) => { setDisplay((d) => ({ ...d, ...patch })); saveReaderSettings(patch); };
 
   const rtl = mode === 'rtl'; const webtoon = mode === 'webtoon';
   const landscape = width > height;
@@ -207,6 +249,53 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
     return () => { live = false; };
   }, [page, guidedActive, source, comic.id, rtl]);
 
+  // ---- trim borders: find each single page's real content box on the phone, a page ahead and behind ----
+  useEffect(() => {
+    const native = optionalNative();
+    if (!display.trimBorders || webtoon || spread || !native?.grayThumbnail) return;
+    for (const p of [page - 1, page, page + 1]) {
+      if (p < 0 || p >= total || trimAsked.current.has(p)) continue;
+      trimAsked.current.add(p);
+      (async () => {
+        try {
+          const thumb = await native.grayThumbnail!(await source.getPageUri(p), 120);
+          setTrimBoxes((prev) => ({ ...prev, [p]: contentBox(decodeBase64(thumb.data), thumb.width, thumb.height) }));
+        } catch { setTrimBoxes((prev) => ({ ...prev, [p]: null })); }
+      })();
+    }
+  }, [display.trimBorders, page, webtoon, spread, total, source]);
+
+  // ---- text on the page, and sharing it ----
+  const readPageText = async () => {
+    setPageText({ loading: true, text: null });
+    const text = await recognizeText(await source.getPageUri(page));
+    setPageText(text === null ? { loading: false, text: null, unavailable: true } : { loading: false, text });
+  };
+
+  /** Share the page, or — in guided view — just the panel on screen. */
+  const sharePage = async () => {
+    try {
+      if (!(await Sharing.isAvailableAsync())) { Alert.alert('Sharing isn’t available on this device.'); return; }
+      let uri = await source.getPageUri(page);
+      const st = panelState.current; const size = sizeList[page];
+      if (guidedActive && st.page === page && size) {
+        const panel = st.panels[st.index];
+        if (panel && panel !== FULL_PAGE) {
+          const ref = await ImageManipulator.manipulate(uri).crop({ originX: Math.round(panel.x * size.width), originY: Math.round(panel.y * size.height), width: Math.round(panel.w * size.width), height: Math.round(panel.h * size.height) }).renderAsync();
+          uri = (await ref.saveAsync({ format: SaveFormat.JPEG, compress: 0.92 })).uri;
+        }
+      }
+      await Sharing.shareAsync(uri, { mimeType: 'image/jpeg', dialogTitle: comic.title });
+    } catch { Alert.alert('Couldn’t share this page', 'Try again.'); }
+  };
+
+  const menuOptions: SheetOption[] = [
+    { label: 'Display, filters and page animation…', onPress: () => setDisplayOpen(true) },
+    { label: 'Copy or translate text on this page…', onPress: () => { void readPageText(); } },
+    { label: guidedActive ? 'Share this panel…' : 'Share this page…', onPress: () => { void sharePage(); } },
+    { label: 'More reader settings…', onPress: () => router.push('/reader/settings') },
+  ];
+
   const onTap = useCallback((x: number) => {
     const edge = width * 0.3;
     const flip = settings.invertTaps ? -1 : 1;
@@ -241,9 +330,10 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
   return (
     <View style={[styles.root, { backgroundColor: bg }]}>
       <StatusBar hidden={!overlay} />
-      <FlatList
+      <View style={[styles.fill, displayFilter(display.filter)]}>
+      <Animated.FlatList
         key={listKey}
-        ref={listRef}
+        ref={listRef as never}
         data={data}
         keyExtractor={(u) => String(u[0])}
         horizontal={!webtoon}
@@ -261,17 +351,24 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
         showsVerticalScrollIndicator={false}
         onViewableItemsChanged={onViewable}
         viewabilityConfig={{ itemVisiblePercentThreshold: 60 }}
-        onScroll={onScroll}
-        scrollEventThrottle={32}
+        onScroll={webtoon ? onScroll : scrollHandler}
+        scrollEventThrottle={webtoon ? 32 : 16}
         onScrollEndDrag={persist}
         onMomentumScrollEnd={persist}
         onScrollToIndexFailed={({ index }) => setTimeout(() => listRef.current?.scrollToIndex({ index, animated: false }), 100)}
-        renderItem={({ item }) => webtoon
+        renderItem={({ item, index }) => webtoon
           ? <WebtoonPage source={source} page={item[0]} width={width} height={strip.known ? strip.heights[item[0]] : undefined} bg={bg} onTap={() => setOverlay((o) => !o)} />
-          : <PagedUnit register={registerZoom} source={source} unit={item} sizes={sizeList} width={width} height={height} rtl={rtl} fit={fit} bg={bg} onTap={onTap} />}
+          : (
+            <TransitionPage index={index} width={width} scrollX={scrollX} kind={display.pageAnimation}>
+              <PagedUnit register={registerZoom} source={source} unit={item} sizes={sizeList} width={width} height={height} rtl={rtl} fit={fit} bg={bg} crop={display.trimBorders && item.length === 1 ? trimBoxes[item[0]] ?? null : null} onTap={onTap} />
+            </TransitionPage>
+          )}
       />
+      </View>
+      {display.filter === 'sepia' ? <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#C99A5B', mixBlendMode: 'multiply' }]} /> : null}
+      {display.brightness < 1 ? <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#000', opacity: 1 - display.brightness }]} /> : null}
       {overlay ? <>
-        <View style={[styles.top, { paddingTop: insets.top + space.sm }]}>
+        <Animated.View entering={FadeInUp.duration(180)} exiting={FadeOutUp.duration(140)} style={[styles.top, { paddingTop: insets.top + space.sm }]}>
           <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={() => router.back()} hitSlop={12}><Text style={styles.back}>‹</Text></Pressable>
           <Text numberOfLines={1} style={styles.title}>{comic.title}</Text>
           <Pressable accessibilityRole="button" accessibilityLabel={bookmarks.has(page) ? 'Remove bookmark' : 'Add bookmark'} onPress={onToggleBookmark} hitSlop={10}>
@@ -280,8 +377,9 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
           {guidedAvailable() && !webtoon && !spread ? <Pressable accessibilityRole="button" accessibilityLabel="Guided view" accessibilityState={{ selected: guided }} onPress={() => { setGuided((g) => !g); setOverlay(false); }} hitSlop={10}><Text style={[styles.icon, guided && styles.iconActive]}>◎</Text></Pressable> : null}
           <Pressable accessibilityRole="button" accessibilityLabel="All pages" onPress={() => setGalleryOpen(true)} hitSlop={10}><Text style={styles.icon}>▦</Text></Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel="Bookmarks" onPress={() => setBookmarksOpen(true)} hitSlop={10}><Text style={styles.icon}>☰</Text></Pressable>
-        </View>
-        <View style={[styles.bottom, { paddingBottom: insets.bottom + space.md }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel="More" onPress={() => setMenuOpen(true)} hitSlop={10}><Text style={styles.icon}>⋯</Text></Pressable>
+        </Animated.View>
+        <Animated.View entering={FadeInDown.duration(180)} exiting={FadeOutDown.duration(140)} style={[styles.bottom, { paddingBottom: insets.bottom + space.md }]}>
           <ThumbnailStrip key={rtl ? 'r' : 'l'} compact={landscape} source={source} pages={allPages} current={page} bookmarks={bookmarks} onSelect={(p) => goToPage(p, false)} />
           <Scrubber page={page} total={total} rtl={rtl} onSeek={(p) => goToPage(p, false)} />
           <View style={landscape ? styles.footerRow : undefined}>
@@ -294,8 +392,11 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
               ))}
             </View>
           </View>
-        </View>
+        </Animated.View>
       </> : null}
+      <ActionSheet visible={menuOpen} title="This page" options={menuOptions} onClose={() => setMenuOpen(false)} />
+      <ReaderDisplaySheet visible={displayOpen} value={display} onChange={changeDisplay} onClose={() => setDisplayOpen(false)} />
+      <PageTextSheet value={pageText} onClose={() => setPageText(null)} />
       <Modal visible={galleryOpen} animationType="slide" onRequestClose={() => setGalleryOpen(false)} statusBarTranslucent>
         <View style={[styles.gallery, { paddingTop: insets.top + space.sm }]}>
           <View style={styles.sheetHeader}>
@@ -341,18 +442,21 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
   );
 }
 
-function PageImage({ source, page, width, height }: { source: ComicSource; page: number; width: number; height: number }) {
+function PageImage({ source, page, width, height, crop }: { source: ComicSource; page: number; width: number; height: number; crop?: Panel | null }) {
   const [uri, setUri] = useState<string | null>(null);
   useEffect(() => {
     let live = true;
     source.getPageUri(page).then((u) => { if (live) setUri(u); }).catch(() => undefined);
     return () => { live = false; };
   }, [source, page]);
-  return <View style={{ width, height }}>{uri ? <Image source={{ uri }} style={styles.fill} contentFit="contain" recyclingKey={uri} /> : null}</View>;
+  // Trimmed margins: enlarge the picture about its centre so the art box fills the frame, then slide it back to centre.
+  const zoom = crop ? Math.min(1.6, 1 / Math.max(crop.w, crop.h)) : 1;
+  const shift = crop ? [{ translateX: (0.5 - (crop.x + crop.w / 2)) * zoom * width }, { translateY: (0.5 - (crop.y + crop.h / 2)) * zoom * height }, { scale: zoom }] : undefined;
+  return <View style={{ width, height, overflow: 'hidden' }}>{uri ? <Image source={{ uri }} style={[styles.fill, shift && { transform: shift }]} contentFit="contain" recyclingKey={uri} /> : null}</View>;
 }
 
 /** One screen of paged reading: a single page, or two side by side (landscape). Zoom applies to the whole unit. */
-function PagedUnit({ register, source, unit, sizes, width, height, rtl, fit, bg, onTap }: { register: (page: number, handle: ZoomHandle | null) => void; source: ComicSource; unit: number[]; sizes: Sizes; width: number; height: number; rtl: boolean; fit: Fit; bg: string; onTap: (x: number) => void }) {
+function PagedUnit({ register, source, unit, sizes, width, height, rtl, fit, bg, crop, onTap }: { register: (page: number, handle: ZoomHandle | null) => void; source: ComicSource; unit: number[]; sizes: Sizes; width: number; height: number; rtl: boolean; fit: Fit; bg: string; crop: Panel | null; onTap: (x: number) => void }) {
   const known = unit.every((p) => sizes[p]);
   const ratios = unit.map((p) => (sizes[p] ? sizes[p]!.width / sizes[p]!.height : DEFAULT_RATIO));
   const sumRatio = ratios.reduce((a, b) => a + b, 0);
@@ -365,7 +469,7 @@ function PagedUnit({ register, source, unit, sizes, width, height, rtl, fit, bg,
   return (
     <ZoomableView ref={(h) => register(unit[0], h)} width={width} height={height} contentWidth={contentW} contentHeight={fitH} background={bg} onTap={onTap}>
       <View style={{ flexDirection: rtl ? 'row-reverse' : 'row', width: contentW, height: fitH }}>
-        {unit.map((p, i) => <PageImage key={p} source={source} page={p} width={widths[i]} height={fitH} />)}
+        {unit.map((p, i) => <PageImage key={p} source={source} page={p} width={widths[i]} height={fitH} crop={crop} />)}
       </View>
     </ZoomableView>
   );

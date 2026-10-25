@@ -19,6 +19,7 @@ export default defineConfig({
       'src/lib/platform/**/*.spec.ts',
       'src/lib/reader/**/*.spec.ts',
       'src/lib/mind/**/*.spec.ts',
+      'src/lib/opds/**/*.spec.ts',
     ],
   },
 });

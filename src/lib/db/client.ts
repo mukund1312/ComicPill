@@ -278,8 +278,11 @@ export function ensureSchema(): void {
   const added: Array<[string, string]> = [
     ['progress_offset', 'REAL NOT NULL DEFAULT 0'], ['sizes_json', 'TEXT'],
     ['series', 'TEXT'], ['issue', 'TEXT'], ['writer', 'TEXT'], ['folder_id', 'TEXT'], ['preset_id', 'TEXT'],
+    ['lock_hash', 'TEXT'], ['lock_salt', 'TEXT'],
   ];
   for (const [name, def] of added) if (!cols.includes(name)) sqlite.execSync(`ALTER TABLE reader_comics ADD COLUMN ${name} ${def}`);
+  const folderCols = sqlite.getAllSync<{ name: string }>('PRAGMA table_info(reader_folders)').map((c) => c.name);
+  for (const name of ['lock_hash', 'lock_salt']) if (!folderCols.includes(name)) sqlite.execSync(`ALTER TABLE reader_folders ADD COLUMN ${name} TEXT`);
   bootstrapped = true;
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decodeBase64, detectPanels, FULL_PAGE } from './panels';
+import { contentBox, decodeBase64, detectPanels, FULL_PAGE } from './panels';
 
 type Rect = [number, number, number, number]; // x0,y0,x1,y1 in pixels
 
@@ -63,4 +63,21 @@ describe('decodeBase64', () => {
     expect(Array.from(decodeBase64('/w=='))).toEqual([255]);
     expect(Array.from(decodeBase64('/+8='))).toEqual([255, 239]);
   });
+});
+
+describe('contentBox (trim borders)', () => {
+  it('finds the art inside a white margin', () => {
+    const box = contentBox(page(W, H, [[10, 15, 90, 135]]), W, H)!;
+    expect(box.x).toBeCloseTo(0.1, 1); expect(box.y).toBeCloseTo(0.1, 1); expect(box.w).toBeCloseTo(0.8, 1); expect(box.h).toBeCloseTo(0.8, 1);
+  });
+  it('does nothing for full-bleed art or pages with a hairline margin', () => {
+    expect(contentBox(new Uint8Array(W * H).map((_, i) => 90 + (i % 50)), W, H)).toBeNull();
+    expect(contentBox(page(W, H, [[1, 1, 99, 149]]), W, H)).toBeNull();
+  });
+  it('ignores specks of dust in the margin', () => {
+    const g = page(W, H, [[10, 15, 90, 135]]); g[3 * W + 4] = 0; g[140 * W + 95] = 0;
+    const box = contentBox(g, W, H)!;
+    expect(box.x).toBeCloseTo(0.1, 1); expect(box.h).toBeCloseTo(0.8, 1);
+  });
+  it('does nothing for a blank page', () => expect(contentBox(new Uint8Array(W * H).fill(255), W, H)).toBeNull());
 });

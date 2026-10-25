@@ -1,4 +1,5 @@
 import { sqlite } from '../db/client';
+import type { Lock } from './lock';
 import type { ShelfComic } from './shelf';
 
 export type ReaderMode = 'ltr' | 'rtl' | 'webtoon';
@@ -6,6 +7,8 @@ export type ReaderMode = 'ltr' | 'rtl' | 'webtoon';
 export type ReaderComic = ShelfComic & {
   path: string; format: string; coverPath: string | null; mode: ReaderMode;
   issue: string | null; folderId: string | null; presetId: string | null;
+  /** Has a password. Whether it is open right now is tracked in `lock.ts`. */
+  locked: boolean;
   /** Webtoon only: how far into the progress page you had scrolled, 0..1. */
   progressOffset: number;
   sizes: Array<{ width: number; height: number } | null> | null;
@@ -16,6 +19,7 @@ type Row = {
   added_at: number; last_read_at: number | null; progress_page: number; mode: string;
   progress_offset: number; sizes_json: string | null;
   series: string | null; issue: string | null; writer: string | null; folder_id: string | null; preset_id: string | null;
+  lock_hash: string | null;
 };
 
 const parseSizes = (json: string | null): ReaderComic['sizes'] => {
@@ -26,7 +30,7 @@ const map = (r: Row): ReaderComic => ({
   id: r.id, title: r.title, path: r.path, format: r.format, pageCount: r.page_count, coverPath: r.cover_path,
   addedAt: r.added_at, lastReadAt: r.last_read_at, progressPage: r.progress_page, mode: r.mode as ReaderMode,
   progressOffset: r.progress_offset ?? 0, sizes: parseSizes(r.sizes_json),
-  series: r.series, issue: r.issue, writer: r.writer, folderId: r.folder_id, presetId: r.preset_id,
+  series: r.series, issue: r.issue, writer: r.writer, folderId: r.folder_id, presetId: r.preset_id, locked: !!r.lock_hash,
 });
 
 const uid = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
@@ -98,12 +102,12 @@ export const toggleBookmark = (comicId: string, page: number): boolean => {
 };
 
 // ---- folders ----------------------------------------------------------------
-export type ReaderFolder = { id: string; name: string; presetId: string | null; count: number };
+export type ReaderFolder = { id: string; name: string; presetId: string | null; count: number; locked: boolean };
 
 export const listFolders = (): ReaderFolder[] =>
-  sqlite.getAllSync<{ id: string; name: string; preset_id: string | null; n: number }>(
-    'SELECT f.id, f.name, f.preset_id, (SELECT COUNT(*) FROM reader_comics c WHERE c.folder_id = f.id) AS n FROM reader_folders f ORDER BY f.name COLLATE NOCASE',
-  ).map((r) => ({ id: r.id, name: r.name, presetId: r.preset_id, count: r.n }));
+  sqlite.getAllSync<{ id: string; name: string; preset_id: string | null; n: number; lock_hash: string | null }>(
+    'SELECT f.id, f.name, f.preset_id, f.lock_hash, (SELECT COUNT(*) FROM reader_comics c WHERE c.folder_id = f.id) AS n FROM reader_folders f ORDER BY f.name COLLATE NOCASE',
+  ).map((r) => ({ id: r.id, name: r.name, presetId: r.preset_id, count: r.n, locked: !!r.lock_hash }));
 
 export const createFolder = (name: string): string => {
   const existing = sqlite.getFirstSync<{ id: string }>('SELECT id FROM reader_folders WHERE name = ? COLLATE NOCASE', name);
@@ -171,4 +175,17 @@ export const getCachedPanels = (comicId: string, page: number): CachedPanels | n
 
 export const saveCachedPanels = (comicId: string, page: number, value: CachedPanels): void => {
   sqlite.runSync('INSERT OR REPLACE INTO reader_panels (comic_id, page, panels_json) VALUES (?, ?, ?)', comicId, page, JSON.stringify(value));
+};
+
+// ---- privacy lock ----------------------------------------------------------
+type LockKind = 'comic' | 'folder';
+const lockTable = (kind: LockKind) => (kind === 'comic' ? 'reader_comics' : 'reader_folders');
+
+export const getLock = (kind: LockKind, id: string): Lock | null => {
+  const r = sqlite.getFirstSync<{ lock_hash: string | null; lock_salt: string | null }>(`SELECT lock_hash, lock_salt FROM ${lockTable(kind)} WHERE id = ?`, id);
+  return r?.lock_hash && r.lock_salt ? { hash: r.lock_hash, salt: r.lock_salt } : null;
+};
+
+export const setLock = (kind: LockKind, id: string, lock: Lock | null): void => {
+  sqlite.runSync(`UPDATE ${lockTable(kind)} SET lock_hash = ?, lock_salt = ? WHERE id = ?`, lock?.hash ?? null, lock?.salt ?? null, id);
 };

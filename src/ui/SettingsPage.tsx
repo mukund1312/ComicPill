@@ -3,7 +3,7 @@
 import type { PropsWithChildren, ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { space } from './tokens';
 import { useAppearance } from './theme';
 
@@ -12,10 +12,11 @@ export function SettingsPage({ title, subtitle, backLabel = 'Back', onBack, chil
 }>) {
   const { theme, typography } = useAppearance();
   const c = theme.colors;
+  const bottom = useSafeAreaInsets().bottom;
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 48 + bottom }]} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}>
           <Pressable accessibilityRole="button" accessibilityLabel={backLabel} hitSlop={12} onPress={onBack ?? (() => router.back())} style={styles.back}>
             <Text style={[styles.backText, { color: c.textSecondary, fontFamily: typography.bodyMedium }]}>‹ {backLabel}</Text>
           </Pressable>
@@ -23,7 +24,7 @@ export function SettingsPage({ title, subtitle, backLabel = 'Back', onBack, chil
           {subtitle ? <Text style={[styles.subtitle, { color: c.textSecondary, fontFamily: typography.body }]}>{subtitle}</Text> : null}
           <View>{children}</View>
         </ScrollView>
-        {footer ? <View style={[styles.footer, { backgroundColor: c.background, borderTopColor: c.border }]}>{footer}</View> : null}
+        {footer ? <View style={[styles.footer, { backgroundColor: c.background, borderTopColor: c.border, paddingBottom: space.lg + bottom }]}>{footer}</View> : null}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

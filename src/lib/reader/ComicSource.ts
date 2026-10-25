@@ -214,7 +214,7 @@ export async function openComicSource(fileUri: string, cacheKey: string): Promis
   return makeSource(backend, cacheKey);
 }
 
-const NESTED_COMIC = ['cbz', 'cbr', 'cb7', 'zip', 'epub'];
+const NESTED_COMIC = ['cbz', 'cbr', 'cb7', 'zip', 'epub', 'pdf'];
 
 /** Comic files packed inside a plain zip (a zip of CBZs, say). Empty unless the zip has no pages of its own. */
 export function listNestedComics(fileUri: string): string[] {

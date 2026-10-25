@@ -12,7 +12,7 @@ const titleOf = (name: string) => name.replace(/\.[^.]+$/, '').replace(/[_]+/g, 
 
 const comicsRoot = () => new Directory(Paths.document, 'comics');
 
-type ImportOptions = { folderId?: string };
+export type ImportOptions = { folderId?: string };
 
 async function importFile(uri: string, name: string, result: ImportResult, opts: ImportOptions = {}, depth = 0): Promise<void> {
   const id = randomUUID();
@@ -65,8 +65,8 @@ async function importFile(uri: string, name: string, result: ImportResult, opts:
   }
 }
 
-/** Pick one or more files and copy them into app storage (so there are no URI permissions to keep). */
-export async function pickAndImportComics(): Promise<ImportResult> {
+/** Pick one or more files and copy them into app storage (so there are no URI permissions to keep). With `folderId`, they land in that folder. */
+export async function pickAndImportComics(opts: ImportOptions = {}): Promise<ImportResult> {
   const picked = await DocumentPicker.getDocumentAsync({ type: '*/*', multiple: true, copyToCacheDirectory: true });
   const result: ImportResult = { imported: [], failed: [] };
   if (picked.canceled) return result;
@@ -75,7 +75,7 @@ export async function pickAndImportComics(): Promise<ImportResult> {
   if (!root.exists) root.create({ intermediates: true });
 
   for (const asset of picked.assets) {
-    try { await importFile(asset.uri, asset.name, result); }
+    try { await importFile(asset.uri, asset.name, result, opts); }
     finally { try { const tmp = new File(asset.uri); if (tmp.exists) tmp.delete(); } catch { /* cache copy */ } }
   }
   return result;
@@ -110,5 +110,14 @@ export async function pickAndImportFolder(): Promise<ImportResult> {
   if (!root.exists) root.create({ intermediates: true });
   const folderId = files.length ? createFolder(dir.name || 'Imported') : undefined;
   for (const f of files) await importFile(f.uri, f.name, result, { folderId });
+  return result;
+}
+
+/** Import a file that is already on the phone (a download, say) — same path as the picker, one file. */
+export async function importLocalFile(uri: string, name: string, opts: ImportOptions = {}): Promise<ImportResult> {
+  const result: ImportResult = { imported: [], failed: [] };
+  const root = comicsRoot();
+  if (!root.exists) root.create({ intermediates: true });
+  await importFile(uri, name, result, opts);
   return result;
 }

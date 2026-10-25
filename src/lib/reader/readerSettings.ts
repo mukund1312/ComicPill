@@ -11,10 +11,20 @@ export type ReaderSettings = {
   /** Swap which edge goes forward. */
   invertTaps: boolean;
   defaultPresetId: string;
+  /** How pages change: slide (the swipe itself), fade, or a 3-D page flip. */
+  pageAnimation: PageAnimation;
+  /** 0.2–1: dims the page without touching the phone's own brightness. */
+  brightness: number;
+  filter: ReaderFilter;
+  /** Cut the blank margin off each page. */
+  trimBorders: boolean;
 };
 
+export type PageAnimation = 'slide' | 'fade' | 'flip';
+export type ReaderFilter = 'none' | 'sepia' | 'gray' | 'invert' | 'contrast';
+
 const KEY = 'reader_settings';
-export const DEFAULT_SETTINGS: ReaderSettings = { incognito: false, tapZones: true, invertTaps: false, defaultPresetId: DEFAULT_PRESET_ID };
+export const DEFAULT_SETTINGS: ReaderSettings = { incognito: false, tapZones: true, invertTaps: false, defaultPresetId: DEFAULT_PRESET_ID, pageAnimation: 'slide', brightness: 1, filter: 'none', trimBorders: false };
 
 export function loadReaderSettings(): ReaderSettings {
   try { return { ...DEFAULT_SETTINGS, ...(JSON.parse(getMeta(KEY) ?? '{}') as Partial<ReaderSettings>) }; } catch { return DEFAULT_SETTINGS; }
