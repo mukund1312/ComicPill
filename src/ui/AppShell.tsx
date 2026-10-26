@@ -1,7 +1,7 @@
 import { useEffect, type PropsWithChildren, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { router } from 'expo-router';
-import Animated, { Easing, FadeIn, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, FadeIn, interpolate, useAnimatedStyle, useSharedValue, withSpring, type SharedValue } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { space } from './tokens';
 import { Wordmark } from './primitives';
@@ -60,8 +60,11 @@ function TabBar({ active }: { active: Tab }) {
   );
 }
 
-export function AppShell({ active, title, children, logo = false, right, back = false, bleed }: PropsWithChildren<{ active: Tab; title?: string; logo?: boolean; right?: ReactNode; back?: boolean; bleed?: ReactNode }>) {
+export function AppShell({ active, title, children, logo = false, right, back = false, bleed, scrollY }: PropsWithChildren<{ active: Tab; title?: string; logo?: boolean; right?: ReactNode; back?: boolean; bleed?: ReactNode; scrollY?: SharedValue<number> }>) {
   const { theme, typography } = useAppearance(); const c = theme.colors;
+  // As the page scrolls the wordmark rises a little and shrinks, and the avatar follows.
+  const fallback = useSharedValue(0); const sy = scrollY ?? fallback;
+  const logoStyle = useAnimatedStyle(() => ({ transform: [{ translateY: interpolate(sy.value, [0, 140], [0, -7], 'clamp') }, { scale: interpolate(sy.value, [0, 140], [1, 0.8], 'clamp') }] }));
   const avatar = useProfile((p) => p.avatar); const displayName = useProfile((p) => p.displayName); const username = useProfile((p) => p.username);
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
@@ -77,7 +80,7 @@ export function AppShell({ active, title, children, logo = false, right, back = 
         </>
       ) : (
         <View style={styles.header}>
-          {logo ? <View style={styles.logoLockup}><Wordmark small /><ThemeEmblem id={theme.id} size={26} /></View> : <Text accessibilityRole="header" style={[styles.headerTitle, { color: c.textPrimary, fontFamily: typography.display }]}>{title}</Text>}
+          {logo ? <Animated.View style={[styles.logoLockup, logoStyle, { transformOrigin: 'left center' }]}><Wordmark small /><ThemeEmblem id={theme.id} size={26} /></Animated.View> : <Text accessibilityRole="header" style={[styles.headerTitle, { color: c.textPrimary, fontFamily: typography.display }]}>{title}</Text>}
           <View style={styles.headerRight}>{right ?? <Pressable accessibilityRole="button" accessibilityLabel="Open profile" hitSlop={8} onPress={() => router.push('/profile')}><Avatar uri={avatar} initial={initialOf({ displayName, username })} size={38} /></Pressable>}</View>
         </View>
       )}

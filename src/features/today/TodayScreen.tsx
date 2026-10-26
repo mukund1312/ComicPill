@@ -5,6 +5,7 @@ import { COVER_ASSETS } from '../../ui/coverAssets';
 import { sqlite } from '../../lib/db/client';
 import Animated, { FadeInDown, interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, type SharedValue } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
+import MaskedView from '@react-native-masked-view/masked-view';
 import { router, useFocusEffect } from 'expo-router';
 import { useToday, type TodayCard } from './useToday';
 import { AppShell } from '../../ui/AppShell';
@@ -36,11 +37,11 @@ const moods: { id: string; label: string }[] = [
   { id: 'surprise', label: 'Surprise me' },
 ];
 
-const HERO_H = 610;
+const HERO_H = 566;
 
 /** The cover itself, whole and sharp, glowing over the backdrop; it settles into a smaller card as you scroll. */
 function HeroArt({ source, title, scrollY, width, onPress }: { source: ReturnType<typeof coverSourceFor>; title: string; scrollY: SharedValue<number>; width: number; onPress: () => void }) {
-  const cardW = Math.min(width * 0.62, 260);
+  const cardW = Math.min(width * 0.56, 232);
   const frame = useAnimatedStyle(() => {
     const t = Math.min(1, Math.max(0, scrollY.value / (HERO_H * 0.5)));
     const w = interpolate(t, [0, 1], [cardW, 150]);
@@ -86,11 +87,14 @@ function collageIds(leadId: string, n: number): string[] {
 /** A bright spread of comic panels — each a zoomed crop of a cover, lightly blurred — behind the pick, like a page of art. */
 function CollageBackdrop({ workId, scrollY }: { workId: string | undefined; scrollY: SharedValue<number> }) {
   const { theme } = useAppearance(); const c = theme.colors;
-  const { width, height } = useWindowDimensions();
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  const { width, height } = size;
   const count = PANEL_ROWS.reduce((n, [, cols]) => n + cols.length, 0);
   const tiles = useMemo(() => (workId ? collageIds(workId, count) : []), [workId, count]);
-  const fade = useAnimatedStyle(() => ({ opacity: interpolate(scrollY.value, [0, HERO_H * 0.7], [1, 0.1], 'clamp'), transform: [{ translateY: -scrollY.value * 0.18 }] }));
+  const fade = useAnimatedStyle(() => ({ opacity: interpolate(scrollY.value, [0, HERO_H * 0.5, HERO_H * 0.85], [1, 0.3, 0], 'clamp'), transform: [{ translateY: -scrollY.value * 0.2 }] }));
+  const wash = useAnimatedStyle(() => ({ opacity: interpolate(scrollY.value, [0, HERO_H * 0.85], [0, 0.32], 'clamp') }));
   if (!tiles.length) return null;
+  if (!width) return <View pointerEvents="none" style={StyleSheet.absoluteFill} onLayout={(e) => setSize(e.nativeEvent.layout)} />;
   let k = 0; let y = 0;
   const panels = PANEL_ROWS.flatMap(([rh, cols]) => {
     const rowTop = y; const th = rh * height; y += th;
@@ -107,7 +111,8 @@ function CollageBackdrop({ workId, scrollY }: { workId: string | undefined; scro
     });
   });
   return (
-    <>
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]} onLayout={(e) => setSize(e.nativeEvent.layout)}>
+      {coverSourceFor(workId) ? <Animated.View style={[StyleSheet.absoluteFill, wash]}><Image source={coverSourceFor(workId)} blurRadius={40} contentFit="cover" style={StyleSheet.absoluteFill} /></Animated.View> : null}
       <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: '#9A9A9E' }, fade]}>
         {coverSourceFor(workId) ? <Image source={coverSourceFor(workId)} blurRadius={40} contentFit="cover" style={{ position: 'absolute', width, height }} /> : null}
         {panels}
@@ -116,7 +121,7 @@ function CollageBackdrop({ workId, scrollY }: { workId: string | undefined; scro
       </Animated.View>
       {/* keep the header and the lower text readable; the middle stays bright */}
       <LinearGradient colors={[`${c.background}CC`, `${c.background}00`, `${c.background}1A`, `${c.background}D0`, c.background]} locations={[0, 0.15, 0.42, 0.7, 0.9]} style={StyleSheet.absoluteFill} />
-    </>
+    </View>
   );
 }
 
@@ -143,7 +148,7 @@ export default function TodayScreen() {
   const { width } = useWindowDimensions();
   const scrollY = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler((e) => { scrollY.value = e.contentOffset.y; });
-  return <AppShell active="today" logo bleed={<CollageBackdrop workId={lead?.workId} scrollY={scrollY} />}><Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+  return <AppShell active="today" logo scrollY={scrollY} bleed={<CollageBackdrop workId={lead?.workId} scrollY={scrollY} />}><MaskedView style={{ flex: 1 }} maskElement={<View style={{ flex: 1 }}><LinearGradient colors={['#0000', '#000F']} style={{ height: 44 }} /><View style={{ flex: 1, backgroundColor: '#000F' }} /><LinearGradient colors={['#000F', '#0000']} style={{ height: 60 }} /></View>}><Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
     <Animated.View entering={FadeInDown.duration(420)}>
     {lead ? (
       <View style={[styles.heroWrap, { height: HERO_H }]}>
@@ -191,7 +196,7 @@ export default function TodayScreen() {
         <Icon name="chevron-forward" size={18} color={c.textMuted} />
       </PressableScale>
     </Animated.View>
-  </Animated.ScrollView>
+  </Animated.ScrollView></MaskedView>
   {showWhy && lead ? <View style={[styles.overlay, { backgroundColor: c.overlay }]}><Sheet title="Why this tonight?" onClose={() => setShowWhy(false)}><Text style={[styles.sheetLead, { color: c.textSecondary, fontFamily: typography.body }]}>A few reasons it earns tonight.</Text>{(lead.reasons.length ? lead.reasons : ['It fits your current reading mood.', 'It is a natural next step in your library.', 'It is short enough to enjoy tonight.']).slice(0, 3).map((reason) => <View key={reason} style={styles.reasonRow}><Text style={[styles.reasonDot, { color: c.primary }]}>✦</Text><Text style={[styles.reasonText, { color: c.textPrimary, fontFamily: typography.body }]}>{reason}</Text></View>)}<Button kind="destructive" onPress={() => { setShowWhy(false); setShowNotTonight(true); }}>Not tonight</Button><Button kind="ghost" onPress={() => setShowWhy(false)}>Close</Button></Sheet></View> : null}
   {showNotTonight && lead ? <View style={[styles.overlay, { backgroundColor: c.overlay }]}><Sheet><Text style={[styles.notTitle, { color: c.textPrimary, fontFamily: typography.display }]}>Not tonight?</Text><Text style={[styles.notCopy, { color: c.textSecondary, fontFamily: typography.body }]}>No problem. We’ll adjust and find something else when you’re ready.</Text><Button onPress={() => { today.notTonight(lead.workId); setShowNotTonight(false); }}>Find another pick</Button><Button kind="secondary" style={{ marginTop: 10 }} onPress={() => setShowNotTonight(false)}>Keep current pick</Button></Sheet></View> : null}
   </AppShell>;
