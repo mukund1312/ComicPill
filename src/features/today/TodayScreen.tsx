@@ -46,7 +46,7 @@ function HeroArt({ source, title, scrollY, width, onPress }: { source: ReturnTyp
     return { width: w, height: w * 1.5, left: (width - w) / 2, transform: [{ translateY: interpolate(t, [0, 1], [18, 30]) }] };
   });
   return (
-    <Animated.View style={[styles.art, frame]}>
+    <Animated.View style={[styles.art, styles.artGlow, frame]}>
       <Pressable accessibilityRole="button" accessibilityLabel={title} onPress={onPress} style={[StyleSheet.absoluteFill, styles.artCard]}>
         {source ? <Image source={source} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
       </Pressable>
@@ -54,45 +54,54 @@ function HeroArt({ source, title, scrollY, width, onPress }: { source: ReturnTyp
   );
 }
 
-const TILE_COLS = 3; const TILE_ROWS = 6; const GAP = 0;
+/** Rows of panels, as fractions of the screen: [row height, column widths]. Uneven on purpose, like a page of comic panels. */
+const PANEL_ROWS: Array<[number, number[]]> = [
+  [0.15, [0.3, 0.35, 0.35]], [0.17, [0.46, 0.54]], [0.17, [0.34, 0.33, 0.33]],
+  [0.17, [0.58, 0.42]], [0.17, [0.4, 0.6]], [0.17, [0.27, 0.46, 0.27]],
+];
+const GUTTER = 3;
 
-/** A deterministic shuffle so the same pick always gets the same collage. */
-function collageIds(leadId: string): string[] {
+/** A deterministic shuffle so the same pick always gets the same spread. */
+function collageIds(leadId: string, n: number): string[] {
   const ids = Object.keys(COVER_ASSETS);
   if (!ids.length) return [];
   let h = 0; for (const ch of leadId) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   const out: string[] = [];
-  for (let i = 0; out.length < TILE_COLS * TILE_ROWS; i++) { h = (h * 1664525 + 1013904223) >>> 0; out.push(i % 4 === 0 ? leadId : ids[h % ids.length]); }
+  for (let i = 0; out.length < n; i++) { h = (h * 1664525 + 1013904223) >>> 0; out.push(i % 5 === 0 ? leadId : ids[h % ids.length]); }
   return out;
 }
 
-/** Page-like panels from a handful of covers, blurred and dimmed, filling the screen behind the pick — the same feel as a spread of comic pages. */
+/** A bright spread of comic panels — each a zoomed crop of a cover, lightly blurred — behind the pick, like a page of art. */
 function CollageBackdrop({ workId, scrollY }: { workId: string | undefined; scrollY: SharedValue<number> }) {
   const { theme } = useAppearance(); const c = theme.colors;
   const { width, height } = useWindowDimensions();
-  const tiles = useMemo(() => (workId ? collageIds(workId) : []), [workId]);
+  const count = PANEL_ROWS.reduce((n, [, cols]) => n + cols.length, 0);
+  const tiles = useMemo(() => (workId ? collageIds(workId, count) : []), [workId, count]);
   const fade = useAnimatedStyle(() => ({ opacity: interpolate(scrollY.value, [0, HERO_H * 0.7], [1, 0.1], 'clamp'), transform: [{ translateY: -scrollY.value * 0.18 }] }));
   if (!tiles.length) return null;
-  const tw = (width - GAP * (TILE_COLS - 1)) / TILE_COLS; const th = height / TILE_ROWS - GAP;
+  let k = 0; let y = 0;
+  const panels = PANEL_ROWS.flatMap(([rh, cols]) => {
+    const rowTop = y; const th = rh * height; y += th;
+    let x = 0;
+    return cols.map((cw) => {
+      const i = k++; const tw = cw * width; const left = x; x += tw;
+      const src = coverSourceFor(tiles[i]);
+      const z = 1.7 + ((i * 7) % 5) * 0.15; const ox = ((i * 37) % 70) / 100; const oy = ((i * 53) % 80) / 100;
+      return (
+        <View key={`${tiles[i]}-${i}`} style={{ position: 'absolute', left: left + GUTTER / 2, top: rowTop + GUTTER / 2, width: tw - GUTTER, height: th - GUTTER, overflow: 'hidden', borderRadius: 2 }}>
+          {src ? <Image source={src} blurRadius={3} contentFit="cover" style={{ position: 'absolute', width: tw * z, height: tw * z * 1.5, left: -(tw * z - tw) * ox, top: -(tw * z * 1.5 - th) * oy }} /> : null}
+        </View>
+      );
+    });
+  });
   return (
     <>
-      <Animated.View style={[StyleSheet.absoluteFill, fade]}>
-        {/* a colour base from the pick's own cover, so a dark panel never shows as a black hole */}
-        {coverSourceFor(workId) ? <Image source={coverSourceFor(workId)} blurRadius={40} contentFit="cover" style={{ position: 'absolute', width, height }} /> : null}
-        {tiles.map((id, i) => {
-          const col = i % TILE_COLS; const row = Math.floor(i / TILE_COLS);
-          const src = coverSourceFor(id); if (!src) return null;
-          // zoom into a different part of each cover so the tiles read as separate panels
-          const z = 2.1; const ox = ((i * 37) % 60) / 100; const oy = ((i * 53) % 70) / 100;
-          return (
-            <View key={`${id}-${i}`} style={{ position: 'absolute', left: col * (tw + GAP), top: row * (th + GAP), width: tw, height: th, overflow: 'hidden', opacity: 0.62 }}>
-              <Image source={src} blurRadius={12} contentFit="cover" style={{ position: 'absolute', width: tw * z, height: th * z * 1.2, left: -tw * z * ox * 0.5, top: -th * z * oy * 0.5 }} />
-            </View>
-          );
-        })}
+      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: '#9A9A9E' }, fade]}>{panels}
+        {/* lifts any near-black crop to a warm tone, so no panel reads as a hole */}
+        <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#7A6458', mixBlendMode: 'screen' }]} />
       </Animated.View>
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: `${c.background}59` }]} />
-      <LinearGradient colors={[`${c.background}B8`, `${c.background}00`, `${c.background}59`, `${c.background}E6`, c.background]} locations={[0, 0.14, 0.5, 0.8, 1]} style={StyleSheet.absoluteFill} />
+      {/* keep the header and the lower text readable; the middle stays bright */}
+      <LinearGradient colors={[`${c.background}CC`, `${c.background}00`, `${c.background}1A`, `${c.background}D0`, c.background]} locations={[0, 0.15, 0.42, 0.7, 0.9]} style={StyleSheet.absoluteFill} />
     </>
   );
 }
@@ -177,7 +186,8 @@ const styles = StyleSheet.create({
   content: { padding: space.lg, paddingTop: space.sm, paddingBottom: 110 },
   heroWrap: { marginHorizontal: -space.lg, marginTop: -space.sm },
   art: { position: 'absolute', top: 0 },
-  artCard: { borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: '#FFFFFF2E', shadowColor: '#000', shadowOpacity: 0.7, shadowRadius: 24, shadowOffset: { width: 0, height: 14 }, elevation: 18, backgroundColor: '#111' },
+  artGlow: { borderRadius: 20, backgroundColor: '#111', boxShadow: '0 0 46px 14px rgba(255, 196, 120, 0.55), 0 18px 34px rgba(0, 0, 0, 0.55)' },
+  artCard: { borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: '#FFFFFF2E', backgroundColor: '#111' },
   heroText: { position: 'absolute', left: space.lg, right: space.lg, bottom: 0, alignItems: 'center' },
   hero: { borderRadius: 28, borderWidth: 1, overflow: 'hidden', paddingTop: 30, paddingBottom: space.lg, paddingHorizontal: space.lg, alignItems: 'center' },
   fan: { height: 214, width: '100%', alignItems: 'center', justifyContent: 'center', marginBottom: space.lg },
