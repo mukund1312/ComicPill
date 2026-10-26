@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { COVER_ASSETS } from '../../ui/coverAssets';
+import { sqlite } from '../../lib/db/client';
 import Animated, { FadeInDown, interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, type SharedValue } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
@@ -47,6 +48,7 @@ function HeroArt({ source, title, scrollY, width, onPress }: { source: ReturnTyp
   });
   return (
     <Animated.View style={[styles.art, styles.artGlow, frame]}>
+      {[30, 27, 24, 21, 18, 15, 12, 9, 6, 3].map((grow, i) => <View key={grow} pointerEvents="none" style={{ position: 'absolute', left: -grow, right: -grow, top: -grow + 14, bottom: -grow - 14, borderRadius: 20 + grow, backgroundColor: '#000', opacity: 0.045 + i * 0.004 }} />)}
       <Pressable accessibilityRole="button" accessibilityLabel={title} onPress={onPress} style={[StyleSheet.absoluteFill, styles.artCard]}>
         {source ? <Image source={source} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
       </Pressable>
@@ -61,13 +63,23 @@ const PANEL_ROWS: Array<[number, number[]]> = [
 ];
 const GUTTER = 3;
 
-/** A deterministic shuffle so the same pick always gets the same spread. */
+/** Panels for one pick: its own cover and the rest of its series fill every other tile, the remainder is a deterministic mix of the catalog,
+ *  so each pick gets its own spread and the colours follow the cover. */
 function collageIds(leadId: string, n: number): string[] {
   const ids = Object.keys(COVER_ASSETS);
   if (!ids.length) return [];
+  let mates: string[] = [];
+  try {
+    mates = sqlite.getAllSync<{ id: string }>('SELECT id FROM works WHERE primary_series_id IS NOT NULL AND primary_series_id = (SELECT primary_series_id FROM works WHERE id = ?) LIMIT 12', leadId)
+      .map((r) => r.id).filter((id) => id !== leadId && !!COVER_ASSETS[id]);
+  } catch { /* the series lookup is a nicety */ }
+  const own = [leadId, ...mates];
   let h = 0; for (const ch of leadId) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   const out: string[] = [];
-  for (let i = 0; out.length < n; i++) { h = (h * 1664525 + 1013904223) >>> 0; out.push(i % 5 === 0 ? leadId : ids[h % ids.length]); }
+  for (let i = 0; out.length < n; i++) {
+    h = (h * 1664525 + 1013904223) >>> 0;
+    out.push(i % 2 === 0 ? own[(i / 2) % own.length | 0] : ids[h % ids.length]);
+  }
   return out;
 }
 
@@ -96,7 +108,9 @@ function CollageBackdrop({ workId, scrollY }: { workId: string | undefined; scro
   });
   return (
     <>
-      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: '#9A9A9E' }, fade]}>{panels}
+      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: '#9A9A9E' }, fade]}>
+        {coverSourceFor(workId) ? <Image source={coverSourceFor(workId)} blurRadius={40} contentFit="cover" style={{ position: 'absolute', width, height }} /> : null}
+        {panels}
         {/* lifts any near-black crop to a warm tone, so no panel reads as a hole */}
         <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#7A6458', mixBlendMode: 'screen' }]} />
       </Animated.View>
@@ -186,7 +200,7 @@ const styles = StyleSheet.create({
   content: { padding: space.lg, paddingTop: space.sm, paddingBottom: 110 },
   heroWrap: { marginHorizontal: -space.lg, marginTop: -space.sm },
   art: { position: 'absolute', top: 0 },
-  artGlow: { borderRadius: 20, backgroundColor: '#111', boxShadow: '0 0 46px 14px rgba(255, 196, 120, 0.55), 0 18px 34px rgba(0, 0, 0, 0.55)' },
+  artGlow: { borderRadius: 20, backgroundColor: '#111', elevation: 26, shadowColor: '#000', shadowOpacity: 0.85, shadowRadius: 30, shadowOffset: { width: 0, height: 16 } },
   artCard: { borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: '#FFFFFF2E', backgroundColor: '#111' },
   heroText: { position: 'absolute', left: space.lg, right: space.lg, bottom: 0, alignItems: 'center' },
   hero: { borderRadius: 28, borderWidth: 1, overflow: 'hidden', paddingTop: 30, paddingBottom: space.lg, paddingHorizontal: space.lg, alignItems: 'center' },
