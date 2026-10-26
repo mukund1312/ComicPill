@@ -53,9 +53,29 @@ function HeroArt({ source, title, scrollY, width, onPress }: { source: ReturnTyp
         {source ? <Image source={source} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
       </Pressable>
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, fade]}>
-        <LinearGradient colors={['transparent', c.background]} locations={[0.45, 1]} style={StyleSheet.absoluteFill} />
+        <LinearGradient colors={[`${c.background}B8`, `${c.background}00`, `${c.background}00`, `${c.background}C4`, c.background]} locations={[0, 0.2, 0.42, 0.8, 1]} style={StyleSheet.absoluteFill} />
       </Animated.View>
     </Animated.View>
+  );
+}
+
+/** The artwork smeared across the whole screen: heavy blur, dissolving into the background, drifting and fading as you scroll. */
+function BleedBackdrop({ source, scrollY }: { source: ReturnType<typeof coverSourceFor>; scrollY: SharedValue<number> }) {
+  const { theme } = useAppearance(); const c = theme.colors;
+  const { width, height } = useWindowDimensions();
+  const drift = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [0, HERO_H * 0.9], [1, 0.18], 'clamp'),
+    transform: [{ translateY: -scrollY.value * 0.35 }, { scale: interpolate(scrollY.value, [0, 600], [1.08, 1.0], 'clamp') }],
+  }));
+  if (!source) return null;
+  return (
+    <>
+      <Animated.View style={[{ position: 'absolute', top: 0, left: 0, width, height: height * 0.92 }, drift]}>
+        <Image source={source} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={22} />
+      </Animated.View>
+      {/* dissolve the smear into the app background towards the bottom, and pull the top slightly darker so the header stays legible */}
+      <LinearGradient colors={[`${c.background}D0`, `${c.background}40`, `${c.background}CC`, c.background]} locations={[0, 0.25, 0.7, 0.96]} style={StyleSheet.absoluteFill} />
+    </>
   );
 }
 
@@ -82,7 +102,7 @@ export default function TodayScreen() {
   const { width } = useWindowDimensions();
   const scrollY = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler((e) => { scrollY.value = e.contentOffset.y; });
-  return <AppShell active="today" logo><Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+  return <AppShell active="today" logo bleed={<BleedBackdrop source={backdrop} scrollY={scrollY} />}><Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
     <Animated.View entering={FadeInDown.duration(420)}>
     {lead ? (
       <View style={[styles.heroWrap, { height: HERO_H }]}>

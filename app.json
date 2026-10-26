@@ -26,7 +26,7 @@
         "android.permission.SYSTEM_ALERT_WINDOW",
         "android.permission.WRITE_EXTERNAL_STORAGE"
       ],
-      "versionCode": 7
+      "versionCode": 8
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -61,7 +61,7 @@
           "isAccessMediaLocationEnabled": false
         }
       ],
-      "expo-splash-screen",
+      ["expo-splash-screen", { "image": "./assets/comicpillicon.png", "imageWidth": 160, "backgroundColor": "#0A0A0D", "resizeMode": "contain" }],
       "expo-secure-store",
       "expo-background-task",
       "expo-build-properties",

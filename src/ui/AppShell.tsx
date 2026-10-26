@@ -60,11 +60,13 @@ function TabBar({ active }: { active: Tab }) {
   );
 }
 
-export function AppShell({ active, title, children, logo = false, right, back = false }: PropsWithChildren<{ active: Tab; title?: string; logo?: boolean; right?: ReactNode; back?: boolean }>) {
+export function AppShell({ active, title, children, logo = false, right, back = false, bleed }: PropsWithChildren<{ active: Tab; title?: string; logo?: boolean; right?: ReactNode; back?: boolean; bleed?: ReactNode }>) {
   const { theme, typography } = useAppearance(); const c = theme.colors;
   const avatar = useProfile((p) => p.avatar); const displayName = useProfile((p) => p.displayName); const username = useProfile((p) => p.username);
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
+      {/* artwork that bleeds across the whole screen, behind the header and the tab bar */}
+      {bleed ? <View pointerEvents="none" style={StyleSheet.absoluteFill}>{bleed}</View> : null}
       {back ? (
         <>
           <View style={styles.topBar}>

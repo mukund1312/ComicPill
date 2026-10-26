@@ -25,6 +25,11 @@ import { AppearanceProvider, useAppearance } from '../src/ui/theme';
 import ReminderSync from '../src/features/settings/ReminderSync';
 import MindSync from '../src/features/mind/MindSync';
 import { AppLockGate } from '../src/ui/AppLockGate';
+import { BootSplash } from '../src/ui/BootSplash';
+import * as SplashScreen from 'expo-splash-screen';
+
+// Keep the native splash up until our own opening animation is on screen.
+void SplashScreen.preventAutoHideAsync().catch(() => undefined);
 import '../src/lib/mind/task';
 
 export default function RootLayout() {
@@ -45,15 +50,9 @@ export default function RootLayout() {
   // The app is portrait-only; app.json allows rotation so the reader can unlock it for two-page landscape.
   useEffect(() => { ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => undefined); }, []);
 
-  if (!fontsLoaded || !dbReady) {
-    return (
-      <View style={{ flex: 1, backgroundColor: color.bg, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color={color.accent} />
-      </View>
-    );
-  }
+  if (!fontsLoaded || !dbReady) return null; // the native splash is still showing
 
-  return <GestureHandlerRootView style={{ flex: 1 }}><AppearanceProvider><ReminderSync /><MindSync /><ThemedStack /><AppLockGate /></AppearanceProvider></GestureHandlerRootView>;
+  return <GestureHandlerRootView style={{ flex: 1 }}><AppearanceProvider><ReminderSync /><MindSync /><ThemedStack /><AppLockGate /><BootSplash /></AppearanceProvider></GestureHandlerRootView>;
 }
 
 function ThemedStack() {
