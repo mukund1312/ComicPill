@@ -26,7 +26,348 @@
         "android.permission.SYSTEM_ALERT_WINDOW",
         "android.permission.WRITE_EXTERNAL_STORAGE"
       ],
-      "versionCode": 15
+      "versionCode": 16,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "category": [
+            "DEFAULT",
+            "BROWSABLE"
+          ],
+          "data": [
+            {
+              "scheme": "content",
+              "mimeType": "application/x-cbz"
+            },
+            {
+              "scheme": "content",
+              "mimeType": "application/vnd.comicbook+zip"
+            },
+            {
+              "scheme": "content",
+              "mimeType": "application/x-cbr"
+            },
+            {
+              "scheme": "content",
+              "mimeType": "application/vnd.comicbook-rar"
+            },
+            {
+              "scheme": "content",
+              "mimeType": "application/x-cb7"
+            },
+            {
+              "scheme": "content",
+              "mimeType": "application/x-7z-compressed"
+            },
+            {
+              "scheme": "content",
+              "mimeType": "application/x-rar-compressed"
+            },
+            {
+              "scheme": "content",
+              "mimeType": "application/vnd.rar"
+            },
+            {
+              "scheme": "content",
+              "mimeType": "application/zip"
+            },
+            {
+              "scheme": "content",
+              "mimeType": "application/x-zip-compressed"
+            },
+            {
+              "scheme": "content",
+              "mimeType": "application/pdf"
+            },
+            {
+              "scheme": "content",
+              "mimeType": "application/epub+zip"
+            },
+            {
+              "scheme": "file",
+              "mimeType": "application/x-cbz"
+            },
+            {
+              "scheme": "file",
+              "mimeType": "application/vnd.comicbook+zip"
+            },
+            {
+              "scheme": "file",
+              "mimeType": "application/x-cbr"
+            },
+            {
+              "scheme": "file",
+              "mimeType": "application/vnd.comicbook-rar"
+            },
+            {
+              "scheme": "file",
+              "mimeType": "application/x-cb7"
+            },
+            {
+              "scheme": "file",
+              "mimeType": "application/x-7z-compressed"
+            },
+            {
+              "scheme": "file",
+              "mimeType": "application/x-rar-compressed"
+            },
+            {
+              "scheme": "file",
+              "mimeType": "application/vnd.rar"
+            },
+            {
+              "scheme": "file",
+              "mimeType": "application/zip"
+            },
+            {
+              "scheme": "file",
+              "mimeType": "application/x-zip-compressed"
+            },
+            {
+              "scheme": "file",
+              "mimeType": "application/pdf"
+            },
+            {
+              "scheme": "file",
+              "mimeType": "application/epub+zip"
+            }
+          ]
+        },
+        {
+          "action": "VIEW",
+          "category": [
+            "DEFAULT",
+            "BROWSABLE"
+          ],
+          "data": [
+            {
+              "scheme": "content",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.cbz"
+            },
+            {
+              "scheme": "content",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.cbr"
+            },
+            {
+              "scheme": "content",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.cb7"
+            },
+            {
+              "scheme": "content",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.cbt"
+            },
+            {
+              "scheme": "content",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.zip"
+            },
+            {
+              "scheme": "content",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.rar"
+            },
+            {
+              "scheme": "content",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.7z"
+            },
+            {
+              "scheme": "content",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.pdf"
+            },
+            {
+              "scheme": "content",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.epub"
+            },
+            {
+              "scheme": "content",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.CBZ"
+            },
+            {
+              "scheme": "content",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.CBR"
+            },
+            {
+              "scheme": "content",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.CB7"
+            },
+            {
+              "scheme": "content",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.CBT"
+            },
+            {
+              "scheme": "content",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.ZIP"
+            },
+            {
+              "scheme": "content",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.RAR"
+            },
+            {
+              "scheme": "content",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.7Z"
+            },
+            {
+              "scheme": "content",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.PDF"
+            },
+            {
+              "scheme": "content",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.EPUB"
+            }
+          ]
+        },
+        {
+          "action": "VIEW",
+          "category": [
+            "DEFAULT",
+            "BROWSABLE"
+          ],
+          "data": [
+            {
+              "scheme": "file",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.cbz"
+            },
+            {
+              "scheme": "file",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.cbr"
+            },
+            {
+              "scheme": "file",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.cb7"
+            },
+            {
+              "scheme": "file",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.cbt"
+            },
+            {
+              "scheme": "file",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.zip"
+            },
+            {
+              "scheme": "file",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.rar"
+            },
+            {
+              "scheme": "file",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.7z"
+            },
+            {
+              "scheme": "file",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.pdf"
+            },
+            {
+              "scheme": "file",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.epub"
+            },
+            {
+              "scheme": "file",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.CBZ"
+            },
+            {
+              "scheme": "file",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.CBR"
+            },
+            {
+              "scheme": "file",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.CB7"
+            },
+            {
+              "scheme": "file",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.CBT"
+            },
+            {
+              "scheme": "file",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.ZIP"
+            },
+            {
+              "scheme": "file",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.RAR"
+            },
+            {
+              "scheme": "file",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.7Z"
+            },
+            {
+              "scheme": "file",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.PDF"
+            },
+            {
+              "scheme": "file",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.EPUB"
+            }
+          ]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -61,7 +402,15 @@
           "isAccessMediaLocationEnabled": false
         }
       ],
-      ["expo-splash-screen", { "image": "./assets/comicpillicon.png", "imageWidth": 160, "backgroundColor": "#0A0A0D", "resizeMode": "contain" }],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/comicpillicon.png",
+          "imageWidth": 160,
+          "backgroundColor": "#0A0A0D",
+          "resizeMode": "contain"
+        }
+      ],
       "expo-secure-store",
       "expo-background-task",
       "expo-build-properties",
