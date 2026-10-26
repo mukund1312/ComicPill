@@ -21,7 +21,7 @@ import { useAppearance } from '../../ui/theme';
 /** Finishing first-run goes FORWARD to Today. Going "back" would land on whatever
  *  was underneath in the stack — after sign-up, that was the sign-in screen.
  *  Only editing from Profile returns to where it came from. */
-const leave = (to: '/' | '/library' = '/', backToCaller = false) => {
+const leave = (to: '/' | '/collection' = '/', backToCaller = false) => {
   if (backToCaller && router.canGoBack()) router.back();
   else router.replace(to);
 };
@@ -121,7 +121,7 @@ export default function OnboardingFlow() {
     case 'library_ready':
       return <LibraryReadyStage onNext={s.next} />;
     case 'first_pick':
-      return <FirstPickStage onDone={() => { s.finish(); leave(); }} onBrowse={() => { s.finish(); leave('/library'); }} />;
+      return <FirstPickStage onDone={() => { s.finish(); leave(); }} onBrowse={() => { s.finish(); leave('/collection'); }} />;
     case 'done':
     default:
       return <View style={{ flex: 1, backgroundColor: theme.colors.background }} />;

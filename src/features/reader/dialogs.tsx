@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
@@ -50,12 +50,15 @@ export function PromptModal({ visible, title, initial = '', placeholder, submitL
 
 function PromptBody({ title, initial, placeholder, submitLabel, secure, onSubmit, onClose }: { title: string; initial: string; placeholder?: string; submitLabel: string; secure: boolean; onSubmit: (value: string) => void; onClose: () => void }) {
   const [value, setValue] = useState(initial);
+  const field = useRef<TextInput>(null);
+  // autoFocus alone is unreliable inside an Android Modal: ask again once the dialog has settled.
+  useEffect(() => { const t = setTimeout(() => field.current?.focus(), 250); return () => clearTimeout(t); }, []);
   const submit = () => { const v = value.trim(); if (v) { onClose(); onSubmit(v); } };
   return (
     <Pressable style={[styles.backdrop, styles.center]} onPress={onClose}>
       <Pressable style={styles.dialog} onPress={() => undefined}>
         <Text style={styles.title}>{title}</Text>
-        <TextInput autoFocus value={value} onChangeText={setValue} secureTextEntry={secure} autoCapitalize="none" autoCorrect={false} placeholder={placeholder} placeholderTextColor={color.faint} style={styles.input} onSubmitEditing={submit} returnKeyType="done" />
+        <TextInput ref={field} autoFocus value={value} onChangeText={setValue} secureTextEntry={secure} autoCapitalize="none" autoCorrect={false} placeholder={placeholder} placeholderTextColor={color.faint} style={styles.input} onSubmitEditing={submit} returnKeyType="done" />
         <View style={styles.buttons}>
           <Pressable onPress={onClose} style={styles.button}><Text style={styles.buttonText}>Cancel</Text></Pressable>
           <Pressable onPress={submit} style={[styles.button, styles.primary]}><Text style={styles.primaryText}>{submitLabel}</Text></Pressable>

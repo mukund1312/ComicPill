@@ -24,7 +24,7 @@ import { newSalt, sha256 } from '../../lib/reader/lockCrypto';
 import { listPresets } from '../../lib/reader/readerSettings';
 import { isFinished, matchesQuery, progressFraction, readingNow, SORT_LABEL, sortComics, type SortKey } from '../../lib/reader/shelf';
 
-type Segment = 'reading' | 'library' | 'collections';
+type Segment = 'library' | 'collections';
 type View_ = 'grid' | 'list';
 type Cell =
   | { kind: 'comic'; key: string; comic: ReaderComic }
@@ -34,11 +34,12 @@ type Cell =
 const SORTS: SortKey[] = ['recent', 'title', 'added'];
 const MIN_CELL = 168;
 const VIEW_KEY = 'reader_view';
+const sizeLabel = (bytes: number | null) => (bytes == null ? null : bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);
 
 type Sheet = { title?: string; options: SheetOption[] } | null;
 type Prompt = { title: string; initial?: string; submitLabel?: string; secure?: boolean; onSubmit: (v: string) => void } | null;
 
-export default function ReaderShelfScreen() {
+export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' | 'collections' }) {
   const { width } = useWindowDimensions();
   const { theme, typography } = useAppearance();
   const c = theme.colors;
@@ -50,7 +51,7 @@ export default function ReaderShelfScreen() {
   const [comics, setComics] = useState<ReaderComic[]>([]);
   const [folders, setFolders] = useState<ReaderFolder[]>([]);
   const [collections, setCollections] = useState<ReaderCollection[]>([]);
-  const [segment, setSegment] = useState<Segment>(() => (readingNow(listReaderComics()).length ? 'reading' : 'library'));
+  const segment: Segment = mode === 'collections' ? 'collections' : 'library';
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortKey>('recent');
@@ -122,7 +123,6 @@ export default function ReaderShelfScreen() {
   const cells: Cell[] = useMemo(() => {
     const searching = query.trim().length > 0;
     const visible = comics.filter((comic) => !isHiddenByFolder(comic, lockedFolders, new Set(folders.filter((f) => isUnlocked('folder', f.id)).map((f) => f.id))));
-    if (segment === 'reading') return sortComics(readingNow(visible.filter((comic) => matchesQuery(comic, query))), 'recent').map((comic) => ({ kind: 'comic', key: comic.id, comic }));
     if (segment === 'collections' && !openCollection) {
       return collections.filter((col) => col.name.toLowerCase().includes(query.trim().toLowerCase())).map((collection) => ({ kind: 'collection', key: collection.id, collection }));
     }
@@ -222,11 +222,8 @@ export default function ReaderShelfScreen() {
     ],
   });
 
-  const switchSegment = (s: Segment) => { setSegment(s); setOpenFolder(null); setOpenCollection(null); };
 
-  const empty = segment === 'reading'
-    ? <EmptyState title="Nothing in progress" copy="Comics you start reading show up here, most recent first." />
-    : segment === 'collections' && !openCollection
+  const empty = segment === 'collections' && !openCollection
       ? <EmptyState title="No collections yet" copy="Group comics your own way — long-press a comic and choose “Add to collection”." action="New collection" onAction={() => setPrompt({ title: 'New collection', submitLabel: 'Create', onSubmit: (name) => { createCollection(name); refresh(); } })} />
       : query
         ? <EmptyState title="No matches" copy="Try a title, series or writer." />
@@ -248,7 +245,7 @@ export default function ReaderShelfScreen() {
           {cover}
           <View style={styles.listBody}>
             <Text numberOfLines={2} style={styles.title}>{masked ? 'Locked comic' : comic.title}</Text>
-            <Text numberOfLines={1} style={styles.sub}>{masked ? 'Enter the password to open' : `${comic.format.toUpperCase()} · ${comic.pageCount} pages${comic.writer ? ` · ${comic.writer}` : ''}`}</Text>
+            <Text numberOfLines={1} style={styles.sub}>{masked ? 'Enter the password to open' : [sizeLabel(comic.sizeBytes), `${comic.pageCount} pages`, comic.writer].filter(Boolean).join(' · ')}</Text>
             <Progress value={progressFraction(comic)} />
           </View>
         </PressableScale>
@@ -258,13 +255,14 @@ export default function ReaderShelfScreen() {
       <PressableScale style={[styles.cell, { width: cellWidth }]} onPress={() => openComic(comic)} onLongPress={() => comicMenu(comic)}>
         {cover}
         <Text numberOfLines={2} style={styles.title}>{masked ? 'Locked comic' : comic.title}</Text>
-        <Progress value={progressFraction(comic)} />
+        <Text numberOfLines={1} style={styles.sub}>{masked ? 'Locked' : [sizeLabel(comic.sizeBytes), `${comic.pageCount} pages`].filter(Boolean).join(' · ')}</Text>
+        {progressFraction(comic) > 0 && !isFinished(comic) ? <Progress value={progressFraction(comic)} /> : null}
       </PressableScale>
     );
   };
 
   return (
-    <AppShell active="read" title="Read now" right={<HeaderActions><HeaderButton icon="search" label="Search" active={searchOpen} onPress={() => { setSearchOpen((o) => !o); if (searchOpen) setQuery(''); }} /><HeaderButton icon="add" label="Add" disabled={busy} onPress={addMenu} /></HeaderActions>}>
+    <AppShell active="library" back title={mode === 'collections' ? 'Collections' : 'On My Phone'} right={<HeaderActions><HeaderButton icon="search" label="Search" active={searchOpen} onPress={() => { setSearchOpen((o) => !o); if (searchOpen) setQuery(''); }} /><HeaderButton icon="add" label="Add" disabled={busy} onPress={addMenu} /></HeaderActions>}>
       <FlashList
         key={`${view}-${columns}`}
         data={cells}
@@ -275,13 +273,8 @@ export default function ReaderShelfScreen() {
         renderItem={renderItem}
         ListHeaderComponent={
           <Animated.View entering={FadeIn.duration(220)} style={styles.header}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pills}>
-              <Pill label="Reading now" active={segment === 'reading'} onPress={() => switchSegment('reading')} />
-              <Pill label="Library" active={segment === 'library'} onPress={() => switchSegment('library')} />
-              <Pill label="Collections" active={segment === 'collections'} onPress={() => switchSegment('collections')} />
-            </ScrollView>
             {searchOpen || query ? <Input placeholder="Search title, series or writer" value={query} onChangeText={setQuery} /> : null}
-            {segment !== 'reading' ? (
+            {true ? (
               <View style={styles.subrow}>
                 {inside ? <Pressable onPress={() => { setOpenFolder(null); setOpenCollection(null); }}><Text style={styles.back}>‹ {insideName}</Text></Pressable> : <Text style={styles.count}>{segment === 'collections' ? `${collections.length} ${collections.length === 1 ? 'collection' : 'collections'}` : `${comics.length} ${comics.length === 1 ? 'comic' : 'comics'}`}</Text>}
                 <Pressable accessibilityRole="button" accessibilityLabel="View and sort" onPress={viewMenu} hitSlop={8}><Text style={styles.sort}>{SORT_LABEL[sort]}  ⌄</Text></Pressable>

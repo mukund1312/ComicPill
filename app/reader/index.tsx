@@ -1,1 +1,1 @@
-export { default } from '../../src/features/reader/ReaderShelfScreen';
+export { default } from '../../src/features/reader/ReadingNowScreen';

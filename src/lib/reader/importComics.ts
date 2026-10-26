@@ -56,7 +56,7 @@ async function importFile(uri: string, name: string, result: ImportResult, opts:
     insertReaderComic({
       id, title: displayTitle(info, titleOf(name)), path: stored.uri, format: source.format, pageCount: source.pageCount, coverPath,
       series: info.series ?? null, issue: info.number ?? null, writer: info.writer ?? null, folderId: opts.folderId ?? null,
-      mode: info.rtl ? 'rtl' : 'ltr',
+      mode: info.rtl ? 'rtl' : 'ltr', sizeBytes: (() => { try { return new File(stored.uri).size ?? null; } catch { return null; } })(),
     });
     // Into the library too, owned digitally — and into the catalog if it isn't there yet.
     try { linkReaderComic({ id, title: displayTitle(info, titleOf(name)), series: info.series ?? null, writer: info.writer ?? null, coverPath, workId: null }); } catch { /* the file is still readable without the link */ }

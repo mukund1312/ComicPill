@@ -7,6 +7,8 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { StageFrame } from './StageFrame';
+import { pickAndImportComics } from '../../lib/reader/importComics';
+import { notice } from '../../ui/dialogs';
 import { Button, Eyebrow, Pill } from '../../ui/primitives';
 import { ComicCover } from '../../ui/comic';
 import { ChoiceSheet, TextField, type Choice } from '../../ui/settingsUi';
@@ -203,6 +205,11 @@ export function CollectionStage({ draft, setDraft, onSave, onSkip, onBack, savin
   // ---- home ---------------------------------------------------------------------
 
   const hasKey = !!ai.config;
+  const importFromPhone = async () => {
+    const r = await pickAndImportComics({});
+    if (r.failed.length) notice('Some files could not be imported', r.failed.map((f) => `${f.name}: ${f.reason}`).join('\n'));
+    else if (r.imported.length) notice('Added to your library', `${r.imported.length} ${r.imported.length === 1 ? 'comic is' : 'comics are'} now in On My Phone and in your library.`);
+  };
   return (
     <StageFrame
       title="Now, your comics." subtitle="Add what you own so recommendations start from your shelf. All optional — you can do this any time." onBack={onBack}
@@ -210,6 +217,7 @@ export function CollectionStage({ draft, setDraft, onSave, onSkip, onBack, savin
       onSkip={draft.length ? onSkip : undefined} skipLabel="Skip and don’t save these"
     >
       <View style={styles.gap}>
+        <Button kind="secondary" onPress={importFromPhone}>Import comics from my phone</Button>
         {hasKey ? (
           <>
             <Button onPress={fromCamera}>Scan my shelf with the camera</Button>

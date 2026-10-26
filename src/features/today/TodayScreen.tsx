@@ -10,6 +10,8 @@ import { listReaderComics, type ReaderComic } from '../../lib/reader/readerLibra
 import { progressFraction, readingNow } from '../../lib/reader/shelf';
 import UpdateBanner from '../settings/UpdateBanner';
 import { Button, Pill, Progress, Sheet } from '../../ui/primitives';
+import { Icon } from '../../ui/Icon';
+import { PressableScale } from '../../ui/PressableScale';
 import { radius, space } from '../../ui/tokens';
 import { useAppearance } from '../../ui/theme';
 
@@ -97,6 +99,11 @@ export default function TodayScreen() {
         {others.map((card) => <StripCard key={card.workId} label={card === today.continueCard ? 'Continue' : card === today.switchCard ? 'Switch it up' : 'Explore'} title={card.title} workId={card.workId} onPress={() => router.push(`/comic/${card.workId}`)} />)}
       </ScrollView>
     </> : null}
+      <PressableScale to={0.98} onPress={() => router.push('/paths')} style={[styles.pathsCard, { backgroundColor: c.surface, borderColor: c.border }]}>
+        <View style={[styles.pathsIcon, { backgroundColor: c.primaryMuted }]}><Icon name="git-network" size={22} color={c.primary} /></View>
+        <View style={{ flex: 1 }}><Text style={[styles.pathsTitle, { color: c.textPrimary, fontFamily: typography.displayMedium }]}>Reading paths</Text><Text style={[styles.pathsSub, { color: c.textSecondary, fontFamily: typography.body }]}>What to read before or after anything.</Text></View>
+        <Icon name="chevron-forward" size={18} color={c.textMuted} />
+      </PressableScale>
     </Animated.View>
   </ScrollView>
   {showWhy && lead ? <View style={[styles.overlay, { backgroundColor: c.overlay }]}><Sheet title="Why this tonight?" onClose={() => setShowWhy(false)}><Text style={[styles.sheetLead, { color: c.textSecondary, fontFamily: typography.body }]}>A few reasons it earns tonight.</Text>{(lead.reasons.length ? lead.reasons : ['It fits your current reading mood.', 'It is a natural next step in your library.', 'It is short enough to enjoy tonight.']).slice(0, 3).map((reason) => <View key={reason} style={styles.reasonRow}><Text style={[styles.reasonDot, { color: c.primary }]}>✦</Text><Text style={[styles.reasonText, { color: c.textPrimary, fontFamily: typography.body }]}>{reason}</Text></View>)}<Button kind="destructive" onPress={() => { setShowWhy(false); setShowNotTonight(true); }}>Not tonight</Button><Button kind="ghost" onPress={() => setShowWhy(false)}>Close</Button></Sheet></View> : null}
@@ -118,6 +125,10 @@ const styles = StyleSheet.create({
   pills: { gap: 8, paddingVertical: 10 },
   section: { fontSize: 22, marginTop: 22, marginBottom: 12 },
   strip: { gap: 14, paddingRight: space.lg },
+  pathsCard: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, marginTop: 28 },
+  pathsIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  pathsTitle: { fontSize: 16 },
+  pathsSub: { fontSize: 13, marginTop: 2 },
   stripCard: { width: 110, gap: 6 },
   stripCover: { width: 96, height: 144, borderRadius: radius.sm, overflow: 'hidden', borderWidth: 1, borderColor: '#ffffff20' },
   stripLabel: { fontSize: 9, letterSpacing: 1.2, marginTop: 2 },

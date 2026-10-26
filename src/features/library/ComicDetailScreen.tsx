@@ -1,4 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { sqlite } from '../../lib/db/client';
+import { CoverStack } from '../../ui/CoverStack';
+import { HeaderButton } from '../../ui/Icon';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -6,7 +11,7 @@ import { useLibrary, type LibraryItem } from './useLibrary';
 import { useComicDetail } from './useComicDetail';
 import { useComicFund } from '../wallet/useComicFund';
 import type { ComicDetail, DetailEdition } from '../../lib/db/queries/detail';
-import { ComicCover } from '../../ui/comic';
+import { ComicCover, coverSourceFor } from '../../ui/comic';
 import { Button, Eyebrow, Input, Pill, Progress, PurchaseBadge, SectionHeader, Sheet } from '../../ui/primitives';
 import { color, font, radius, space, type } from '../../ui/tokens';
 import { isAccessible } from '../../lib/util/own';
@@ -77,17 +82,7 @@ function Detail({ item, detail, setStatus, label, linkedBank, purchase, onSave, 
 }) {
   return (
     <>
-      <Text onPress={() => router.back()} style={styles.back}>‹ Back</Text>
-      <View style={styles.hero}>
-        <ComicCover title={item.title} workId={item.workId} size="hero" recyclingKey={item.workId} />
-        <View style={styles.heroInfo}>
-          <Eyebrow>{item.bucket.replaceAll('_', ' ')}</Eyebrow>
-          <Text numberOfLines={3} ellipsizeMode="tail" style={styles.title}>{item.title}</Text>
-          <Text style={styles.meta}>{[detail.publisher, detail.pathName ? `#${detail.positionInPath ?? '?'} of ${detail.totalInPath ?? '?'} in ${detail.pathName}` : null].filter(Boolean).join(' · ') || 'A considered addition to your reading life.'}</Text>
-          <PurchaseBadge label={label} />
-        </View>
-      </View>
-
+      <SeriesHeader item={item} detail={detail} label={label} />
       {detail.previousInPath || detail.nextInPath ? (
         <View style={styles.journeyRow}>
           {detail.previousInPath ? <Pressable_ onPress={() => router.push(`/comic/${detail.previousInPath!.workId}`)} label={`‹ ${detail.previousInPath.title}`} align="left" /> : <View style={{ flex: 1 }} />}
@@ -95,7 +90,9 @@ function Detail({ item, detail, setStatus, label, linkedBank, purchase, onSave, 
         </View>
       ) : null}
 
+      <Text style={styles.aboutHead}>About</Text>
       <Text style={styles.summary}>{detail.summary ?? 'A story with enough atmosphere and character to make room for a deliberate read.'}</Text>
+      <SeriesList workId={item.workId} />
 
       <View style={{ marginBottom: space.lg, gap: space.md }}><ArcRelevance workId={item.workId} /><MeetCharacters workId={item.workId} /></View>
 
@@ -162,6 +159,55 @@ function Detail({ item, detail, setStatus, label, linkedBank, purchase, onSave, 
   );
 }
 
+function useSeriesMates(workId: string) {
+  return useMemo(() => {
+    try {
+      return sqlite.getAllSync<{ id: string; title: string; own: string }>(
+        "SELECT w.id AS id, w.title AS title, COALESCE(l.own, 'none') AS own FROM works w LEFT JOIN user_library l ON l.work_id = w.id WHERE w.primary_series_id IS NOT NULL AND w.primary_series_id = (SELECT primary_series_id FROM works WHERE id = ?) ORDER BY w.sort_title LIMIT 30", workId)
+        .sort((a, b) => a.title.localeCompare(b.title, undefined, { numeric: true }));
+    } catch { return []; }
+  }, [workId]);
+}
+
+/** The Panels-style top of a series page: a blurred backdrop, the fanned covers, a tagline and the title. */
+function SeriesHeader({ item, detail, label }: { item: LibraryItem; detail: ComicDetail; label: 'collect' | 'digital_is_fine' | 'try_digital_first' }) {
+  const mates = useSeriesMates(item.workId).filter((m) => m.id !== item.workId);
+  const stack = [{ title: item.title, workId: item.workId }, ...mates.slice(0, 2).map((m) => ({ title: m.title, workId: m.id }))];
+  const backdrop = coverSourceFor(item.workId);
+  const tagline = (detail.publisher ?? item.bucket.replaceAll('_', ' ')).toUpperCase();
+  return (
+    <View style={styles.seriesHeader}>
+      {backdrop ? <Image source={backdrop} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={50} /> : null}
+      <LinearGradient pointerEvents="none" colors={['#0A0A0D88', '#0A0A0D']} locations={[0, 0.95]} style={StyleSheet.absoluteFill} />
+      <View style={styles.headerButtons}><HeaderButton icon="chevron-back" label="Back" onPress={() => router.back()} /></View>
+      <View style={{ alignItems: 'center', marginTop: 52 }}><CoverStack items={stack} width={158} /></View>
+      <Text style={styles.tagline}>{tagline}</Text>
+      <Text numberOfLines={3} style={styles.seriesTitle}>{item.title}</Text>
+      <View style={{ alignItems: 'center', marginTop: 10 }}><PurchaseBadge label={label} /></View>
+    </View>
+  );
+}
+
+function SeriesList({ workId }: { workId: string }) {
+  const mates = useSeriesMates(workId);
+  if (mates.length < 2) return null;
+  return (
+    <>
+      <Text style={styles.aboutHead}>In this series</Text>
+      {mates.map((m, i) => (
+        <Pressable key={m.id} onPress={() => m.id !== workId && router.push(`/comic/${m.id}`)} style={styles.seriesRow}>
+          <Text style={styles.seriesNum}>{i + 1}</Text>
+          <ComicCover size="list" title={m.title} workId={m.id} />
+          <View style={{ flex: 1 }}>
+            <Text numberOfLines={2} style={styles.seriesRowTitle}>{m.title}</Text>
+            <Text style={[styles.seriesRowSub, m.id === workId && { color: color.accent }]}>{m.id === workId ? 'You are here' : m.own !== 'none' ? 'In your library' : 'New to you'}</Text>
+          </View>
+        </Pressable>
+      ))}
+    </>
+  );
+}
+
 function EditionRow({ edition }: { edition: DetailEdition }) {
   return (
     <View style={styles.editionRow}>
@@ -186,7 +232,16 @@ function Pressable_({ onPress, label, align, full }: { onPress: () => void; labe
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: color.bg },
-  content: { padding: space.lg, paddingTop: 60, paddingBottom: 40 },
+  content: { paddingHorizontal: space.lg, paddingTop: 0, paddingBottom: 60 },
+  seriesHeader: { marginHorizontal: -space.lg, paddingTop: 54, paddingBottom: 18, paddingHorizontal: space.lg, overflow: 'hidden' },
+  headerButtons: { position: 'absolute', top: 50, left: space.lg, zIndex: 2 },
+  tagline: { color: color.muted, fontFamily: font.bodySemibold, fontSize: 11, letterSpacing: 1.4, textAlign: 'center', marginTop: 18 },
+  seriesTitle: { color: color.text, fontFamily: font.display, fontSize: 30, lineHeight: 35, letterSpacing: -0.6, textAlign: 'center', marginTop: 8 },
+  aboutHead: { color: color.text, fontFamily: font.display, fontSize: 22, letterSpacing: -0.4, marginTop: 28, marginBottom: 4 },
+  seriesRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: color.border },
+  seriesNum: { width: 22, textAlign: 'center', color: color.faint, fontFamily: font.display, fontSize: 20 },
+  seriesRowTitle: { color: color.text, fontFamily: font.displayMedium, fontSize: 15, lineHeight: 19 },
+  seriesRowSub: { color: color.muted, fontFamily: font.body, fontSize: 12.5, marginTop: 3 },
   back: { color: color.muted, fontFamily: font.bodyMedium, fontSize: type.body, marginBottom: 16 },
   hero: { flexDirection: 'row', gap: 18 },
   heroInfo: { flex: 1, minWidth: 0, justifyContent: 'center', gap: 9 },

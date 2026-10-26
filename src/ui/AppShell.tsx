@@ -5,7 +5,7 @@ import Animated, { Easing, FadeIn, useAnimatedStyle, useSharedValue, withSpring,
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { space } from './tokens';
 import { Wordmark } from './primitives';
-import { Icon, type IconName } from './Icon';
+import { HeaderButton, Icon, type IconName } from './Icon';
 import { useAppearance } from './theme';
 import { ThemeEmblem } from './ThemeEmblem';
 import { Avatar } from './Avatar';
@@ -13,13 +13,13 @@ import { feedback } from '../lib/platform/feedback';
 import { useProfile } from '../lib/state/settings';
 import { initialOf } from '../lib/settings/profileModel';
 
-type Tab = 'today' | 'library' | 'paths' | 'read' | 'discover' | 'none';
+type Tab = 'today' | 'reading' | 'library' | 'discover' | 'search' | 'none';
 const tabs: Array<{ id: Exclude<Tab, 'none'>; icon: IconName; iconActive: IconName; label: string; href: string }> = [
   { id: 'today', icon: 'home-outline', iconActive: 'home', label: 'Today', href: '/' },
-  { id: 'library', icon: 'library-outline', iconActive: 'library', label: 'Library', href: '/library' },
-  { id: 'paths', icon: 'git-network-outline', iconActive: 'git-network', label: 'Paths', href: '/paths' },
-  { id: 'read', icon: 'book-outline', iconActive: 'book', label: 'Read now', href: '/reader' },
-  { id: 'discover', icon: 'compass-outline', iconActive: 'compass', label: 'Discover', href: '/discover' },
+  { id: 'reading', icon: 'book-outline', iconActive: 'book', label: 'Reading Now', href: '/reader' },
+  { id: 'library', icon: 'layers-outline', iconActive: 'layers', label: 'Library', href: '/library' },
+  { id: 'discover', icon: 'storefront-outline', iconActive: 'storefront', label: 'Discover', href: '/discover' },
+  { id: 'search', icon: 'search-outline', iconActive: 'search', label: 'Search', href: '/search' },
 ];
 
 // Each tab is its own screen, so the highlight remembers where it was and glides from there to the new tab.
@@ -60,15 +60,25 @@ function TabBar({ active }: { active: Tab }) {
   );
 }
 
-export function AppShell({ active, title, children, logo = false, right }: PropsWithChildren<{ active: Tab; title?: string; logo?: boolean; right?: ReactNode }>) {
+export function AppShell({ active, title, children, logo = false, right, back = false }: PropsWithChildren<{ active: Tab; title?: string; logo?: boolean; right?: ReactNode; back?: boolean }>) {
   const { theme, typography } = useAppearance(); const c = theme.colors;
   const avatar = useProfile((p) => p.avatar); const displayName = useProfile((p) => p.displayName); const username = useProfile((p) => p.username);
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
-      <View style={styles.header}>
-        {logo ? <View style={styles.logoLockup}><Wordmark small /><ThemeEmblem id={theme.id} size={26} /></View> : <Text accessibilityRole="header" style={[styles.headerTitle, { color: c.textPrimary, fontFamily: typography.display }]}>{title}</Text>}
-        <View style={styles.headerRight}>{right ?? <Pressable accessibilityRole="button" accessibilityLabel="Open profile" hitSlop={8} onPress={() => router.push('/profile')}><Avatar uri={avatar} initial={initialOf({ displayName, username })} size={38} /></Pressable>}</View>
-      </View>
+      {back ? (
+        <>
+          <View style={styles.topBar}>
+            <HeaderButton icon="chevron-back" label="Back" onPress={() => router.back()} />
+            <View style={styles.headerRight}>{right}</View>
+          </View>
+          <Text accessibilityRole="header" numberOfLines={1} style={[styles.pageTitle, { color: c.textPrimary, fontFamily: typography.display }]}>{title}</Text>
+        </>
+      ) : (
+        <View style={styles.header}>
+          {logo ? <View style={styles.logoLockup}><Wordmark small /><ThemeEmblem id={theme.id} size={26} /></View> : <Text accessibilityRole="header" style={[styles.headerTitle, { color: c.textPrimary, fontFamily: typography.display }]}>{title}</Text>}
+          <View style={styles.headerRight}>{right ?? <Pressable accessibilityRole="button" accessibilityLabel="Open profile" hitSlop={8} onPress={() => router.push('/profile')}><Avatar uri={avatar} initial={initialOf({ displayName, username })} size={38} /></Pressable>}</View>
+        </View>
+      )}
       {/* The same gentle rise on every tab, so moving around the app always feels the same. */}
       <Animated.View key={active} entering={FadeIn.duration(260).easing(Easing.out(Easing.cubic))} style={styles.body}>{children}</Animated.View>
       <TabBar active={active} />
@@ -79,6 +89,8 @@ export function AppShell({ active, title, children, logo = false, right }: Props
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   header: { minHeight: 68, paddingHorizontal: space.lg, paddingTop: 6, alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+  topBar: { minHeight: 56, paddingHorizontal: space.lg, paddingTop: 6, alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+  pageTitle: { fontSize: 34, letterSpacing: -1, paddingHorizontal: space.lg, marginTop: 8, marginBottom: 6 },
   logoLockup: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   headerTitle: { fontSize: 34, letterSpacing: -1 },
   headerRight: { minWidth: 38, alignItems: 'flex-end' },

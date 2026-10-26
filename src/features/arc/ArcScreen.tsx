@@ -22,7 +22,7 @@ export default function ArcScreen() {
 
   if (!arc.plan || !arc.arc || !arc.titles || !arc.counts) {
     return (
-      <AppShell active="paths" title="Journey">
+      <AppShell active="none" title="Journey">
         <EmptyState title="Journey not found" copy="This reading journey no longer exists." action="Back to Paths" onAction={() => router.replace('/paths')} />
       </AppShell>
     );
@@ -31,7 +31,7 @@ export default function ArcScreen() {
   const titleOf = (workId: string) => titles.get(workId) ?? workId;
 
   return (
-    <AppShell active="paths" title="Journey">
+    <AppShell active="none" title="Journey">
       <ScrollView contentContainerStyle={styles.content}>
         {arc.parent ? (
           <Text onPress={() => router.replace(`/arc/${arc.parent!.id}`)} accessibilityRole="button" style={[styles.back, { color: c.textSecondary, fontFamily: typography.bodyMedium }]}>‹ {arc.parent.title}</Text>

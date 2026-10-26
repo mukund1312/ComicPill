@@ -1,1 +1,1 @@
-export { default } from '../src/features/library/LibraryScreen';
+export { default } from '../src/features/library/LibraryHubScreen';

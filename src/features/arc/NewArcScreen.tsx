@@ -105,7 +105,7 @@ export default function NewArcScreen({ initialTemplateKey }: { initialTemplateKe
   const matched = interpreted?.resolved.kind === 'match';
 
   return (
-    <AppShell active="paths" title="Build me an arc">
+    <AppShell active="none" title="Build me an arc">
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text onPress={() => router.back()} style={[styles.back, { color: c.textSecondary, fontFamily: typography.bodyMedium }]}>‹ Paths</Text>
         <Text style={[styles.lead, { color: c.textPrimary, fontFamily: typography.display }]}>Tell me what you want to read.</Text>

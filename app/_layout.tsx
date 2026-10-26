@@ -24,6 +24,7 @@ import { color } from '../src/ui/tokens';
 import { AppearanceProvider, useAppearance } from '../src/ui/theme';
 import ReminderSync from '../src/features/settings/ReminderSync';
 import MindSync from '../src/features/mind/MindSync';
+import { AppLockGate } from '../src/ui/AppLockGate';
 import '../src/lib/mind/task';
 
 export default function RootLayout() {
@@ -52,7 +53,7 @@ export default function RootLayout() {
     );
   }
 
-  return <GestureHandlerRootView style={{ flex: 1 }}><AppearanceProvider><ReminderSync /><MindSync /><ThemedStack /></AppearanceProvider></GestureHandlerRootView>;
+  return <GestureHandlerRootView style={{ flex: 1 }}><AppearanceProvider><ReminderSync /><MindSync /><ThemedStack /><AppLockGate /></AppearanceProvider></GestureHandlerRootView>;
 }
 
 function ThemedStack() {
@@ -63,7 +64,7 @@ function ThemedStack() {
   const brightness = ((value >> 16) & 255) * 0.299 + ((value >> 8) & 255) * 0.587 + (value & 255) * 0.114;
   return <><StatusBar style={brightness > 150 ? 'dark' : 'light'} animated /><Stack screenOptions={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: background } }}>
       {/* The five bottom tabs replace each other, so they cross-fade instead of sliding like a new page. */}
-      {['index', 'library', 'paths', 'compare', 'discover'].map((name) => <Stack.Screen key={name} name={name} options={{ animation: 'fade' }} />)}
+      {['index', 'library', 'reader/index', 'discover', 'search'].map((name) => <Stack.Screen key={name} name={name} options={{ animation: 'fade' }} />)}
       <Stack.Screen name="reader/[id]" options={{ animation: 'fade' }} />
     </Stack></>;
 }

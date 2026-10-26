@@ -11,6 +11,8 @@ export type ReaderComic = ShelfComic & {
   locked: boolean;
   /** The catalog / library entry this file is also known as. */
   workId: string | null;
+  /** Size of the stored file in bytes, when known. */
+  sizeBytes: number | null;
   /** Webtoon only: how far into the progress page you had scrolled, 0..1. */
   progressOffset: number;
   sizes: Array<{ width: number; height: number } | null> | null;
@@ -21,7 +23,7 @@ type Row = {
   added_at: number; last_read_at: number | null; progress_page: number; mode: string;
   progress_offset: number; sizes_json: string | null;
   series: string | null; issue: string | null; writer: string | null; folder_id: string | null; preset_id: string | null;
-  lock_hash: string | null; work_id: string | null;
+  lock_hash: string | null; work_id: string | null; size_bytes: number | null;
 };
 
 const parseSizes = (json: string | null): ReaderComic['sizes'] => {
@@ -32,7 +34,7 @@ const map = (r: Row): ReaderComic => ({
   id: r.id, title: r.title, path: r.path, format: r.format, pageCount: r.page_count, coverPath: r.cover_path,
   addedAt: r.added_at, lastReadAt: r.last_read_at, progressPage: r.progress_page, mode: r.mode as ReaderMode,
   progressOffset: r.progress_offset ?? 0, sizes: parseSizes(r.sizes_json),
-  series: r.series, issue: r.issue, writer: r.writer, folderId: r.folder_id, presetId: r.preset_id, locked: !!r.lock_hash, workId: r.work_id,
+  series: r.series, issue: r.issue, writer: r.writer, folderId: r.folder_id, presetId: r.preset_id, locked: !!r.lock_hash, workId: r.work_id, sizeBytes: r.size_bytes ?? null,
 });
 
 const uid = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
@@ -47,12 +49,12 @@ export const getReaderComic = (id: string): ReaderComic | null => {
 };
 
 export type NewReaderComic = Pick<ReaderComic, 'id' | 'title' | 'path' | 'format' | 'pageCount' | 'coverPath'> &
-  Partial<Pick<ReaderComic, 'series' | 'issue' | 'writer' | 'folderId' | 'mode'>>;
+  Partial<Pick<ReaderComic, 'series' | 'issue' | 'writer' | 'folderId' | 'mode' | 'sizeBytes'>>;
 
 export const insertReaderComic = (c: NewReaderComic): void => {
   sqlite.runSync(
-    'INSERT INTO reader_comics (id, title, path, format, page_count, cover_path, added_at, series, issue, writer, folder_id, mode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    c.id, c.title, c.path, c.format, c.pageCount, c.coverPath, Date.now(), c.series ?? null, c.issue ?? null, c.writer ?? null, c.folderId ?? null, c.mode ?? 'ltr',
+    'INSERT INTO reader_comics (id, title, path, format, page_count, cover_path, added_at, series, issue, writer, folder_id, mode, size_bytes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    c.id, c.title, c.path, c.format, c.pageCount, c.coverPath, Date.now(), c.series ?? null, c.issue ?? null, c.writer ?? null, c.folderId ?? null, c.mode ?? 'ltr', c.sizeBytes ?? null,
   );
 };
 
