@@ -1,9 +1,9 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
+import { COVER_ASSETS } from '../../ui/coverAssets';
 import Animated, { FadeInDown, interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, type SharedValue } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import MaskedView from '@react-native-masked-view/masked-view';
 import { router, useFocusEffect } from 'expo-router';
 import { useToday, type TodayCard } from './useToday';
 import { AppShell } from '../../ui/AppShell';
@@ -37,64 +37,60 @@ const moods: { id: string; label: string }[] = [
 
 const HERO_H = 610;
 
-/** Full-bleed artwork that, as you scroll, shrinks and rounds into the comic's cover card. */
+/** The cover itself, whole and sharp, glowing over the backdrop; it settles into a smaller card as you scroll. */
 function HeroArt({ source, title, scrollY, width, onPress }: { source: ReturnType<typeof coverSourceFor>; title: string; scrollY: SharedValue<number>; width: number; onPress: () => void }) {
-  const { theme } = useAppearance(); const c = theme.colors;
-  const full = width;
+  const cardW = Math.min(width * 0.62, 260);
   const frame = useAnimatedStyle(() => {
     const t = Math.min(1, Math.max(0, scrollY.value / (HERO_H * 0.5)));
-    const w = interpolate(t, [0, 1], [full, 170]);
-    const h = interpolate(t, [0, 1], [HERO_H - 160, 255]);
-    return { opacity: interpolate(t, [0, 0.18, 0.4], [0, 0, 1], 'clamp'), width: w, height: h, left: (full - w) / 2, borderRadius: interpolate(t, [0, 1], [0, 18]), transform: [{ translateY: interpolate(t, [0, 1], [0, 18]) }] };
+    const w = interpolate(t, [0, 1], [cardW, 150]);
+    return { width: w, height: w * 1.5, left: (width - w) / 2, transform: [{ translateY: interpolate(t, [0, 1], [18, 30]) }] };
   });
-  const fade = useAnimatedStyle(() => ({ opacity: 0 }));
   return (
-    <Animated.View style={[styles.art, { backgroundColor: c.surfaceRaised }, frame]}>
-      <Pressable accessibilityRole="button" accessibilityLabel={title} onPress={onPress} style={StyleSheet.absoluteFill}>
+    <Animated.View style={[styles.art, frame]}>
+      <Pressable accessibilityRole="button" accessibilityLabel={title} onPress={onPress} style={[StyleSheet.absoluteFill, styles.artCard]}>
         {source ? <Image source={source} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
       </Pressable>
-      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, fade]}>
-        <LinearGradient colors={[`${c.background}B8`, `${c.background}00`, `${c.background}00`, `${c.background}C4`, c.background]} locations={[0, 0.2, 0.42, 0.8, 1]} style={StyleSheet.absoluteFill} />
-      </Animated.View>
     </Animated.View>
   );
 }
 
-/** One slice of the progressive blur: the artwork at a given blur, visible only inside a soft vertical band. */
-function BlurBand({ source, blur, stops, width, height, imageHeight }: { source: NonNullable<ReturnType<typeof coverSourceFor>>; blur: number; stops: [number, number, number, number]; width: number; height: number; imageHeight?: number }) {
-  const [a, b, c, d] = stops; // alpha 0 at a, 1 at b, 1 at c, 0 at d (fractions of the screen height)
-  return (
-    <MaskedView style={StyleSheet.absoluteFill} maskElement={
-      <LinearGradient colors={['#0000', '#0000', '#000F', '#000F', '#0000', '#0000']} locations={[0, a, b, c, d, 1]} style={StyleSheet.absoluteFill} />
-    }>
-      <Image source={source} style={{ width, height: imageHeight ?? height }} contentFit="cover" blurRadius={blur} />
-    </MaskedView>
-  );
+const TILE_COLS = 3; const TILE_ROWS = 6; const GAP = 3;
+
+/** A deterministic shuffle so the same pick always gets the same collage. */
+function collageIds(leadId: string): string[] {
+  const ids = Object.keys(COVER_ASSETS);
+  if (!ids.length) return [];
+  let h = 0; for (const ch of leadId) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const out: string[] = [];
+  for (let i = 0; out.length < TILE_COLS * TILE_ROWS; i++) { h = (h * 1664525 + 1013904223) >>> 0; out.push(i % 4 === 0 ? leadId : ids[h % ids.length]); }
+  return out;
 }
 
-/** The artwork across the whole screen, crisp at the top and melting into a smear of colour as it goes down — each band is the
- *  same picture at a heavier blur, faded in over the last, so there is no visible edge anywhere. */
-function BleedBackdrop({ source, scrollY }: { source: ReturnType<typeof coverSourceFor>; scrollY: SharedValue<number> }) {
+/** Page-like panels from a handful of covers, blurred and dimmed, filling the screen behind the pick — the same feel as a spread of comic pages. */
+function CollageBackdrop({ workId, scrollY }: { workId: string | undefined; scrollY: SharedValue<number> }) {
   const { theme } = useAppearance(); const c = theme.colors;
   const { width, height } = useWindowDimensions();
-  const drift = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollY.value, [0, HERO_H * 0.8], [1, 0.12], 'clamp'),
-    transform: [{ translateY: -scrollY.value * 0.25 }, { scale: interpolate(scrollY.value, [0, 600], [1.06, 1.0], 'clamp') }],
-  }));
-  if (!source) return null;
-  // The cover shows whole, at full width, across the upper part of the screen; only the lower part is the stretched, heavily blurred smear.
-  const artH = Math.min(height * 0.72, width * 1.5);
-  const f = artH / height;
+  const tiles = useMemo(() => (workId ? collageIds(workId) : []), [workId]);
+  const fade = useAnimatedStyle(() => ({ opacity: interpolate(scrollY.value, [0, HERO_H * 0.7], [1, 0.1], 'clamp'), transform: [{ translateY: -scrollY.value * 0.18 }] }));
+  if (!tiles.length) return null;
+  const tw = (width - GAP * (TILE_COLS - 1)) / TILE_COLS; const th = height / TILE_ROWS - GAP;
   return (
     <>
-      <Animated.View style={[StyleSheet.absoluteFill, drift]}>
-        <BlurBand source={source} blur={34} stops={[f * 0.3, f * 0.68, 1, 1]} width={width} height={height} />
-        <BlurBand source={source} blur={14} stops={[f * 0.4, f * 0.62, f * 0.74, f * 0.93]} width={width} height={height} imageHeight={artH} />
-        <BlurBand source={source} blur={5} stops={[f * 0.26, f * 0.42, f * 0.55, f * 0.78]} width={width} height={height} imageHeight={artH} />
-        <BlurBand source={source} blur={0} stops={[0, 0.001, f * 0.34, f * 0.6]} width={width} height={height} imageHeight={artH} />
+      <Animated.View style={[StyleSheet.absoluteFill, fade]}>
+        {tiles.map((id, i) => {
+          const col = i % TILE_COLS; const row = Math.floor(i / TILE_COLS);
+          const src = coverSourceFor(id); if (!src) return null;
+          // zoom into a different part of each cover so the tiles read as separate panels
+          const z = 2.1; const ox = ((i * 37) % 60) / 100; const oy = ((i * 53) % 70) / 100;
+          return (
+            <View key={`${id}-${i}`} style={{ position: 'absolute', left: col * (tw + GAP), top: row * (th + GAP), width: tw, height: th, overflow: 'hidden', backgroundColor: c.surface }}>
+              <Image source={src} blurRadius={5} contentFit="cover" style={{ position: 'absolute', width: tw * z, height: th * z * 1.2, left: -tw * z * ox * 0.5, top: -th * z * oy * 0.5 }} />
+            </View>
+          );
+        })}
       </Animated.View>
-      {/* the whole picture sinks into the app background, darker at the bottom so text and the tab bar stay readable */}
-      <LinearGradient colors={[`${c.background}A0`, `${c.background}00`, `${c.background}66`, `${c.background}D8`, c.background]} locations={[0, 0.16, 0.5, 0.82, 1]} style={StyleSheet.absoluteFill} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: `${c.background}73` }]} />
+      <LinearGradient colors={[`${c.background}B8`, `${c.background}00`, `${c.background}59`, `${c.background}E6`, c.background]} locations={[0, 0.14, 0.5, 0.8, 1]} style={StyleSheet.absoluteFill} />
     </>
   );
 }
@@ -122,7 +118,7 @@ export default function TodayScreen() {
   const { width } = useWindowDimensions();
   const scrollY = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler((e) => { scrollY.value = e.contentOffset.y; });
-  return <AppShell active="today" logo bleed={<BleedBackdrop source={backdrop} scrollY={scrollY} />}><Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+  return <AppShell active="today" logo bleed={<CollageBackdrop workId={lead?.workId} scrollY={scrollY} />}><Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
     <Animated.View entering={FadeInDown.duration(420)}>
     {lead ? (
       <View style={[styles.heroWrap, { height: HERO_H }]}>
@@ -178,7 +174,8 @@ export default function TodayScreen() {
 const styles = StyleSheet.create({
   content: { padding: space.lg, paddingTop: space.sm, paddingBottom: 110 },
   heroWrap: { marginHorizontal: -space.lg, marginTop: -space.sm },
-  art: { position: 'absolute', top: 0, overflow: 'hidden' },
+  art: { position: 'absolute', top: 0 },
+  artCard: { borderRadius: 18, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: '#ffffff40', shadowColor: '#000', shadowOpacity: 0.7, shadowRadius: 24, shadowOffset: { width: 0, height: 14 }, elevation: 18, backgroundColor: '#111' },
   heroText: { position: 'absolute', left: space.lg, right: space.lg, bottom: 0, alignItems: 'center' },
   hero: { borderRadius: 28, borderWidth: 1, overflow: 'hidden', paddingTop: 30, paddingBottom: space.lg, paddingHorizontal: space.lg, alignItems: 'center' },
   fan: { height: 214, width: '100%', alignItems: 'center', justifyContent: 'center', marginBottom: space.lg },
