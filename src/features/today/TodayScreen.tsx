@@ -54,7 +54,7 @@ function HeroArt({ source, title, scrollY, width, onPress }: { source: ReturnTyp
   );
 }
 
-const TILE_COLS = 3; const TILE_ROWS = 6; const GAP = 3;
+const TILE_COLS = 3; const TILE_ROWS = 6; const GAP = 0;
 
 /** A deterministic shuffle so the same pick always gets the same collage. */
 function collageIds(leadId: string): string[] {
@@ -77,19 +77,21 @@ function CollageBackdrop({ workId, scrollY }: { workId: string | undefined; scro
   return (
     <>
       <Animated.View style={[StyleSheet.absoluteFill, fade]}>
+        {/* a colour base from the pick's own cover, so a dark panel never shows as a black hole */}
+        {coverSourceFor(workId) ? <Image source={coverSourceFor(workId)} blurRadius={40} contentFit="cover" style={{ position: 'absolute', width, height }} /> : null}
         {tiles.map((id, i) => {
           const col = i % TILE_COLS; const row = Math.floor(i / TILE_COLS);
           const src = coverSourceFor(id); if (!src) return null;
           // zoom into a different part of each cover so the tiles read as separate panels
           const z = 2.1; const ox = ((i * 37) % 60) / 100; const oy = ((i * 53) % 70) / 100;
           return (
-            <View key={`${id}-${i}`} style={{ position: 'absolute', left: col * (tw + GAP), top: row * (th + GAP), width: tw, height: th, overflow: 'hidden', backgroundColor: c.surface }}>
-              <Image source={src} blurRadius={5} contentFit="cover" style={{ position: 'absolute', width: tw * z, height: th * z * 1.2, left: -tw * z * ox * 0.5, top: -th * z * oy * 0.5 }} />
+            <View key={`${id}-${i}`} style={{ position: 'absolute', left: col * (tw + GAP), top: row * (th + GAP), width: tw, height: th, overflow: 'hidden', opacity: 0.62 }}>
+              <Image source={src} blurRadius={12} contentFit="cover" style={{ position: 'absolute', width: tw * z, height: th * z * 1.2, left: -tw * z * ox * 0.5, top: -th * z * oy * 0.5 }} />
             </View>
           );
         })}
       </Animated.View>
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: `${c.background}73` }]} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: `${c.background}59` }]} />
       <LinearGradient colors={[`${c.background}B8`, `${c.background}00`, `${c.background}59`, `${c.background}E6`, c.background]} locations={[0, 0.14, 0.5, 0.8, 1]} style={StyleSheet.absoluteFill} />
     </>
   );
@@ -175,7 +177,7 @@ const styles = StyleSheet.create({
   content: { padding: space.lg, paddingTop: space.sm, paddingBottom: 110 },
   heroWrap: { marginHorizontal: -space.lg, marginTop: -space.sm },
   art: { position: 'absolute', top: 0 },
-  artCard: { borderRadius: 18, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: '#ffffff40', shadowColor: '#000', shadowOpacity: 0.7, shadowRadius: 24, shadowOffset: { width: 0, height: 14 }, elevation: 18, backgroundColor: '#111' },
+  artCard: { borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: '#FFFFFF2E', shadowColor: '#000', shadowOpacity: 0.7, shadowRadius: 24, shadowOffset: { width: 0, height: 14 }, elevation: 18, backgroundColor: '#111' },
   heroText: { position: 'absolute', left: space.lg, right: space.lg, bottom: 0, alignItems: 'center' },
   hero: { borderRadius: 28, borderWidth: 1, overflow: 'hidden', paddingTop: 30, paddingBottom: space.lg, paddingHorizontal: space.lg, alignItems: 'center' },
   fan: { height: 214, width: '100%', alignItems: 'center', justifyContent: 'center', marginBottom: space.lg },
