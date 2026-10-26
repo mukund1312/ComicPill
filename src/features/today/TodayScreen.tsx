@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } fr
 import { Image } from 'expo-image';
 import Animated, { FadeInDown, interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, type SharedValue } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
+import MaskedView from '@react-native-masked-view/masked-view';
 import { router, useFocusEffect } from 'expo-router';
 import { useToday, type TodayCard } from './useToday';
 import { AppShell } from '../../ui/AppShell';
@@ -44,9 +45,9 @@ function HeroArt({ source, title, scrollY, width, onPress }: { source: ReturnTyp
     const t = Math.min(1, Math.max(0, scrollY.value / (HERO_H * 0.5)));
     const w = interpolate(t, [0, 1], [full, 170]);
     const h = interpolate(t, [0, 1], [HERO_H - 160, 255]);
-    return { width: w, height: h, left: (full - w) / 2, borderRadius: interpolate(t, [0, 1], [0, 18]), transform: [{ translateY: interpolate(t, [0, 1], [0, 18]) }] };
+    return { opacity: interpolate(t, [0, 0.18, 0.4], [0, 0, 1], 'clamp'), width: w, height: h, left: (full - w) / 2, borderRadius: interpolate(t, [0, 1], [0, 18]), transform: [{ translateY: interpolate(t, [0, 1], [0, 18]) }] };
   });
-  const fade = useAnimatedStyle(() => ({ opacity: 1 - Math.min(1, Math.max(0, scrollY.value / (HERO_H * 0.5))) }));
+  const fade = useAnimatedStyle(() => ({ opacity: 0 }));
   return (
     <Animated.View style={[styles.art, { backgroundColor: c.surfaceRaised }, frame]}>
       <Pressable accessibilityRole="button" accessibilityLabel={title} onPress={onPress} style={StyleSheet.absoluteFill}>
@@ -59,22 +60,41 @@ function HeroArt({ source, title, scrollY, width, onPress }: { source: ReturnTyp
   );
 }
 
-/** The artwork smeared across the whole screen: heavy blur, dissolving into the background, drifting and fading as you scroll. */
+/** One slice of the progressive blur: the artwork at a given blur, visible only inside a soft vertical band. */
+function BlurBand({ source, blur, stops, width, height, imageHeight }: { source: NonNullable<ReturnType<typeof coverSourceFor>>; blur: number; stops: [number, number, number, number]; width: number; height: number; imageHeight?: number }) {
+  const [a, b, c, d] = stops; // alpha 0 at a, 1 at b, 1 at c, 0 at d (fractions of the screen height)
+  return (
+    <MaskedView style={StyleSheet.absoluteFill} maskElement={
+      <LinearGradient colors={['#0000', '#0000', '#000F', '#000F', '#0000', '#0000']} locations={[0, a, b, c, d, 1]} style={StyleSheet.absoluteFill} />
+    }>
+      <Image source={source} style={{ width, height: imageHeight ?? height }} contentFit="cover" blurRadius={blur} />
+    </MaskedView>
+  );
+}
+
+/** The artwork across the whole screen, crisp at the top and melting into a smear of colour as it goes down — each band is the
+ *  same picture at a heavier blur, faded in over the last, so there is no visible edge anywhere. */
 function BleedBackdrop({ source, scrollY }: { source: ReturnType<typeof coverSourceFor>; scrollY: SharedValue<number> }) {
   const { theme } = useAppearance(); const c = theme.colors;
   const { width, height } = useWindowDimensions();
   const drift = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollY.value, [0, HERO_H * 0.9], [1, 0.18], 'clamp'),
-    transform: [{ translateY: -scrollY.value * 0.35 }, { scale: interpolate(scrollY.value, [0, 600], [1.08, 1.0], 'clamp') }],
+    opacity: interpolate(scrollY.value, [0, HERO_H * 0.8], [1, 0.12], 'clamp'),
+    transform: [{ translateY: -scrollY.value * 0.25 }, { scale: interpolate(scrollY.value, [0, 600], [1.06, 1.0], 'clamp') }],
   }));
   if (!source) return null;
+  // The cover shows whole, at full width, across the upper part of the screen; only the lower part is the stretched, heavily blurred smear.
+  const artH = Math.min(height * 0.72, width * 1.5);
+  const f = artH / height;
   return (
     <>
-      <Animated.View style={[{ position: 'absolute', top: 0, left: 0, width, height: height * 0.92 }, drift]}>
-        <Image source={source} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={22} />
+      <Animated.View style={[StyleSheet.absoluteFill, drift]}>
+        <BlurBand source={source} blur={34} stops={[f * 0.3, f * 0.68, 1, 1]} width={width} height={height} />
+        <BlurBand source={source} blur={14} stops={[f * 0.4, f * 0.62, f * 0.74, f * 0.93]} width={width} height={height} imageHeight={artH} />
+        <BlurBand source={source} blur={5} stops={[f * 0.26, f * 0.42, f * 0.55, f * 0.78]} width={width} height={height} imageHeight={artH} />
+        <BlurBand source={source} blur={0} stops={[0, 0.001, f * 0.34, f * 0.6]} width={width} height={height} imageHeight={artH} />
       </Animated.View>
-      {/* dissolve the smear into the app background towards the bottom, and pull the top slightly darker so the header stays legible */}
-      <LinearGradient colors={[`${c.background}D0`, `${c.background}40`, `${c.background}CC`, c.background]} locations={[0, 0.25, 0.7, 0.96]} style={StyleSheet.absoluteFill} />
+      {/* the whole picture sinks into the app background, darker at the bottom so text and the tab bar stay readable */}
+      <LinearGradient colors={[`${c.background}A0`, `${c.background}00`, `${c.background}66`, `${c.background}D8`, c.background]} locations={[0, 0.16, 0.5, 0.82, 1]} style={StyleSheet.absoluteFill} />
     </>
   );
 }
