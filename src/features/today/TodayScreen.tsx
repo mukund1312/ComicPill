@@ -1,7 +1,8 @@
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, type SharedValue } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import { useToday, type TodayCard } from './useToday';
 import { AppShell } from '../../ui/AppShell';
@@ -33,6 +34,31 @@ const moods: { id: string; label: string }[] = [
   { id: 'surprise', label: 'Surprise me' },
 ];
 
+const HERO_H = 610;
+
+/** Full-bleed artwork that, as you scroll, shrinks and rounds into the comic's cover card. */
+function HeroArt({ source, title, scrollY, width, onPress }: { source: ReturnType<typeof coverSourceFor>; title: string; scrollY: SharedValue<number>; width: number; onPress: () => void }) {
+  const { theme } = useAppearance(); const c = theme.colors;
+  const full = width;
+  const frame = useAnimatedStyle(() => {
+    const t = Math.min(1, Math.max(0, scrollY.value / (HERO_H * 0.5)));
+    const w = interpolate(t, [0, 1], [full, 170]);
+    const h = interpolate(t, [0, 1], [HERO_H - 160, 255]);
+    return { width: w, height: h, left: (full - w) / 2, borderRadius: interpolate(t, [0, 1], [0, 18]), transform: [{ translateY: interpolate(t, [0, 1], [0, 18]) }] };
+  });
+  const fade = useAnimatedStyle(() => ({ opacity: 1 - Math.min(1, Math.max(0, scrollY.value / (HERO_H * 0.5))) }));
+  return (
+    <Animated.View style={[styles.art, { backgroundColor: c.surfaceRaised }, frame]}>
+      <Pressable accessibilityRole="button" accessibilityLabel={title} onPress={onPress} style={StyleSheet.absoluteFill}>
+        {source ? <Image source={source} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
+      </Pressable>
+      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, fade]}>
+        <LinearGradient colors={['transparent', c.background]} locations={[0.45, 1]} style={StyleSheet.absoluteFill} />
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
 /** A small cover card for the "more picks" and "continue reading" strips. */
 function StripCard({ label, title, workId, onPress, progress, uri }: { label?: string; title: string; workId?: string; onPress: () => void; progress?: number; uri?: string | null }) {
   const { theme, typography } = useAppearance(); const c = theme.colors;
@@ -53,22 +79,21 @@ export default function TodayScreen() {
   const others = [today.continueCard, today.switchCard, today.exploreCard].filter((card): card is NonNullable<typeof card> => !!card && card.workId !== lead?.workId);
   const backdrop = coverSourceFor(lead?.workId);
   const travel = today.formatFilter === 'digital';
-  return <AppShell active="today" logo><ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+  const { width } = useWindowDimensions();
+  const scrollY = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((e) => { scrollY.value = e.contentOffset.y; });
+  return <AppShell active="today" logo><Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
     <Animated.View entering={FadeInDown.duration(420)}>
     {lead ? (
-      <View style={[styles.hero, { backgroundColor: c.surface, borderColor: c.border }]}>
-        {backdrop ? <Image source={backdrop} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={38} /> : null}
-        <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: c.background, opacity: backdrop ? 0.74 : 0 }]} />
-        <View style={styles.fan}>
-          {others[1] ? <View style={[styles.fanCover, { transform: [{ rotate: '9deg' }, { translateX: 62 }, { scale: 0.86 }], opacity: 0.8 }]}><ComicCover title={others[1].title} workId={others[1].workId} size="hero" /></View> : null}
-          {others[0] ? <View style={[styles.fanCover, { transform: [{ rotate: '-9deg' }, { translateX: -62 }, { scale: 0.86 }], opacity: 0.8 }]}><ComicCover title={others[0].title} workId={others[0].workId} size="hero" /></View> : null}
-          <ComicCover title={lead.title} workId={lead.workId} size="hero" onPress={() => router.push(`/comic/${lead.workId}`)} />
+      <View style={[styles.heroWrap, { height: HERO_H }]}>
+        <HeroArt source={backdrop} title={lead.title} scrollY={scrollY} width={width} onPress={() => router.push(`/comic/${lead.workId}`)} />
+        <View pointerEvents="box-none" style={styles.heroText}>
+          <Text style={[styles.eyebrow, { color: c.textSecondary, fontFamily: typography.bodySemibold }]}>TONIGHT&apos;S PICK · {lead.bucket.replaceAll('_', ' ').toUpperCase()}</Text>
+          <Text numberOfLines={2} style={[styles.heroTitle, { color: c.textPrimary, fontFamily: typography.display }]}>{lead.title}</Text>
+          <Text numberOfLines={2} style={[styles.reason, { color: c.textSecondary, fontFamily: typography.body }]}>{lead.inLibrary ? 'In your library' : 'New to you'} · {lead.reasons[0] ?? 'A clear next step in your reading.'}</Text>
+          <View style={styles.cta}><Button onPress={() => router.push(`/comic/${lead.workId}`)}>Read tonight  →</Button></View>
+          <Pressable onPress={() => setShowWhy(true)} hitSlop={8} style={styles.why}><Text style={[styles.whyText, { color: c.textSecondary, fontFamily: typography.bodySemibold }]}>Why this?</Text></Pressable>
         </View>
-        <Text style={[styles.eyebrow, { color: c.textSecondary, fontFamily: typography.bodySemibold }]}>TONIGHT&apos;S PICK · {lead.bucket.replaceAll('_', ' ').toUpperCase()}</Text>
-        <Text numberOfLines={2} style={[styles.heroTitle, { color: c.textPrimary, fontFamily: typography.display }]}>{lead.title}</Text>
-        <Text numberOfLines={2} style={[styles.reason, { color: c.textSecondary, fontFamily: typography.body }]}>{lead.inLibrary ? 'In your library' : 'New to you'} · {lead.reasons[0] ?? 'A clear next step in your reading.'}</Text>
-        <View style={styles.cta}><Button onPress={() => router.push(`/comic/${lead.workId}`)}>Read tonight  →</Button></View>
-        <Pressable onPress={() => setShowWhy(true)} hitSlop={8} style={styles.why}><Text style={[styles.whyText, { color: c.textSecondary, fontFamily: typography.bodySemibold }]}>Why this?</Text></Pressable>
       </View>
     ) : (
       <View style={[styles.noPick, { backgroundColor: c.surface, borderColor: c.border }]}><Text style={[styles.noPickTitle, { color: c.textPrimary, fontFamily: typography.display }]}>Your next read is waiting.</Text><Text style={[styles.noPickCopy, { color: c.textSecondary, fontFamily: typography.body }]}>Add a few comics to your library, then ComicPill can make a considered pick.</Text><Button onPress={() => router.push('/library')}>Build my library</Button></View>
@@ -105,13 +130,16 @@ export default function TodayScreen() {
         <Icon name="chevron-forward" size={18} color={c.textMuted} />
       </PressableScale>
     </Animated.View>
-  </ScrollView>
+  </Animated.ScrollView>
   {showWhy && lead ? <View style={[styles.overlay, { backgroundColor: c.overlay }]}><Sheet title="Why this tonight?" onClose={() => setShowWhy(false)}><Text style={[styles.sheetLead, { color: c.textSecondary, fontFamily: typography.body }]}>A few reasons it earns tonight.</Text>{(lead.reasons.length ? lead.reasons : ['It fits your current reading mood.', 'It is a natural next step in your library.', 'It is short enough to enjoy tonight.']).slice(0, 3).map((reason) => <View key={reason} style={styles.reasonRow}><Text style={[styles.reasonDot, { color: c.primary }]}>✦</Text><Text style={[styles.reasonText, { color: c.textPrimary, fontFamily: typography.body }]}>{reason}</Text></View>)}<Button kind="destructive" onPress={() => { setShowWhy(false); setShowNotTonight(true); }}>Not tonight</Button><Button kind="ghost" onPress={() => setShowWhy(false)}>Close</Button></Sheet></View> : null}
   {showNotTonight && lead ? <View style={[styles.overlay, { backgroundColor: c.overlay }]}><Sheet><Text style={[styles.notTitle, { color: c.textPrimary, fontFamily: typography.display }]}>Not tonight?</Text><Text style={[styles.notCopy, { color: c.textSecondary, fontFamily: typography.body }]}>No problem. We’ll adjust and find something else when you’re ready.</Text><Button onPress={() => { today.notTonight(lead.workId); setShowNotTonight(false); }}>Find another pick</Button><Button kind="secondary" style={{ marginTop: 10 }} onPress={() => setShowNotTonight(false)}>Keep current pick</Button></Sheet></View> : null}
   </AppShell>;
 }
 const styles = StyleSheet.create({
   content: { padding: space.lg, paddingTop: space.sm, paddingBottom: 110 },
+  heroWrap: { marginHorizontal: -space.lg, marginTop: -space.sm },
+  art: { position: 'absolute', top: 0, overflow: 'hidden' },
+  heroText: { position: 'absolute', left: space.lg, right: space.lg, bottom: 0, alignItems: 'center' },
   hero: { borderRadius: 28, borderWidth: 1, overflow: 'hidden', paddingTop: 30, paddingBottom: space.lg, paddingHorizontal: space.lg, alignItems: 'center' },
   fan: { height: 214, width: '100%', alignItems: 'center', justifyContent: 'center', marginBottom: space.lg },
   fanCover: { position: 'absolute' },

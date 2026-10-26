@@ -16,7 +16,7 @@ import { initialOf } from '../lib/settings/profileModel';
 type Tab = 'today' | 'reading' | 'library' | 'discover' | 'search' | 'none';
 const tabs: Array<{ id: Exclude<Tab, 'none'>; icon: IconName; iconActive: IconName; label: string; href: string }> = [
   { id: 'today', icon: 'home-outline', iconActive: 'home', label: 'Today', href: '/' },
-  { id: 'reading', icon: 'book-outline', iconActive: 'book', label: 'Reading Now', href: '/reader' },
+  { id: 'reading', icon: 'book-outline', iconActive: 'book', label: 'Reading', href: '/reader' },
   { id: 'library', icon: 'layers-outline', iconActive: 'layers', label: 'Library', href: '/library' },
   { id: 'discover', icon: 'storefront-outline', iconActive: 'storefront', label: 'Discover', href: '/discover' },
   { id: 'search', icon: 'search-outline', iconActive: 'search', label: 'Search', href: '/search' },
@@ -51,7 +51,7 @@ function TabBar({ active }: { active: Tab }) {
             <Pressable key={tab.id} accessibilityRole="button" accessibilityLabel={tab.label} accessibilityState={{ selected: on }}
               onPress={() => { if (!on) { feedback.select(); router.replace(tab.href as never); } }} style={[styles.tab, { width: tabWidth }]}>
               <Animated.View style={on ? iconStyle : undefined}><Icon name={on ? tab.iconActive : tab.icon} size={22} color={on ? c.primary : c.textMuted} /></Animated.View>
-              <Text style={[styles.tabLabel, { color: on ? c.primary : c.textMuted, fontFamily: on ? typography.bodySemibold : typography.bodyMedium }]}>{tab.label}</Text>
+              <Text numberOfLines={1} style={[styles.tabLabel, { color: on ? c.primary : c.textMuted, fontFamily: on ? typography.bodySemibold : typography.bodyMedium }]}>{tab.label}</Text>
             </Pressable>
           );
         })}

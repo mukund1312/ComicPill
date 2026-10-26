@@ -3,6 +3,7 @@ import { HeaderActions, HeaderButton } from '../../ui/Icon';
 import { useAppearance } from '../../ui/theme';
 import { useMemo, useState } from 'react';
 import { Image } from 'expo-image';
+import { sqlite } from '../../lib/db/client';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { CoverStack } from '../../ui/CoverStack';
@@ -22,7 +23,7 @@ const PUBLISHERS: PublisherFilter[] = ['Marvel', 'DC', 'Indie', 'Manga'];
 
 export default function DiscoverScreen() {
   const discover = useDiscover(); const [rating, setRating] = useState(false); const [filtersOpen, setFiltersOpen] = useState(false); const query = '';
-  const catalog = useMemo(() => discover.catalog.filter((work) => work.title.toLowerCase().includes(query.trim().toLowerCase())), [discover.catalog, query]);
+  const catalog = useMemo(() => discover.catalog.filter((work) => work.title.toLowerCase().includes(query.trim().toLowerCase())).sort((a, b) => Number(b.workId.startsWith('file-')) - Number(a.workId.startsWith('file-'))), [discover.catalog, query]);
   return <AppShell active="discover" title="Discover" right={<HeaderActions><HeaderButton icon="heart-outline" label="Wishlist" onPress={() => router.push('/collection')} /><HeaderButton icon="search" label="Search" onPress={() => router.push('/search')} /><HeaderButton icon="options-outline" label="Filter" active={discover.filtersActive} onPress={() => setFiltersOpen(true)} /></HeaderActions>}>
     <FlashList data={catalog} numColumns={2} keyExtractor={(item) => item.workId} getItemType={() => 'discover-cover-grid'} renderItem={({ item }) => <CatalogCell item={item} />} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} ListHeaderComponent={<DiscoverHeader discover={discover} catalogCount={catalog.length} openRating={() => setRating(true)} />} ListEmptyComponent={<EmptyState mark="⌕" title="No catalog matches" copy="Try another title or clear a filter." action="Clear filters" onAction={() => { discover.setFilters(EMPTY_COMIC_FILTERS); }} />} />
     {rating ? <View style={styles.overlay}><Sheet title="Quick rate" onClose={() => setRating(false)}><Text style={styles.rateCopy}>A small signal goes a long way.</Text><View style={styles.rateButtons}><Button kind="secondary" onPress={() => { discover.rate(1); setRating(false); }}>Meh</Button><Button kind="secondary" onPress={() => { discover.rate(2); setRating(false); }}>Good</Button><Button onPress={() => { discover.rate(3); setRating(false); }}>Loved</Button></View></Sheet></View> : null}
@@ -65,9 +66,29 @@ function DiscoverHeader({ discover, catalogCount, openRating }: { discover: Retu
   const { theme, typography } = useAppearance(); const c = theme.colors;
   const card = discover.current;
   const fresh = discover.catalog.filter((w) => w.own === 'none').slice(0, 12);
+  // Everything imported through Read Files shows up here at the top, whether it matched a catalog book or became a new entry.
+  const mine = useMemo(() => {
+    try {
+      const ids = new Set(sqlite.getAllSync<{ work_id: string }>('SELECT DISTINCT work_id FROM reader_comics WHERE work_id IS NOT NULL').map((r) => r.work_id));
+      return discover.catalog.filter((w) => ids.has(w.workId));
+    } catch { return []; }
+  }, [discover.catalog]);
   return (
     <Animated.View entering={FadeInDown.duration(380)} style={styles.header}>
       <Featured discover={discover} />
+      {mine.length ? (
+        <>
+          <Text style={[styles.sectionHead, { color: c.textPrimary, fontFamily: typography.display }]}>On your phone</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.strip}>
+            {mine.map((w) => (
+              <PressableScale key={w.workId} to={0.96} style={styles.stripItem} onPress={() => router.push(`/comic/${w.workId}`)}>
+                <ComicCover size="grid" title={w.title} workId={w.workId} recyclingKey={`mine-${w.workId}`} />
+                <Text numberOfLines={2} style={[styles.stripTitle, { color: c.textPrimary, fontFamily: typography.displayMedium }]}>{w.title}</Text>
+              </PressableScale>
+            ))}
+          </ScrollView>
+        </>
+      ) : null}
       {fresh.length ? (
         <>
           <Text style={[styles.sectionHead, { color: c.textPrimary, fontFamily: typography.display }]}>New to you</Text>

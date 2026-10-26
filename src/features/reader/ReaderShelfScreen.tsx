@@ -112,10 +112,11 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   // A folder wears the covers of the first comics inside it (oldest first), so it never looks blank.
   const folderCovers = useMemo(() => {
     const byFolder = new Map<string, string[]>();
+    // (a comic with no usable cover still counts: its tile falls back to a title card)
     for (const comic of [...comics].sort((a, b) => a.addedAt - b.addedAt)) {
-      if (!comic.folderId || !comic.coverPath || comic.locked) continue;
+      if (!comic.folderId || comic.locked) continue;
       const list = byFolder.get(comic.folderId) ?? [];
-      if (list.length < 3) { list.push(comic.coverPath); byFolder.set(comic.folderId, list); }
+      if (list.length < 3) { list.push(comic.coverPath ?? ''); byFolder.set(comic.folderId, list); }
     }
     return byFolder;
   }, [comics]);
@@ -235,7 +236,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
     const comic = item.comic; const masked = coverHidden(comic);
     const cover = (
       <View style={[styles.cover, view === 'list' && styles.coverList]}>
-        {masked ? <Text style={styles.glyph}>🔒</Text> : comic.coverPath ? <Image source={{ uri: comic.coverPath }} style={styles.coverImage} contentFit="cover" recyclingKey={comic.id} transition={120} /> : null}
+        {masked ? <Text style={styles.glyph}>🔒</Text> : <FileCover uri={comic.coverPath} title={comic.title} style={styles.coverImage} recyclingKey={comic.id} transition={120} />}
         {isFinished(comic) && !masked ? <Text style={styles.badge}>✓</Text> : null}
       </View>
     );
@@ -290,17 +291,26 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   );
 }
 
+/** A cover that never leaves a blank box: if the file's cover is missing or won't decode, show the title on a tinted card. */
+function FileCover({ uri, title, style, recyclingKey, transition }: { uri: string | null | undefined; title: string; style: object; recyclingKey: string; transition?: number }) {
+  const [failed, setFailed] = useState(false);
+  if (!uri || failed) {
+    return <View style={[style, { backgroundColor: '#2A2F3A', alignItems: 'center', justifyContent: 'center', padding: 10 }]}><Text numberOfLines={5} style={{ color: '#E8E8EC', fontSize: 13, fontWeight: '700', textAlign: 'center' }}>{title}</Text></View>;
+  }
+  return <Image source={{ uri }} style={style} contentFit="cover" recyclingKey={recyclingKey} transition={transition} onError={() => setFailed(true)} />;
+}
+
 function Tile({ styles, view, width, label, sub, glyph, covers, onPress, onLongPress }: { styles: ReturnType<typeof makeStyles>; view: View_; width: number; label: string; sub: string; glyph: string; covers: string[]; onPress: () => void; onLongPress: () => void }) {
   // Up to three covers fanned out behind the first, like a stack of issues; an empty folder shows its glyph.
   const stack = (
     <View style={[styles.stack, view === 'list' && styles.stackList]}>
       {covers.length === 0 ? <View style={[styles.cover, styles.tile, styles.stackFill]}><Text style={styles.glyph}>{glyph}</Text></View> : null}
       {covers.slice(1).reverse().map((uri, i) => (
-        <View key={uri} style={[styles.stackBack, { transform: [{ translateX: (i === 0 && covers.length > 2 ? 1 : -1) * 9 }, { rotate: `${(i === 0 && covers.length > 2 ? 1 : -1) * 7}deg` }, { scale: 0.93 }], opacity: 0.9 }]}>
-          <Image source={{ uri }} style={styles.coverImage} contentFit="cover" recyclingKey={`${uri}-back`} />
+        <View key={`${i}-${uri}`} style={[styles.stackBack, { transform: [{ translateX: (i === 0 && covers.length > 2 ? 1 : -1) * 9 }, { rotate: `${(i === 0 && covers.length > 2 ? 1 : -1) * 7}deg` }, { scale: 0.93 }], opacity: 0.9 }]}>
+          <FileCover uri={uri} title="" style={styles.coverImage} recyclingKey={`${uri}-back`} />
         </View>
       ))}
-      {covers.length ? <View style={[styles.cover, styles.stackFill]}><Image source={{ uri: covers[0] }} style={styles.coverImage} contentFit="cover" recyclingKey={covers[0]} transition={120} /></View> : null}
+      {covers.length ? <View style={[styles.cover, styles.stackFill]}><FileCover uri={covers[0]} title={label} style={styles.coverImage} recyclingKey={covers[0]} transition={120} /></View> : null}
     </View>
   );
   if (view === 'list') {
