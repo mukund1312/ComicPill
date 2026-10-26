@@ -79,7 +79,7 @@ if [ $n -ge 2 ]; then log "  Read Files imports appear in the Library ($n of 3 v
 shot shelf
 for t in "Nightwatch 01" Test7z Test4 Test; do
   adb shell am start -a android.intent.action.VIEW -d "comicpill:///reader" $PKG >/dev/null; sleep 4
-  tapx "Search"; sleep 1; tap "Search title"; sleep 1; adb shell input text "$(echo "${t%% *}" | sed 's/ /%s/g')"; adb shell input keyevent 4; sleep 2
+  screen_has "Search title" || { tapx "Search"; sleep 1; }; tap "Search title"; sleep 1; adb shell input text "$(echo "${t%% *}" | sed 's/ /%s/g')"; adb shell input keyevent 4; sleep 2
   if tapx "$t"; then sleep 12; adb shell input swipe 900 1200 150 1200 200; sleep 2; shot "read_$(echo $t | tr ' ' '_')"; if screen_has "Preparing pages" || screen_has "could not"; then log "  ! $t did not open"; else log "  opened $t"; fi; adb shell input keyevent 4; sleep 2; else log "  ! could not find $t on the shelf"; fi
 done
 
@@ -87,7 +87,7 @@ done
 adb shell am start -a android.intent.action.VIEW -d "comicpill:///mind/settings" $PKG >/dev/null; sleep 5
 tap "Watch an album"; sleep 3; shot mind_settings
 adb shell am start -a android.intent.action.VIEW -d "comicpill:///mind?tab=inbox" $PKG >/dev/null; sleep 5
-tap "Look back 7 days"; sleep 14; shot mind_inbox
+tap "Look back 7 days"; wait_for "look comic-related" 90; shot mind_inbox
 if screen_has "look comic-related"; then log "  OCR scan: screenshot offered for review (on-device text read OK)"; else log "  ! OCR scan: nothing offered"; fi
 
 # start-up and memory
