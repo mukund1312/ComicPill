@@ -50,14 +50,14 @@ tapx() { _tap "$1" 1; }
 shot() { adb exec-out screencap -p > "$OUT/$1.png"; }
 screen_has() { adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1; adb exec-out cat /sdcard/ui.xml | grep -q "$1"; }
 
-adb shell am start -a android.intent.action.VIEW -d "comicpill:///reader" $PKG >/dev/null; sleep 8
+adb shell am start -a android.intent.action.VIEW -d "comicpill:///library" $PKG >/dev/null; sleep 8
 # wait until the UI dump contains a pattern (default: up to 60 s)
 wait_for() { local n=0; while [ $n -lt ${2:-60} ]; do adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1; adb exec-out cat /sdcard/ui.xml | grep -q "$1" && return 0; sleep 2; n=$((n+2)); done; return 1; }
 
 import_file() {  # $1 = file name; success means the comic really appeared on the shelf
   local file=$1 title=${1%.*}
   # The shelf has one "Add" (＋) button; its menu holds "Import files…".
-  { tapx "Add" && sleep 1 && tap "Import files"; } || { log "  ! no import button"; return 1; }
+  { tap "Import from Files"; } || { log "  ! no import button"; return 1; }
   wait_for 'documentsui' 40 || { log "  ! the file picker never opened for $file"; return 1; }
   sleep 2
   # The roots drawer works the same on every Android version; searching doesn't (older pickers have no search icon).
@@ -72,13 +72,13 @@ import_file "Bundle.zip"
 if wait_for 'text="4 comics"' 180; then log "  bundle imported all 4 comics (CBZ, 7z, RAR, PDF)"; else log "  ! bundle did not give 4 comics: $(adb exec-out cat /sdcard/ui.xml | python3 -c "import sys,re;print(re.findall(r'text=\"([0-9]+ comics?)\"',sys.stdin.read()))")"; fi
 shot shelf
 # Everything imported into Read Files must also be in the main Library (owned digitally).
-adb shell am start -a android.intent.action.VIEW -d "comicpill:///library" $PKG >/dev/null; sleep 5
+adb shell am start -a android.intent.action.VIEW -d "comicpill:///collection" $PKG >/dev/null; sleep 5
 adb shell input swipe 540 1700 540 700 300; sleep 1
 n=0; for t in "Test7z" "Test4" "Nightwatch 01"; do screen_has "text=\"$t\"" && n=$((n+1)); done; shot library_link
 if [ $n -ge 2 ]; then log "  Read Files imports appear in the Library ($n of 3 visible)"; else log "  ! Library is missing imported comics ($n of 3 visible)"; fi
 shot shelf
 for t in "Nightwatch 01" Test7z Test4 Test; do
-  adb shell am start -a android.intent.action.VIEW -d "comicpill:///reader" $PKG >/dev/null; sleep 4
+  adb shell am start -a android.intent.action.VIEW -d "comicpill:///reader/phone" $PKG >/dev/null; sleep 4
   screen_has "Search title" || { tapx "Search"; sleep 1; }; tap "Search title"; sleep 1; adb shell input text "$(echo "${t%% *}" | sed 's/ /%s/g')"; adb shell input keyevent 4; sleep 2
   if tapx "$t"; then sleep 12; adb shell input swipe 900 1200 150 1200 200; sleep 2; shot "read_$(echo $t | tr ' ' '_')"; if screen_has "Preparing pages" || screen_has "could not"; then log "  ! $t did not open"; else log "  opened $t"; fi; adb shell input keyevent 4; sleep 2; else log "  ! could not find $t on the shelf"; fi
 done
@@ -91,7 +91,7 @@ tap "Look back 7 days"; wait_for "look comic-related" 90; shot mind_inbox
 if screen_has "look comic-related"; then log "  OCR scan: screenshot offered for review (on-device text read OK)"; else log "  ! OCR scan: nothing offered"; fi
 
 # start-up and memory
-for i in 1 2 3 4 5; do adb shell am force-stop $PKG; sleep 2; adb shell am start -W -a android.intent.action.VIEW -d "comicpill:///reader" $PKG 2>&1 | grep TotalTime | awk '{print $2}'; done | sort -n | tr '\n' ' ' > "$OUT/start.txt"
+for i in 1 2 3 4 5; do adb shell am force-stop $PKG; sleep 2; adb shell am start -W -a android.intent.action.VIEW -d "comicpill:///reader/phone" $PKG 2>&1 | grep TotalTime | awk '{print $2}'; done | sort -n | tr '\n' ' ' > "$OUT/start.txt"
 log "  cold start ms (sorted): $(cat "$OUT/start.txt")"
 sleep 5
 MEM=$(adb shell dumpsys meminfo $PKG | tr -d '\r' | awk '/TOTAL PSS:/{print $3; exit} /^ *TOTAL +[0-9]/{print $2; exit}')
