@@ -49,7 +49,10 @@ export function interpretOffline(text: string, templates: ArcTemplate[] = Object
   const fr = friction(text);
   const picked = pickTemplate(nText, templates);
 
-  const hasCharacter = picked ? nText.includes(norm(picked.t.character)) : false;
+  // Generated journeys are named for a character, so any way of spelling that name ("Spiderman", "Spidey") counts as asking for them.
+  const hasCharacter = picked
+    ? nText.includes(norm(picked.t.character)) || (picked.t.key.startsWith('auto-') && (picked.t.aliases ?? []).some((a) => nText.includes(norm(a))))
+    : false;
   // Aliases that read like a book title ("Batman and Son(s)") are title
   // references, not story beats — keep them out of the focus list.
   const titleAliasNorms = new Set((picked?.t.aliases ?? []).filter((a) => /\b(and|&)\s+sons?\b/i.test(a)).map(norm));

@@ -140,8 +140,13 @@ export default function TodayScreen() {
   const { theme, typography } = useAppearance(); const c = theme.colors;
   const [reading, setReading] = useState<ReaderComic[]>([]);
   useFocusEffect(useCallback(() => { setReading(readingNow(listReaderComics()).slice(0, 8)); }, []));
-  const lead = (today.lead === 'continue' ? today.continueCard : today.lead === 'switch' ? today.switchCard : today.exploreCard) ?? today.continueCard ?? today.switchCard ?? today.exploreCard;
-  const others = [today.continueCard, today.switchCard, today.exploreCard].filter((card): card is NonNullable<typeof card> => !!card && card.workId !== lead?.workId);
+  const engineLead = (today.lead === 'continue' ? today.continueCard : today.lead === 'switch' ? today.switchCard : today.exploreCard) ?? today.continueCard ?? today.switchCard ?? today.exploreCard;
+  // What you're in the middle of leads, unless you've asked for a mood — then the engine's pick for that mood does.
+  const recent = reading.find((comic) => comic.workId && !comic.locked) ?? null;
+  const resume: TodayCard | null = recent?.workId && !today.mood ? { workId: recent.workId, title: recent.title, bucket: 'continue_reading', own: 'digital', inLibrary: true, reasons: [`Page ${recent.progressPage + 1} of ${recent.pageCount} — pick up where you left off.`] } : null;
+  const lead = resume ?? engineLead;
+  const isResume = !!resume;
+  const others = [engineLead, today.continueCard, today.switchCard, today.exploreCard].filter((card, i, all): card is NonNullable<typeof card> => !!card && card.workId !== lead?.workId && all.findIndex((x) => x?.workId === card.workId) === i).slice(0, 3);
   const backdrop = coverSourceFor(lead?.workId);
   const travel = today.formatFilter === 'digital';
   const { width } = useWindowDimensions();
@@ -151,12 +156,12 @@ export default function TodayScreen() {
     <Animated.View entering={FadeInDown.duration(420)}>
     {lead ? (
       <View style={[styles.heroWrap, { height: HERO_H }]}>
-        <HeroArt source={backdrop} title={lead.title} scrollY={scrollY} width={width} onPress={() => router.push(`/comic/${lead.workId}`)} />
+        <HeroArt source={backdrop} title={lead.title} scrollY={scrollY} width={width} onPress={() => router.push(isResume && recent ? `/reader/${recent.id}` : `/comic/${lead.workId}`)} />
         <View pointerEvents="box-none" style={styles.heroText}>
-          <Text style={[styles.eyebrow, { color: c.textSecondary, fontFamily: typography.bodySemibold }]}>TONIGHT&apos;S PICK · {lead.bucket.replaceAll('_', ' ').toUpperCase()}</Text>
+          <Text style={[styles.eyebrow, { color: c.textSecondary, fontFamily: typography.bodySemibold }]}>{isResume ? 'CONTINUE READING' : `TONIGHT’S PICK${today.mood ? ` · ${today.mood.toUpperCase()}` : ` · ${lead.bucket.replaceAll('_', ' ').toUpperCase()}`}`}</Text>
           <Text numberOfLines={2} style={[styles.heroTitle, { color: c.textPrimary, fontFamily: typography.display }]}>{lead.title}</Text>
-          <Text numberOfLines={2} style={[styles.reason, { color: c.textSecondary, fontFamily: typography.body }]}>{lead.inLibrary ? 'In your library' : 'New to you'} · {lead.reasons[0] ?? 'A clear next step in your reading.'}</Text>
-          <View style={styles.cta}><Button onPress={() => router.push(`/comic/${lead.workId}`)}>Read tonight  →</Button></View>
+          <Text numberOfLines={2} style={[styles.reason, { color: c.textSecondary, fontFamily: typography.body }]}>{isResume ? '' : lead.inLibrary ? 'In your library · ' : 'New to you · '}{lead.reasons[0] ?? 'A clear next step in your reading.'}</Text>
+          <View style={styles.cta}><Button onPress={() => router.push(isResume && recent ? `/reader/${recent.id}` : `/comic/${lead.workId}`)}>{isResume ? 'Continue reading  →' : 'Read tonight  →'}</Button></View>
           <Pressable onPress={() => setShowWhy(true)} hitSlop={8} style={styles.why}><Text style={[styles.whyText, { color: c.textSecondary, fontFamily: typography.bodySemibold }]}>Why this?</Text></Pressable>
         </View>
       </View>
@@ -179,12 +184,12 @@ export default function TodayScreen() {
     {reading.length ? <>
       <Text style={[styles.section, { color: c.textPrimary, fontFamily: typography.display }]}>Continue reading</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.strip}>
-        {reading.map((comic) => <StripCard key={comic.id} title={comic.title} uri={comic.coverPath} progress={progressFraction(comic)} onPress={() => router.push(`/reader/${comic.id}`)} />)}
+        {reading.filter((comic) => !(isResume && comic.id === recent?.id)).map((comic) => <StripCard key={comic.id} title={comic.title} uri={comic.coverPath} progress={progressFraction(comic)} onPress={() => router.push(`/reader/${comic.id}`)} />)}
       </ScrollView>
     </> : null}
 
     {others.length ? <>
-      <Text style={[styles.section, { color: c.textPrimary, fontFamily: typography.display }]}>More good picks</Text>
+      <Text style={[styles.section, { color: c.textPrimary, fontFamily: typography.display }]}>{today.mood ? `More ${today.mood === 'surprise' ? 'surprising' : today.mood} picks` : 'More good picks'}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.strip}>
         {others.map((card) => <StripCard key={card.workId} label={card === today.continueCard ? 'Continue' : card === today.switchCard ? 'Switch it up' : 'Explore'} title={card.title} workId={card.workId} onPress={() => router.push(`/comic/${card.workId}`)} />)}
       </ScrollView>

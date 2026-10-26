@@ -18,6 +18,7 @@ import {
 import { BarlowCondensed_600SemiBold, BarlowCondensed_700Bold } from '@expo-google-fonts/barlow-condensed';
 import { initDatabase } from '../src/lib/db/client';
 import { backfillReaderLinks } from '../src/lib/reader/libraryLink';
+import { registerGeneratedArcTemplates } from '../src/lib/db/queries/generatedArcs';
 import { loadFileCovers } from '../src/ui/fileCovers';
 import { installCrashLog } from '../src/lib/diagnostics/crashLog';
 import { color } from '../src/ui/tokens';
@@ -43,6 +44,7 @@ export default function RootLayout() {
     initDatabase();
     try { backfillReaderLinks(); } catch { /* the reader works without library links */ }
     loadFileCovers();
+    try { registerGeneratedArcTemplates(); } catch { /* the hand-written journeys still work */ }
     installCrashLog();
     return true;
   });

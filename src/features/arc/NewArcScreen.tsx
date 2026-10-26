@@ -25,7 +25,6 @@ import { resolveArc, type ResolvedArc } from '../../lib/intent/resolve';
 import { describeResult } from './compose';
 import { DEPTHS, depthCounts } from './useArc';
 
-const TEMPLATES = Object.values(ARC_TEMPLATES);
 
 const KIND_LABEL: Record<string, string> = {
   character_life_arc: 'Character life arc', family_arc: 'Family arc', legacy_arc: 'Legacy arc',
@@ -44,6 +43,7 @@ export default function NewArcScreen({ initialTemplateKey }: { initialTemplateKe
   const [busy, setBusy] = useState(false);
   const [interpreted, setInterpreted] = useState<Interpreted | null>(null);
 
+  const TEMPLATES = Object.values(ARC_TEMPLATES); // read at render: generated journeys are added after start-up
   const [templateKey, setTemplateKey] = useState(initialTemplateKey ?? TEMPLATES[0].key);
   const defaultDepth = useSettings((s) => s.defaultJourneyDepth);
   const ai = useAiConfig();
@@ -51,6 +51,10 @@ export default function NewArcScreen({ initialTemplateKey }: { initialTemplateKe
   const [goalText, setGoalText] = useState('');
   const [editingGoal, setEditingGoal] = useState(false);
 
+  // The hand-written journeys, the one picked right now, and the ten generated journeys with the most books — the rest stay findable by typing.
+  const generated = TEMPLATES.filter((t) => t.key.startsWith('auto-')).sort((a, b) => b.chapters.reduce((n, ch) => n + ch.milestones.reduce((m, ms) => m + ms.items.length, 0), 0) - a.chapters.reduce((n, ch) => n + ch.milestones.reduce((m, ms) => m + ms.items.length, 0), 0));
+  const top = new Set(generated.slice(0, 10).map((t) => t.key));
+  const SHOWN = TEMPLATES.filter((t) => !t.key.startsWith('auto-') || top.has(t.key) || t.key === templateKey);
   const template = ARC_TEMPLATES[templateKey];
   const counts = depthCounts(templateKey);
   const view = interpreted ? describeResult(interpreted.resolved, interpreted.result.intent, interpreted.result.source, { aiError: interpreted.result.aiError, hasAssistant: !!ai.config || !!intentOptionsFromEnv().endpoint }) : null;
@@ -208,13 +212,14 @@ export default function NewArcScreen({ initialTemplateKey }: { initialTemplateKe
                 <Text style={[styles.body, { color: c.textSecondary, fontFamily: typography.body }]}>{d.blurb}</Text>
               </View>
             ))}
+            <View style={{ marginTop: space.md }}><Button onPress={start}>Start this journey</Button></View>
           </>
         ) : null}
 
         <Text style={[styles.section, { color: c.textPrimary, fontFamily: typography.displayMedium }]}>
           {matched ? 'Or choose a different journey' : 'Or pick a journey yourself'}
         </Text>
-        {TEMPLATES.map((t) => (
+        {SHOWN.map((t) => (
           <View key={t.key} style={[styles.card, { backgroundColor: c.surface, borderColor: t.key === templateKey ? c.primary : c.border }]}>
             <Eyebrow>{t.kinds.map((k) => KIND_LABEL[k] ?? k).join(' · ')}</Eyebrow>
             <Text style={[styles.cardTitle, { color: c.textPrimary, fontFamily: typography.display }]}>{t.title}</Text>
