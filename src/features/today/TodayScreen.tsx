@@ -95,21 +95,20 @@ function CollageBackdrop({ workId, scrollY }: { workId: string | undefined; scro
   const wash = useAnimatedStyle(() => ({ opacity: interpolate(scrollY.value, [0, HERO_H * 0.85], [0, 0.32], 'clamp') }));
   if (!tiles.length) return null;
   if (!width) return <View pointerEvents="none" style={StyleSheet.absoluteFill} onLayout={(e) => setSize(e.nativeEvent.layout)} />;
-  let k = 0; let y = 0;
-  const panels = PANEL_ROWS.flatMap(([rh, cols]) => {
-    const rowTop = y; const th = rh * height; y += th;
-    let x = 0;
-    return cols.map((cw) => {
-      const i = k++; const tw = cw * width; const left = x; x += tw;
-      const src = coverSourceFor(tiles[i]);
-      const z = 1.7 + ((i * 7) % 5) * 0.15; const ox = ((i * 37) % 70) / 100; const oy = ((i * 53) % 80) / 100;
-      return (
-        <View key={`${tiles[i]}-${i}`} style={{ position: 'absolute', left: left + GUTTER / 2, top: rowTop + GUTTER / 2, width: tw - GUTTER, height: th - GUTTER, overflow: 'hidden', borderRadius: 2 }}>
-          {src ? <Image source={src} blurRadius={3} contentFit="cover" style={{ position: 'absolute', width: tw * z, height: tw * z * 1.5, left: -(tw * z - tw) * ox, top: -(tw * z * 1.5 - th) * oy }} /> : null}
-        </View>
-      );
-    });
-  });
+  // Lay the panels out without mutating anything: each row's top and each tile's left are running sums.
+  const rowTops = PANEL_ROWS.map((_, r) => PANEL_ROWS.slice(0, r).reduce((sum, [h]) => sum + h * height, 0));
+  const firstIndex = PANEL_ROWS.map((_, r) => PANEL_ROWS.slice(0, r).reduce((sum, [, cols]) => sum + cols.length, 0));
+  const panels = PANEL_ROWS.flatMap(([rh, cols], r) => cols.map((cw, ci) => {
+    const i = firstIndex[r] + ci; const th = rh * height; const tw = cw * width;
+    const left = cols.slice(0, ci).reduce((sum, w) => sum + w * width, 0); const rowTop = rowTops[r];
+    const src = coverSourceFor(tiles[i]);
+    const z = 1.7 + ((i * 7) % 5) * 0.15; const ox = ((i * 37) % 70) / 100; const oy = ((i * 53) % 80) / 100;
+    return (
+      <View key={`${tiles[i]}-${i}`} style={{ position: 'absolute', left: left + GUTTER / 2, top: rowTop + GUTTER / 2, width: tw - GUTTER, height: th - GUTTER, overflow: 'hidden', borderRadius: 2 }}>
+        {src ? <Image source={src} blurRadius={3} contentFit="cover" style={{ position: 'absolute', width: tw * z, height: tw * z * 1.5, left: -(tw * z - tw) * ox, top: -(tw * z * 1.5 - th) * oy }} /> : null}
+      </View>
+    );
+  }));
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]} onLayout={(e) => setSize(e.nativeEvent.layout)}>
       {coverSourceFor(workId) ? <Animated.View style={[StyleSheet.absoluteFill, wash]}><Image source={coverSourceFor(workId)} blurRadius={40} contentFit="cover" style={StyleSheet.absoluteFill} /></Animated.View> : null}
