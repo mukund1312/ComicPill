@@ -3,10 +3,11 @@ import Animated from 'react-native-reanimated';
 import { GestureDetector } from 'react-native-gesture-handler';
 import { useSheetDrag } from './sheetDrag';
 import { Pressable, StyleSheet, Text, TextInput, View, type ViewStyle } from 'react-native';
+import { PressableScale } from './PressableScale';
+import { Icon } from './Icon';
 import { color, font, radius, space, type } from './tokens';
 import { useAppearance } from './theme';
 import { feedback } from '../lib/platform/feedback';
-import { useReducedMotion } from '../lib/platform/motion';
 
 export function Wordmark({ small = false }: { small?: boolean }) {
   const { theme, typography } = useAppearance(); return <Text style={[styles.wordmark, { color: theme.colors.textPrimary, fontFamily: typography.display }, small && styles.wordmarkSmall]}>Comic<Text style={{ color: theme.colors.primary }}>Pill</Text></Text>;
@@ -17,16 +18,25 @@ export function Eyebrow({ children }: PropsWithChildren) {
 }
 
 export function Button({ children, onPress, kind = 'primary', disabled = false, style }: { children: ReactNode; onPress?: () => void; kind?: 'primary' | 'secondary' | 'ghost' | 'destructive'; disabled?: boolean; style?: ViewStyle }) {
-  const { theme, typography } = useAppearance(); const c = theme.colors; const reduceMotion = useReducedMotion(); const dynamic = kind === 'primary' ? { backgroundColor: c.secondary, borderColor: c.secondary } : kind === 'destructive' ? { backgroundColor: 'transparent', borderColor: c.destructive } : kind === 'secondary' ? { backgroundColor: c.surfaceRaised, borderColor: c.border } : { backgroundColor: 'transparent', borderColor: 'transparent' };
+  const { theme, typography } = useAppearance(); const c = theme.colors;
+  const bg = kind === 'primary' ? c.secondary : kind === 'secondary' ? c.surfaceRaised : kind === 'destructive' ? `${c.destructive}22` : 'transparent';
+  const fg = kind === 'primary' ? c.secondaryForeground : kind === 'destructive' ? c.destructive : c.textPrimary;
   return (
-    <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={() => { feedback.tap(); onPress?.(); }} style={({ pressed }) => [styles.button, styles[`button_${kind}`], dynamic, disabled && styles.disabled, pressed && (reduceMotion ? styles.pressedStill : styles.pressed), style]}>
-      <Text style={[styles.buttonText, { color: kind === 'primary' ? c.secondaryForeground : c.textPrimary, fontFamily: typography.bodySemibold }]}>{children}</Text>
-    </Pressable>
+    <PressableScale accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} to={0.97} onPress={() => { feedback.tap(); onPress?.(); }}
+      style={[styles.button, kind === 'ghost' && styles.buttonGhost, { backgroundColor: bg }, disabled && styles.disabled, style]}>
+      <Text style={[styles.buttonText, { color: fg, fontFamily: typography.bodySemibold }]}>{children}</Text>
+    </PressableScale>
   );
 }
 
 export function Pill({ label, active = false, onPress }: { label: string; active?: boolean; onPress?: () => void }) {
-  const { theme, typography } = useAppearance(); const c = theme.colors; const reduceMotion = useReducedMotion(); return <Pressable accessibilityRole="button" accessibilityState={{ selected: active }} onPress={() => { feedback.select(); onPress?.(); }} style={({ pressed }) => [styles.pill, { backgroundColor: active ? c.primary : c.surfaceRaised, borderColor: active ? c.primary : c.border }, pressed && (reduceMotion ? styles.pressedStill : styles.pressed)]}><Text style={[styles.pillText, { color: active ? c.primaryForeground : c.textSecondary, fontFamily: typography.bodyMedium }]}>{label}</Text></Pressable>;
+  const { theme, typography } = useAppearance(); const c = theme.colors;
+  return (
+    <PressableScale accessibilityRole="button" accessibilityState={{ selected: active }} to={0.94} onPress={() => { feedback.select(); onPress?.(); }}
+      style={[styles.pill, { backgroundColor: active ? c.primary : c.surfaceRaised }]}>
+      <Text style={[styles.pillText, { color: active ? c.primaryForeground : c.textSecondary, fontFamily: typography.bodySemibold }]}>{label}</Text>
+    </PressableScale>
+  );
 }
 
 export function PurchaseBadge({ label }: { label: 'collect' | 'buy_on_sale' | 'digital_is_fine' | 'try_digital_first' | 'skip' }) {
@@ -39,7 +49,13 @@ export function PurchaseBadge({ label }: { label: 'collect' | 'buy_on_sale' | 'd
 }
 
 export function SectionHeader({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) {
-  const { theme, typography } = useAppearance(); return <View style={styles.sectionHeader}><Text style={[styles.sectionTitle, { color: theme.colors.textPrimary, fontFamily: typography.displayMedium }]}>{title}</Text>{action ? <Pressable onPress={onAction}><Text style={[styles.sectionAction, { color: theme.colors.primary, fontFamily: typography.bodySemibold }]}>{action}</Text></Pressable> : null}</View>;
+  const { theme, typography } = useAppearance();
+  return (
+    <View style={styles.sectionHeader}>
+      <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary, fontFamily: typography.displayMedium }]}>{title}</Text>
+      {action ? <PressableScale to={0.94} onPress={onAction} hitSlop={8}><Text style={[styles.sectionAction, { color: theme.colors.primary, fontFamily: typography.bodySemibold }]}>{action} ›</Text></PressableScale> : null}
+    </View>
+  );
 }
 
 export function Progress({ value }: { value: number }) {
@@ -68,30 +84,40 @@ export function Input({ placeholder, value, onChangeText, secureTextEntry = fals
   const { theme, typography } = useAppearance(); return <TextInput accessibilityLabel={placeholder} placeholder={placeholder} placeholderTextColor={theme.colors.textMuted} value={value} onChangeText={onChangeText} secureTextEntry={secureTextEntry} style={[styles.input, { borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceRaised, color: theme.colors.textPrimary, fontFamily: typography.body }]} />;
 }
 
-export function EmptyState({ mark = '◇', title, copy, action, onAction }: { mark?: string; title: string; copy: string; action?: string; onAction?: () => void }) {
-  const { theme, typography } = useAppearance();
-  return <View style={styles.empty}><Text style={[styles.emptyMark, { color: theme.colors.primary }]}>{mark}</Text><Text style={[styles.emptyTitle, { color: theme.colors.textPrimary, fontFamily: typography.display }]}>{title}</Text><Text style={[styles.emptyCopy, { color: theme.colors.textSecondary, fontFamily: typography.body }]}>{copy}</Text>{action ? <Button onPress={onAction} style={{ marginTop: space.lg }}>{action}</Button> : null}</View>;
+export function EmptyState({ title, copy, action, onAction }: { mark?: string; title: string; copy: string; action?: string; onAction?: () => void }) {
+  const { theme, typography } = useAppearance(); const c = theme.colors;
+  return (
+    <View style={styles.empty}>
+      <View style={[styles.emptyIcon, { backgroundColor: c.primaryMuted }]}><Icon name="sparkles-outline" size={28} color={c.primary} /></View>
+      <Text style={[styles.emptyTitle, { color: c.textPrimary, fontFamily: typography.display }]}>{title}</Text>
+      <Text style={[styles.emptyCopy, { color: c.textSecondary, fontFamily: typography.body }]}>{copy}</Text>
+      {action ? <View style={{ marginTop: space.lg, alignSelf: 'stretch' }}><Button onPress={onAction}>{action}</Button></View> : null}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-  wordmark: { color: color.text, fontFamily: font.display, fontSize: 32, letterSpacing: -1.5 },
+  wordmark: { color: color.text, fontFamily: font.display, fontSize: 32, letterSpacing: -1.2 },
   wordmarkSmall: { fontSize: 24 },
-  eyebrow: { color: color.muted, fontFamily: font.bodySemibold, fontSize: type.caption - 2, letterSpacing: 1.8, textTransform: 'uppercase' },
-  button: { minHeight: 50, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', paddingHorizontal: space.lg, borderWidth: 1 },
-  button_primary: { backgroundColor: color.accent, borderColor: color.accent },
-  button_secondary: { backgroundColor: color.surface2, borderColor: color.border },
-  button_ghost: { backgroundColor: 'transparent', borderColor: 'transparent', minHeight: 40 },
-  button_destructive: { backgroundColor: 'transparent', borderColor: color.accent },
-  buttonText: { color: color.text, fontSize: type.caption, fontFamily: font.bodySemibold },
-  buttonTextSecondary: { color: color.text }, disabled: { opacity: 0.45 }, pressed: { transform: [{ scale: 0.98 }], opacity: 0.9 }, pressedStill: { opacity: 0.85 },
-  pill: { paddingHorizontal: 14, height: 34, borderRadius: radius.pill, backgroundColor: color.surface2, borderColor: color.border, borderWidth: 1, justifyContent: 'center' },
-  pillActive: { backgroundColor: color.accent, borderColor: color.accent }, pillText: { color: color.muted, fontFamily: font.bodyMedium, fontSize: 12 }, pillTextActive: { color: color.text },
-  badge: { alignSelf: 'flex-start', borderRadius: radius.pill, paddingHorizontal: 9, paddingVertical: 5, backgroundColor: color.surface2, borderWidth: 1 },
+  eyebrow: { color: color.muted, fontFamily: font.bodySemibold, fontSize: 11, letterSpacing: 1.4, textTransform: 'uppercase' },
+  button: { minHeight: 54, borderRadius: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: space.lg },
+  buttonGhost: { minHeight: 44 },
+  buttonText: { fontSize: 16, letterSpacing: -0.1 },
+  disabled: { opacity: 0.4 },
+  pill: { paddingHorizontal: 16, height: 38, borderRadius: radius.pill, justifyContent: 'center' },
+  pillText: { fontSize: 13.5 },
+  badge: { alignSelf: 'flex-start', borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: color.surface2, borderWidth: 1 },
   sectionHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: space.xxl, marginBottom: space.md },
-  sectionTitle: { color: color.text, fontFamily: font.displayMedium, fontSize: type.title }, sectionAction: { color: color.accent, fontFamily: font.bodySemibold, fontSize: type.caption },
-  progressTrack: { height: 6, backgroundColor: color.border, borderRadius: radius.pill, overflow: 'hidden' }, progressFill: { height: '100%', backgroundColor: color.accent, borderRadius: radius.pill },
-  sheet: { backgroundColor: color.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, borderColor: color.border, padding: space.lg, paddingBottom: space.xxl },
-  handle: { width: 36, height: 4, alignSelf: 'center', borderRadius: radius.pill, backgroundColor: color.faint, marginBottom: space.lg }, sheetTitle: { color: color.text, fontFamily: font.display, fontSize: type.title, marginBottom: space.lg },
-  input: { minHeight: 50, borderWidth: 1, borderColor: color.border, backgroundColor: color.surface2, borderRadius: radius.md, color: color.text, fontFamily: font.body, paddingHorizontal: 14, fontSize: type.body },
-  empty: { paddingVertical: 56, paddingHorizontal: 28, alignItems: 'center' }, emptyMark: { color: color.accent, fontSize: 36, marginBottom: 12 }, emptyTitle: { color: color.text, fontFamily: font.display, fontSize: type.title }, emptyCopy: { color: color.muted, fontFamily: font.body, fontSize: type.body, textAlign: 'center', lineHeight: 22, marginTop: 8 },
+  sectionTitle: { fontSize: 22, letterSpacing: -0.4 },
+  sectionAction: { fontSize: 14 },
+  progressTrack: { height: 4, borderRadius: radius.pill, overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: radius.pill },
+  sheet: { borderTopLeftRadius: 30, borderTopRightRadius: 30, borderWidth: StyleSheet.hairlineWidth, borderBottomWidth: 0, padding: space.lg, paddingBottom: space.xxl, shadowColor: '#000', shadowOpacity: 0.5, shadowRadius: 30, shadowOffset: { width: 0, height: -10 }, elevation: 24 },
+  handle: { width: 40, height: 5, alignSelf: 'center', borderRadius: radius.pill, marginBottom: space.lg, opacity: 0.5 },
+  sheetTitle: { fontSize: 26, letterSpacing: -0.5, marginBottom: space.lg },
+  input: { minHeight: 54, borderRadius: 16, paddingHorizontal: 16, fontSize: 16, borderWidth: StyleSheet.hairlineWidth },
+  empty: { paddingVertical: 56, paddingHorizontal: 28, alignItems: 'center' },
+  emptyIcon: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', marginBottom: 18 },
+  emptyTitle: { fontSize: 24, letterSpacing: -0.4, textAlign: 'center' },
+  emptyCopy: { fontSize: 15, textAlign: 'center', lineHeight: 22, marginTop: 8 },
 });

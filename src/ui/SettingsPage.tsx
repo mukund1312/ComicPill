@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { space } from './tokens';
 import { useAppearance } from './theme';
+import { Icon } from './Icon';
 
 export function SettingsPage({ title, subtitle, backLabel = 'Back', onBack, children, footer }: PropsWithChildren<{
   title: string; subtitle?: string; backLabel?: string; onBack?: () => void; footer?: ReactNode;
@@ -18,7 +19,7 @@ export function SettingsPage({ title, subtitle, backLabel = 'Back', onBack, chil
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 48 + bottom }]} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}>
           <Pressable accessibilityRole="button" accessibilityLabel={backLabel} hitSlop={12} onPress={onBack ?? (() => router.back())} style={styles.back}>
-            <Text style={[styles.backText, { color: c.textSecondary, fontFamily: typography.bodyMedium }]}>‹ {backLabel}</Text>
+            <View style={[styles.backCircle, { backgroundColor: c.surfaceRaised }]}><Icon name="chevron-back" size={20} color={c.textPrimary} /></View>
           </Pressable>
           <Text accessibilityRole="header" style={[styles.title, { color: c.textPrimary, fontFamily: typography.display }]}>{title}</Text>
           {subtitle ? <Text style={[styles.subtitle, { color: c.textSecondary, fontFamily: typography.body }]}>{subtitle}</Text> : null}
@@ -34,9 +35,9 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   flex: { flex: 1 },
   content: { padding: space.lg, paddingBottom: 48 },
-  back: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center', marginBottom: 6 },
-  backText: { fontSize: 16 },
-  title: { fontSize: 34 },
+  back: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center', marginBottom: 4 },
+  backCircle: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: 34, letterSpacing: -1, marginTop: 6 },
   subtitle: { fontSize: 15, marginTop: 6, lineHeight: 22 },
   footer: { padding: space.lg, borderTopWidth: StyleSheet.hairlineWidth },
 });

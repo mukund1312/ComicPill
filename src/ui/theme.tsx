@@ -21,20 +21,20 @@ const foregroundFor = (hex: string) => {
  * to change with a theme.
  */
 const palette = (primary: string, secondary: string, options: PaletteOptions = {}): ThemeColors => {
-  const background = options.background ?? '#08090B';
-  const surface = options.surface ?? '#101114';
-  const surfaceRaised = options.surfaceRaised ?? '#17181C';
+  const background = options.background ?? '#0A0A0D';
+  const surface = options.surface ?? '#131318';
+  const surfaceRaised = options.surfaceRaised ?? '#1B1B22';
   return {
     background, surface, surfaceRaised, surfaceMuted: options.surfaceMuted ?? surfaceRaised,
-    primary, primaryHover: primary, primaryMuted: `${primary}2E`, primaryForeground: options.primaryForeground ?? foregroundFor(primary), secondary, secondaryForeground: options.secondaryForeground ?? foregroundFor(secondary), tertiary: options.tertiary ?? (options.textPrimary ?? '#F1EDE6'), accent: options.tertiary ?? (options.textPrimary ?? '#F1EDE6'),
-    textPrimary: options.textPrimary ?? '#F1EDE6', textSecondary: options.textSecondary ?? '#A6A3A0', textMuted: options.textMuted ?? '#6F6D6A', border: options.border ?? '#27282D', borderActive: primary,
+    primary, primaryHover: primary, primaryMuted: `${primary}2E`, primaryForeground: options.primaryForeground ?? foregroundFor(primary), secondary, secondaryForeground: options.secondaryForeground ?? foregroundFor(secondary), tertiary: options.tertiary ?? (options.textPrimary ?? '#F5F5F7'), accent: options.tertiary ?? (options.textPrimary ?? '#F5F5F7'),
+    textPrimary: options.textPrimary ?? '#F5F5F7', textSecondary: options.textSecondary ?? '#9A9AA3', textMuted: options.textMuted ?? '#6B6B75', border: options.border ?? '#FFFFFF16', borderActive: primary,
     navActive: primary, toggleActive: secondary, focus: secondary, progress: primary,
     success: '#4E8C6B', warning: '#C9992F', error: '#E32636', destructive: '#E32636', overlay: options.overlay ?? '#000000AA', shadow: options.shadow ?? '#000000',
   };
 };
 
 export const THEMES: ComicPillTheme[] = [
-  { id: 'comicpill', name: 'ComicPill Original', subtitle: 'Crimson / Ivory', category: 'default', colors: palette('#E32636', '#F1EDE6') },
+  { id: 'comicpill', name: 'ComicPill Original', subtitle: 'Crimson / Ivory', category: 'default', colors: palette('#F23546', '#F5F5F7') },
   { id: 'iron', name: 'Iron', subtitle: 'Crimson / Gold', category: 'hero', colors: palette('#D4AF37', '#F3C969', { background: '#5A0910', surface: '#741018', surfaceRaised: '#8B1821', surfaceMuted: '#681019', textPrimary: '#FFF5DF', textSecondary: '#F0C9A8', textMuted: '#C98779', border: '#A62A30', primaryForeground: '#261306', overlay: '#240205B8', shadow: '#250307' }) },
   { id: 'gotham', name: 'Gotham', subtitle: 'Slate / Steel', category: 'hero', colors: palette('#D6B64C', '#AEB6C1', { background: '#11151C', surface: '#1B222C', surfaceRaised: '#27313D', surfaceMuted: '#161C25', textPrimary: '#F0F3F5', textSecondary: '#B6C0CB', textMuted: '#7D8997', border: '#3A4655', primaryForeground: '#18202A', overlay: '#080B10B8', shadow: '#000000' }) },
   { id: 'krypton', name: 'Krypton', subtitle: 'Cream / Blue / Red', category: 'hero', colors: palette('#1756A9', '#C8202F', { background: '#F4F1E8', surface: '#FFFDF8', surfaceRaised: '#E5E9F1', surfaceMuted: '#ECE7DB', textPrimary: '#10233F', textSecondary: '#4A5B73', textMuted: '#77849A', border: '#C8D1DD', primaryForeground: '#FFFFFF', overlay: '#10233F88', shadow: '#7B8BA1' }) },
@@ -58,6 +58,7 @@ export const THEMES: ComicPillTheme[] = [
 ];
 
 export const TYPOGRAPHY: TypographyPreset[] = [
+  { id: 'polished', name: 'Polished', description: 'Clean, confident and modern.', display: 'Inter_800ExtraBold', displayMedium: 'Inter_700Bold', body: 'Inter_400Regular', bodyMedium: 'Inter_500Medium', bodySemibold: 'Inter_600SemiBold' },
   { id: 'editorial', name: 'Editorial', description: 'Classic comic-journal feel.', display: 'PlayfairDisplay_700Bold', displayMedium: 'PlayfairDisplay_600SemiBold', body: 'Inter_400Regular', bodyMedium: 'Inter_500Medium', bodySemibold: 'Inter_600SemiBold' },
   { id: 'modern', name: 'Modern', description: 'Clean and contemporary.', display: 'Inter_600SemiBold', displayMedium: 'Inter_600SemiBold', body: 'Inter_400Regular', bodyMedium: 'Inter_500Medium', bodySemibold: 'Inter_600SemiBold' },
   { id: 'graphic-novel', name: 'Graphic Novel', description: 'Bold, condensed, and expressive.', display: 'BarlowCondensed_700Bold', displayMedium: 'BarlowCondensed_600SemiBold', body: 'Inter_400Regular', bodyMedium: 'Inter_500Medium', bodySemibold: 'Inter_600SemiBold' },
@@ -84,7 +85,7 @@ const key = '@comicpill/appearance/v1';
 const byId = <T extends { id: string }>(items: T[], id: string | null, fallback: T) => items.find((item) => item.id === id) ?? fallback;
 
 export function AppearanceProvider({ children }: PropsWithChildren) {
-  const [themeId, setThemeId] = useState('comicpill'); const [typeId, setTypeId] = useState('editorial');
+  const [themeId, setThemeId] = useState('comicpill'); const [typeId, setTypeId] = useState('polished');
   const [previewThemeId, setPreviewThemeId] = useState<string | null>(null); const [previewTypeId, setPreviewTypeId] = useState<string | null>(null); const [ready, setReady] = useState(false);
   useEffect(() => { AsyncStorage.getItem(key).then((raw) => { if (raw) { const value = JSON.parse(raw) as { themeId?: string; typeId?: string }; setThemeId(byId(THEMES, value.themeId ?? null, THEMES[0]).id); setTypeId(byId(TYPOGRAPHY, value.typeId ?? null, TYPOGRAPHY[0]).id); } }).catch(() => {}).finally(() => setReady(true)); }, []);
   const persist = useCallback((nextTheme: string, nextType: string) => { void AsyncStorage.setItem(key, JSON.stringify({ themeId: nextTheme, typeId: nextType })); }, []);
@@ -97,7 +98,7 @@ export function AppearanceProvider({ children }: PropsWithChildren) {
   }, [clearPreview, persist]);
   const setTheme = useCallback((id: string) => setAppearance(id, typeId), [setAppearance, typeId]);
   const setTypography = useCallback((id: string) => setAppearance(themeId, id), [setAppearance, themeId]);
-  const reset = useCallback(() => setAppearance('comicpill', 'editorial'), [setAppearance]);
+  const reset = useCallback(() => setAppearance('comicpill', 'polished'), [setAppearance]);
   const shownThemeId = previewThemeId ?? themeId; const shownTypeId = previewTypeId ?? typeId;
   const value = useMemo(() => ({ theme: byId(THEMES, shownThemeId, THEMES[0]), typography: byId(TYPOGRAPHY, shownTypeId, TYPOGRAPHY[0]), savedThemeId: themeId, savedTypographyId: typeId, previewTheme, previewTypography, clearPreview, setTheme, setTypography, setAppearance, reset, ready }), [shownThemeId, shownTypeId, themeId, typeId, previewTheme, previewTypography, clearPreview, setTheme, setTypography, setAppearance, reset, ready]);
   return <AppearanceContext.Provider value={value}>{children}</AppearanceContext.Provider>;

@@ -6,6 +6,7 @@ import { router, useFocusEffect } from 'expo-router';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { ActionSheet, PromptModal, type SheetOption } from './dialogs';
 import { AppShell } from '../../ui/AppShell';
+import { HeaderActions, HeaderButton } from '../../ui/Icon';
 import { PressableScale } from '../../ui/PressableScale';
 import { EmptyState, Input, Pill, Progress } from '../../ui/primitives';
 import { useAppearance, type TypographyPreset } from '../../ui/theme';
@@ -263,7 +264,7 @@ export default function ReaderShelfScreen() {
   };
 
   return (
-    <AppShell active="read" title="Read now" right={<View style={styles.headerActions}><Pressable accessibilityRole="button" accessibilityLabel="Search" onPress={() => { setSearchOpen((o) => !o); if (searchOpen) setQuery(''); }} hitSlop={8}><Text style={styles.searchIcon}>⌕</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel="Add" onPress={addMenu} disabled={busy} hitSlop={8}><Text style={styles.add}>{busy ? '…' : '＋'}</Text></Pressable></View>}>
+    <AppShell active="read" title="Read now" right={<HeaderActions><HeaderButton icon="search" label="Search" active={searchOpen} onPress={() => { setSearchOpen((o) => !o); if (searchOpen) setQuery(''); }} /><HeaderButton icon="add" label="Add" disabled={busy} onPress={addMenu} /></HeaderActions>}>
       <FlashList
         key={`${view}-${columns}`}
         data={cells}
@@ -283,7 +284,7 @@ export default function ReaderShelfScreen() {
             {segment !== 'reading' ? (
               <View style={styles.subrow}>
                 {inside ? <Pressable onPress={() => { setOpenFolder(null); setOpenCollection(null); }}><Text style={styles.back}>‹ {insideName}</Text></Pressable> : <Text style={styles.count}>{segment === 'collections' ? `${collections.length} ${collections.length === 1 ? 'collection' : 'collections'}` : `${comics.length} ${comics.length === 1 ? 'comic' : 'comics'}`}</Text>}
-                <Pressable accessibilityRole="button" accessibilityLabel="View and sort" onPress={viewMenu} hitSlop={8}><Text style={styles.sort}>{view === 'grid' ? '▦' : '☰'}  {SORT_LABEL[sort]} ▾</Text></Pressable>
+                <Pressable accessibilityRole="button" accessibilityLabel="View and sort" onPress={viewMenu} hitSlop={8}><Text style={styles.sort}>{SORT_LABEL[sort]}  ⌄</Text></Pressable>
               </View>
             ) : null}
           </Animated.View>
@@ -322,7 +323,7 @@ function makeStyles(c: ThemeColors, t: TypographyPreset) {
     pills: { gap: 8 },
     subrow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     count: { color: c.textSecondary, fontFamily: t.body, fontSize: 13 },
-    sort: { color: c.primary, fontFamily: t.bodyMedium, fontSize: 13 },
+    sort: { color: c.textSecondary, fontFamily: t.bodySemibold, fontSize: 13 },
     back: { color: c.primary, fontFamily: t.bodySemibold, fontSize: 16 },
     add: { color: c.primary, fontSize: 28 },
     headerActions: { flexDirection: 'row', alignItems: 'center', gap: space.lg },

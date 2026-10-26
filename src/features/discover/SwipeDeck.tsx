@@ -1,3 +1,4 @@
+import { Icon } from '../../ui/Icon';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
@@ -63,9 +64,9 @@ export function SwipeDeck({ card, next, onPass, onSave, onRate }: { card: DeckCa
         </GestureDetector>
       </View>
       <View style={styles.controls}>
-        <Pressable accessibilityRole="button" onPress={() => fly('left')} style={styles.pass}><Text style={styles.passIcon}>×</Text><Text style={styles.controlText}>Pass</Text></Pressable>
-        <Pressable accessibilityRole="button" onPress={onRate} style={styles.rate}><Text style={styles.rateIcon}>↑</Text><Text style={styles.controlText}>Rate</Text></Pressable>
-        <Pressable accessibilityRole="button" onPress={() => fly('right')} style={styles.read}><Text style={styles.readIcon}>♥</Text><Text style={styles.controlText}>{isAccessible(card.work.own) ? 'Continue' : 'Read'}</Text></Pressable>
+        <Pressable accessibilityRole="button" onPress={() => fly('left')} style={styles.pass}><View style={styles.passIcon}><Icon name="close" size={30} color={color.muted} /></View><Text style={styles.controlText}>Pass</Text></Pressable>
+        <Pressable accessibilityRole="button" onPress={onRate} style={styles.rate}><View style={styles.rateIcon}><Icon name="star" size={22} color={color.collectGold} /></View><Text style={styles.controlText}>Rate</Text></Pressable>
+        <Pressable accessibilityRole="button" onPress={() => fly('right')} style={styles.read}><View style={styles.readIcon}><Icon name="heart" size={28} color="#FFFFFF" /></View><Text style={styles.controlText}>{isAccessible(card.work.own) ? 'Continue' : 'Read'}</Text></Pressable>
       </View>
       <Text style={styles.help}>Swipe the card left to pass or right to save.</Text>
     </>
@@ -104,11 +105,11 @@ const styles = StyleSheet.create({
   stampText: { fontFamily: font.display, fontSize: 24, letterSpacing: 1.5 },
   controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 28, marginTop: 10 },
   pass: { alignItems: 'center', gap: 4 },
-  passIcon: { color: color.muted, fontSize: 33, width: 57, height: 57, textAlign: 'center', textAlignVertical: 'center', borderWidth: 1, borderColor: color.border, borderRadius: 29 },
+  passIcon: { width: 58, height: 58, borderRadius: 29, borderWidth: 1, borderColor: color.border, alignItems: 'center', justifyContent: 'center' },
   rate: { alignItems: 'center', gap: 4 },
-  rateIcon: { color: color.text, fontSize: 25, width: 42, height: 42, textAlign: 'center', textAlignVertical: 'center', borderRadius: 21, backgroundColor: color.surface2 },
+  rateIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: color.surface2, alignItems: 'center', justifyContent: 'center' },
   read: { alignItems: 'center', gap: 4 },
-  readIcon: { color: color.text, fontSize: 24, width: 57, height: 57, textAlign: 'center', textAlignVertical: 'center', borderRadius: 29, backgroundColor: color.accent },
+  readIcon: { width: 58, height: 58, borderRadius: 29, backgroundColor: color.accent, alignItems: 'center', justifyContent: 'center', shadowColor: color.accent, shadowOpacity: 0.5, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
   controlText: { color: color.muted, fontFamily: font.bodyMedium, fontSize: 11 },
   help: { color: color.faint, fontFamily: font.body, fontSize: 12, textAlign: 'center', marginTop: 15 },
 });

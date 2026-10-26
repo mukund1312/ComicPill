@@ -53,7 +53,7 @@ export default function ProfileScreen() {
   const recent = data.history.slice(0, 3);
 
   return (
-    <AppShell active="today" title="Profile">
+    <AppShell active="none" title="Profile" right={<View />}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* identity */}
         <View style={styles.identity}>

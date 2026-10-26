@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { router, useFocusEffect } from 'expo-router';
 import { useToday, type TodayCard } from './useToday';
 import { AppShell } from '../../ui/AppShell';
@@ -51,6 +52,7 @@ export default function TodayScreen() {
   const backdrop = coverSourceFor(lead?.workId);
   const travel = today.formatFilter === 'digital';
   return <AppShell active="today" logo><ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <Animated.View entering={FadeInDown.duration(420)}>
     {lead ? (
       <View style={[styles.hero, { backgroundColor: c.surface, borderColor: c.border }]}>
         {backdrop ? <Image source={backdrop} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={38} /> : null}
@@ -70,12 +72,18 @@ export default function TodayScreen() {
       <View style={[styles.noPick, { backgroundColor: c.surface, borderColor: c.border }]}><Text style={[styles.noPickTitle, { color: c.textPrimary, fontFamily: typography.display }]}>Your next read is waiting.</Text><Text style={[styles.noPickCopy, { color: c.textSecondary, fontFamily: typography.body }]}>Add a few comics to your library, then ComicPill can make a considered pick.</Text><Button onPress={() => router.push('/library')}>Build my library</Button></View>
     )}
 
+    </Animated.View>
+
+    <Animated.View entering={FadeInDown.delay(90).duration(420)}>
     <Text style={[styles.sectionLabel, { color: c.textMuted, fontFamily: typography.bodySemibold }]}>IN THE MOOD FOR</Text>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pills}>
       <Pill label={travel ? '✈ Digital only' : '✈ Travel'} active={travel} onPress={() => today.setFormatFilter(travel ? 'any' : 'digital')} />
       {moods.map((mood) => <Pill key={mood.id} label={mood.label} active={today.mood === mood.id} onPress={() => today.setMood(today.mood === mood.id ? null : mood.id)} />)}
     </ScrollView>
 
+    </Animated.View>
+
+    <Animated.View entering={FadeInDown.delay(180).duration(420)}>
     {reading.length ? <>
       <Text style={[styles.section, { color: c.textPrimary, fontFamily: typography.display }]}>Continue reading</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.strip}>
@@ -89,6 +97,7 @@ export default function TodayScreen() {
         {others.map((card) => <StripCard key={card.workId} label={card === today.continueCard ? 'Continue' : card === today.switchCard ? 'Switch it up' : 'Explore'} title={card.title} workId={card.workId} onPress={() => router.push(`/comic/${card.workId}`)} />)}
       </ScrollView>
     </> : null}
+    </Animated.View>
   </ScrollView>
   {showWhy && lead ? <View style={[styles.overlay, { backgroundColor: c.overlay }]}><Sheet title="Why this tonight?" onClose={() => setShowWhy(false)}><Text style={[styles.sheetLead, { color: c.textSecondary, fontFamily: typography.body }]}>A few reasons it earns tonight.</Text>{(lead.reasons.length ? lead.reasons : ['It fits your current reading mood.', 'It is a natural next step in your library.', 'It is short enough to enjoy tonight.']).slice(0, 3).map((reason) => <View key={reason} style={styles.reasonRow}><Text style={[styles.reasonDot, { color: c.primary }]}>✦</Text><Text style={[styles.reasonText, { color: c.textPrimary, fontFamily: typography.body }]}>{reason}</Text></View>)}<Button kind="destructive" onPress={() => { setShowWhy(false); setShowNotTonight(true); }}>Not tonight</Button><Button kind="ghost" onPress={() => setShowWhy(false)}>Close</Button></Sheet></View> : null}
   {showNotTonight && lead ? <View style={[styles.overlay, { backgroundColor: c.overlay }]}><Sheet><Text style={[styles.notTitle, { color: c.textPrimary, fontFamily: typography.display }]}>Not tonight?</Text><Text style={[styles.notCopy, { color: c.textSecondary, fontFamily: typography.body }]}>No problem. We’ll adjust and find something else when you’re ready.</Text><Button onPress={() => { today.notTonight(lead.workId); setShowNotTonight(false); }}>Find another pick</Button><Button kind="secondary" style={{ marginTop: 10 }} onPress={() => setShowNotTonight(false)}>Keep current pick</Button></Sheet></View> : null}

@@ -9,8 +9,9 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { View, ActivityIndicator } from 'react-native';
 import {
   useFonts,
-  Inter_400Regular, Inter_500Medium, Inter_600SemiBold,
+  Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, Inter_800ExtraBold,
 } from '@expo-google-fonts/inter';
+import { Ionicons } from '@expo/vector-icons';
 import {
   PlayfairDisplay_600SemiBold, PlayfairDisplay_700Bold,
 } from '@expo-google-fonts/playfair-display';
@@ -27,7 +28,8 @@ import '../src/lib/mind/task';
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
-    Inter_400Regular, Inter_500Medium, Inter_600SemiBold,
+    Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, Inter_800ExtraBold,
+    ...Ionicons.font,
     PlayfairDisplay_600SemiBold, PlayfairDisplay_700Bold,
     BarlowCondensed_600SemiBold, BarlowCondensed_700Bold,
   });
