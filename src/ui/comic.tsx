@@ -9,6 +9,13 @@ import { useAppearance } from './theme';
 const coverColors = ['#5b1015', '#421619', '#182b35', '#302042', '#5b351b', '#172b26', '#402121'];
 function tint(title: string) { return coverColors[title.split('').reduce((sum, c) => sum + c.charCodeAt(0), 0) % coverColors.length]; }
 
+/** The image behind a work's cover (bundled artwork, or the first page of an imported file), if there is one. */
+export function coverSourceFor(workId?: string): { uri: string } | number | undefined {
+  if (!workId) return undefined;
+  const file = fileCoverFor(workId);
+  return (COVER_ASSETS[workId] as number | { uri: string } | undefined) ?? (file ? { uri: file } : undefined);
+}
+
 /** A fixed 2:3 cover cell. `workId` looks up a real, bundled cover asset
  * (see scripts/fetch-covers.py + src/ui/coverAssets.ts) — when one exists it
  * renders via expo-image (memory-disk cache, per docs/PERFORMANCE.md);

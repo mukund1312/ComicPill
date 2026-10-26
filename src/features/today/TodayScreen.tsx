@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { router } from 'expo-router';
+import { Image } from 'expo-image';
+import { router, useFocusEffect } from 'expo-router';
 import { useToday, type TodayCard } from './useToday';
 import { AppShell } from '../../ui/AppShell';
-import { ComicCover } from '../../ui/comic';
+import { ComicCover, coverSourceFor } from '../../ui/comic';
+import { listReaderComics, type ReaderComic } from '../../lib/reader/readerLibrary';
+import { progressFraction, readingNow } from '../../lib/reader/shelf';
 import UpdateBanner from '../settings/UpdateBanner';
-import { Button, Eyebrow, Pill, Progress, SectionHeader, Sheet } from '../../ui/primitives';
-import { color, font, radius, space, type } from '../../ui/tokens';
+import { Button, Pill, Progress, Sheet } from '../../ui/primitives';
+import { radius, space } from '../../ui/tokens';
 import { useAppearance } from '../../ui/theme';
 
 // id must match a key in score.ts's MOOD_GENRES (lowercase) — this was
@@ -26,26 +29,98 @@ const moods: { id: string; label: string }[] = [
   { id: 'emotional', label: 'Emotional' },
   { id: 'surprise', label: 'Surprise me' },
 ];
-function Decision({ label, card, action }: { label: string; card: TodayCard | null; action: string }) {
+
+/** A small cover card for the "more picks" and "continue reading" strips. */
+function StripCard({ label, title, workId, onPress, progress, uri }: { label?: string; title: string; workId?: string; onPress: () => void; progress?: number; uri?: string | null }) {
   const { theme, typography } = useAppearance(); const c = theme.colors;
-  if (!card) return null;
-  return <View style={[styles.decision, { borderBottomColor: c.border }]}><ComicCover title={card.title} workId={card.workId} size="list" /><View style={styles.decisionBody}><Eyebrow>{label}</Eyebrow><Text numberOfLines={2} ellipsizeMode="tail" style={[styles.decisionTitle, { color: c.textPrimary, fontFamily: typography.displayMedium }]}>{card.title}</Text><Text style={[styles.decisionReason, { color: c.textSecondary, fontFamily: typography.body }]} numberOfLines={2}>{card.reasons[0] ?? 'A thoughtful next choice from your library.'}</Text><Pressable onPress={() => router.push(`/comic/${card.workId}`)}><Text style={[styles.decisionAction, { color: c.primary, fontFamily: typography.bodySemibold }]}>{action}  →</Text></Pressable></View></View>;
+  return <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.stripCard, pressed && { opacity: 0.85 }]}>
+    {uri ? <View style={[styles.stripCover, { backgroundColor: c.surfaceRaised }]}><Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" recyclingKey={uri} /></View> : <ComicCover title={title} workId={workId} size="grid" />}
+    {label ? <Text style={[styles.stripLabel, { color: c.primary, fontFamily: typography.bodySemibold }]}>{label.toUpperCase()}</Text> : null}
+    <Text numberOfLines={2} style={[styles.stripTitle, { color: c.textPrimary, fontFamily: typography.displayMedium }]}>{title}</Text>
+    {progress !== undefined ? <Progress value={progress} /> : null}
+  </Pressable>;
 }
+
 export default function TodayScreen() {
   const today = useToday(); const [showWhy, setShowWhy] = useState(false); const [showNotTonight, setShowNotTonight] = useState(false);
   const { theme, typography } = useAppearance(); const c = theme.colors;
+  const [reading, setReading] = useState<ReaderComic[]>([]);
+  useFocusEffect(useCallback(() => { setReading(readingNow(listReaderComics()).slice(0, 8)); }, []));
   const lead = (today.lead === 'continue' ? today.continueCard : today.lead === 'switch' ? today.switchCard : today.exploreCard) ?? today.continueCard ?? today.switchCard ?? today.exploreCard;
+  const others = [today.continueCard, today.switchCard, today.exploreCard].filter((card): card is NonNullable<typeof card> => !!card && card.workId !== lead?.workId);
+  const backdrop = coverSourceFor(lead?.workId);
+  const travel = today.formatFilter === 'digital';
   return <AppShell active="today" logo><ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-    <Text style={[styles.greeting, { color: c.textSecondary, fontFamily: typography.body }]}>Good evening.</Text><Text style={[styles.question, { color: c.textPrimary, fontFamily: typography.display }]}>What are you in the mood for?</Text>
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pills}>{moods.map((mood) => <Pill key={mood.id} label={mood.label} active={today.mood === mood.id} onPress={() => today.setMood(today.mood === mood.id ? null : mood.id)} />)}</ScrollView>
-    {today.mood ? <Pressable onPress={() => today.setMood(null)} style={styles.clearMood}><Text style={[styles.clearMoodText, { color: c.textSecondary, fontFamily: typography.bodyMedium }]}>Clear mood</Text></Pressable> : null}
-    <Pressable onPress={() => today.setFormatFilter(today.formatFilter === 'digital' ? 'any' : 'digital')} style={[styles.travelRow, { backgroundColor: c.surfaceRaised, borderColor: c.border }]}><Text style={[styles.travelText, { color: c.textPrimary, fontFamily: typography.bodyMedium }]}>✈ Travel mode — digital only</Text><View style={[styles.toggle, { backgroundColor: c.border }, today.formatFilter === 'digital' && { backgroundColor: c.toggleActive }]}><View style={[styles.toggleKnob, { backgroundColor: c.primaryForeground }, today.formatFilter === 'digital' && styles.toggleKnobOn]} /></View></Pressable>
-    {lead ? <View style={[styles.hero, { backgroundColor: c.surface, borderColor: c.border }]}><View style={styles.heroTop}><ComicCover title={lead.title} workId={lead.workId} size="hero" /><View style={styles.heroInfo}><Eyebrow>Tonight&apos;s pick</Eyebrow><Text numberOfLines={3} ellipsizeMode="tail" style={[styles.heroTitle, { color: c.textPrimary, fontFamily: typography.display }]}>{lead.title}</Text><Text style={[styles.bucket, { color: c.textSecondary, fontFamily: typography.body }]}>{lead.bucket.replaceAll('_', ' ')}</Text><View style={styles.tags}><Text style={[styles.tag, { borderColor: c.border, color: c.textSecondary, fontFamily: typography.bodyMedium }]}>{lead.inLibrary ? 'In your library' : 'New to you'}</Text><Text style={[styles.tag, { borderColor: c.border, color: c.textSecondary, fontFamily: typography.bodyMedium }]}>Focused read</Text></View><Text style={[styles.reason, { color: c.textSecondary, fontFamily: typography.body }]}>{lead.reasons[0] ?? 'A clear next step in your reading.'}</Text></View></View><Button onPress={() => router.push(`/comic/${lead.workId}`)}>Read Tonight  →</Button><Pressable onPress={() => setShowWhy(true)} style={styles.why}><Text style={[styles.whyText, { color: c.textSecondary, fontFamily: typography.bodySemibold }]}>Why this?</Text></Pressable></View> : <View style={[styles.noPick, { backgroundColor: c.surface, borderColor: c.border }]}><Text style={[styles.noPickTitle, { color: c.textPrimary, fontFamily: typography.display }]}>Your next read is waiting.</Text><Text style={[styles.noPickCopy, { color: c.textSecondary, fontFamily: typography.body }]}>Add a few comics to your library, then ComicPill can make a considered pick.</Text><Button onPress={() => router.push('/library')}>Build my library</Button></View>}
-    <SectionHeader title="Three good decisions" /><Decision label="Continue" card={today.continueCard} action="Continue reading" /><Decision label="Switch it up" card={today.switchCard} action="Try something different" /><Decision label="Explore" card={today.exploreCard} action="Explore this pick" />
-    <SectionHeader title="Reading now" /><View style={[styles.reading, { backgroundColor: c.surfaceRaised, borderColor: c.border }]}><View style={{ flex: 1 }}><Text style={[styles.readingTitle, { color: c.textPrimary, fontFamily: typography.displayMedium }]}>Keep your place.</Text><Text style={[styles.readingCopy, { color: c.textSecondary, fontFamily: typography.body }]}>Your current reads stay close, never demanding attention.</Text><View style={{ marginTop: 12 }}><Progress value={0.56} /></View></View><Text style={[styles.readingNumber, { color: c.primary, fontFamily: typography.bodySemibold }]}>56%</Text></View>
+    {lead ? (
+      <View style={[styles.hero, { backgroundColor: c.surface, borderColor: c.border }]}>
+        {backdrop ? <Image source={backdrop} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={38} /> : null}
+        <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: c.background, opacity: backdrop ? 0.74 : 0 }]} />
+        <View style={styles.fan}>
+          {others[1] ? <View style={[styles.fanCover, { transform: [{ rotate: '9deg' }, { translateX: 62 }, { scale: 0.86 }], opacity: 0.8 }]}><ComicCover title={others[1].title} workId={others[1].workId} size="hero" /></View> : null}
+          {others[0] ? <View style={[styles.fanCover, { transform: [{ rotate: '-9deg' }, { translateX: -62 }, { scale: 0.86 }], opacity: 0.8 }]}><ComicCover title={others[0].title} workId={others[0].workId} size="hero" /></View> : null}
+          <ComicCover title={lead.title} workId={lead.workId} size="hero" onPress={() => router.push(`/comic/${lead.workId}`)} />
+        </View>
+        <Text style={[styles.eyebrow, { color: c.textSecondary, fontFamily: typography.bodySemibold }]}>TONIGHT&apos;S PICK · {lead.bucket.replaceAll('_', ' ').toUpperCase()}</Text>
+        <Text numberOfLines={2} style={[styles.heroTitle, { color: c.textPrimary, fontFamily: typography.display }]}>{lead.title}</Text>
+        <Text numberOfLines={2} style={[styles.reason, { color: c.textSecondary, fontFamily: typography.body }]}>{lead.inLibrary ? 'In your library' : 'New to you'} · {lead.reasons[0] ?? 'A clear next step in your reading.'}</Text>
+        <View style={styles.cta}><Button onPress={() => router.push(`/comic/${lead.workId}`)}>Read tonight  →</Button></View>
+        <Pressable onPress={() => setShowWhy(true)} hitSlop={8} style={styles.why}><Text style={[styles.whyText, { color: c.textSecondary, fontFamily: typography.bodySemibold }]}>Why this?</Text></Pressable>
+      </View>
+    ) : (
+      <View style={[styles.noPick, { backgroundColor: c.surface, borderColor: c.border }]}><Text style={[styles.noPickTitle, { color: c.textPrimary, fontFamily: typography.display }]}>Your next read is waiting.</Text><Text style={[styles.noPickCopy, { color: c.textSecondary, fontFamily: typography.body }]}>Add a few comics to your library, then ComicPill can make a considered pick.</Text><Button onPress={() => router.push('/library')}>Build my library</Button></View>
+    )}
+
+    <Text style={[styles.sectionLabel, { color: c.textMuted, fontFamily: typography.bodySemibold }]}>IN THE MOOD FOR</Text>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pills}>
+      <Pill label={travel ? '✈ Digital only' : '✈ Travel'} active={travel} onPress={() => today.setFormatFilter(travel ? 'any' : 'digital')} />
+      {moods.map((mood) => <Pill key={mood.id} label={mood.label} active={today.mood === mood.id} onPress={() => today.setMood(today.mood === mood.id ? null : mood.id)} />)}
+    </ScrollView>
+
+    {reading.length ? <>
+      <Text style={[styles.section, { color: c.textPrimary, fontFamily: typography.display }]}>Continue reading</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.strip}>
+        {reading.map((comic) => <StripCard key={comic.id} title={comic.title} uri={comic.coverPath} progress={progressFraction(comic)} onPress={() => router.push(`/reader/${comic.id}`)} />)}
+      </ScrollView>
+    </> : null}
+
+    {others.length ? <>
+      <Text style={[styles.section, { color: c.textPrimary, fontFamily: typography.display }]}>More good picks</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.strip}>
+        {others.map((card) => <StripCard key={card.workId} label={card === today.continueCard ? 'Continue' : card === today.switchCard ? 'Switch it up' : 'Explore'} title={card.title} workId={card.workId} onPress={() => router.push(`/comic/${card.workId}`)} />)}
+      </ScrollView>
+    </> : null}
   </ScrollView>
   {showWhy && lead ? <View style={[styles.overlay, { backgroundColor: c.overlay }]}><Sheet title="Why this tonight?" onClose={() => setShowWhy(false)}><Text style={[styles.sheetLead, { color: c.textSecondary, fontFamily: typography.body }]}>A few reasons it earns tonight.</Text>{(lead.reasons.length ? lead.reasons : ['It fits your current reading mood.', 'It is a natural next step in your library.', 'It is short enough to enjoy tonight.']).slice(0, 3).map((reason) => <View key={reason} style={styles.reasonRow}><Text style={[styles.reasonDot, { color: c.primary }]}>✦</Text><Text style={[styles.reasonText, { color: c.textPrimary, fontFamily: typography.body }]}>{reason}</Text></View>)}<Button kind="destructive" onPress={() => { setShowWhy(false); setShowNotTonight(true); }}>Not tonight</Button><Button kind="ghost" onPress={() => setShowWhy(false)}>Close</Button></Sheet></View> : null}
   {showNotTonight && lead ? <View style={[styles.overlay, { backgroundColor: c.overlay }]}><Sheet><Text style={[styles.notTitle, { color: c.textPrimary, fontFamily: typography.display }]}>Not tonight?</Text><Text style={[styles.notCopy, { color: c.textSecondary, fontFamily: typography.body }]}>No problem. We’ll adjust and find something else when you’re ready.</Text><Button onPress={() => { today.notTonight(lead.workId); setShowNotTonight(false); }}>Find another pick</Button><Button kind="secondary" style={{ marginTop: 10 }} onPress={() => setShowNotTonight(false)}>Keep current pick</Button></Sheet></View> : null}
   </AppShell>;
 }
-const styles = StyleSheet.create({ clearMood: { alignSelf: 'flex-start', marginBottom: space.md, marginTop: -6 }, clearMoodText: { color: color.muted, fontFamily: font.bodyMedium, fontSize: type.caption }, content: { padding: space.lg, paddingBottom: 104 }, travelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: color.surface2, borderColor: color.border, borderWidth: 1, borderRadius: radius.md, paddingVertical: 10, paddingHorizontal: space.md, marginBottom: space.lg }, travelText: { color: color.text, fontFamily: font.bodyMedium, fontSize: type.caption }, toggle: { width: 38, height: 22, borderRadius: 11, backgroundColor: color.border, padding: 2, justifyContent: 'center' }, toggleOn: { backgroundColor: color.accent }, toggleKnob: { width: 18, height: 18, borderRadius: 9, backgroundColor: color.text }, toggleKnobOn: { transform: [{ translateX: 16 }] }, greeting: { color: color.muted, fontFamily: font.body, fontSize: type.body, marginTop: 4 }, question: { color: color.text, fontFamily: font.display, fontSize: 29, lineHeight: 36, marginTop: 4, maxWidth: 290 }, pills: { gap: 8, paddingVertical: space.lg }, hero: { backgroundColor: color.surface, borderColor: color.border, borderWidth: 1, borderRadius: radius.lg, padding: space.md, gap: 14 }, heroTop: { flexDirection: 'row', gap: space.md }, heroInfo: { flex: 1, minWidth: 0, justifyContent: 'center' }, heroTitle: { color: color.text, fontFamily: font.display, fontSize: 24, lineHeight: 28, marginTop: 5 }, bucket: { color: color.muted, fontFamily: font.body, fontSize: type.caption, textTransform: 'capitalize', marginTop: 3 }, tags: { flexDirection: 'row', gap: 5, flexWrap: 'wrap', marginTop: 10 }, tag: { borderColor: color.border, borderWidth: 1, borderRadius: 99, color: color.muted, fontFamily: font.bodyMedium, fontSize: 10, paddingHorizontal: 7, paddingVertical: 4 }, reason: { color: color.muted, fontFamily: font.body, fontSize: 12, lineHeight: 17, marginTop: 12 }, why: { alignItems: 'center', paddingTop: 2 }, whyText: { color: color.muted, fontFamily: font.bodySemibold, fontSize: type.caption }, decision: { flexDirection: 'row', gap: space.md, paddingVertical: space.md, borderBottomColor: color.border, borderBottomWidth: StyleSheet.hairlineWidth }, decisionBody: { flex: 1, minWidth: 0, justifyContent: 'center' }, decisionTitle: { color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle, marginTop: 4 }, decisionReason: { color: color.muted, fontFamily: font.body, fontSize: 12, lineHeight: 17, marginTop: 4 }, decisionAction: { color: color.accent, fontFamily: font.bodySemibold, fontSize: 12, marginTop: 9 }, reading: { flexDirection: 'row', gap: 14, backgroundColor: color.surface2, padding: space.md, borderRadius: radius.md, borderColor: color.border, borderWidth: 1 }, readingTitle: { color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle }, readingCopy: { color: color.muted, fontFamily: font.body, fontSize: 12, marginTop: 4 }, readingNumber: { color: color.accent, fontFamily: font.bodySemibold, fontSize: type.caption }, overlay: { ...StyleSheet.absoluteFill, zIndex: 10, justifyContent: 'flex-end', backgroundColor: '#000000aa' }, sheetLead: { color: color.muted, fontFamily: font.body, fontSize: type.body, marginBottom: 12 }, reasonRow: { flexDirection: 'row', gap: 10, paddingVertical: 10 }, reasonDot: { color: color.accent, fontSize: 17 }, reasonText: { flex: 1, color: color.text, fontFamily: font.body, fontSize: type.body, lineHeight: 22 }, notTitle: { color: color.text, fontFamily: font.display, fontSize: 30 }, notCopy: { color: color.muted, fontFamily: font.body, fontSize: type.body, lineHeight: 23, marginVertical: 14 }, noPick: { padding: 24, borderRadius: radius.lg, backgroundColor: color.surface, borderColor: color.border, borderWidth: 1, gap: 10 }, noPickTitle: { color: color.text, fontFamily: font.display, fontSize: type.title }, noPickCopy: { color: color.muted, fontFamily: font.body, fontSize: type.body, lineHeight: 22 } });
+const styles = StyleSheet.create({
+  content: { padding: space.lg, paddingTop: space.sm, paddingBottom: 110 },
+  hero: { borderRadius: 28, borderWidth: 1, overflow: 'hidden', paddingTop: 30, paddingBottom: space.lg, paddingHorizontal: space.lg, alignItems: 'center' },
+  fan: { height: 214, width: '100%', alignItems: 'center', justifyContent: 'center', marginBottom: space.lg },
+  fanCover: { position: 'absolute' },
+  eyebrow: { fontSize: 10, letterSpacing: 1.6, textAlign: 'center' },
+  heroTitle: { fontSize: 28, lineHeight: 33, textAlign: 'center', marginTop: 8 },
+  reason: { fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: 8, maxWidth: 300 },
+  cta: { alignSelf: 'stretch', marginTop: space.lg },
+  why: { paddingTop: 14, paddingBottom: 2 },
+  whyText: { fontSize: 13 },
+  sectionLabel: { fontSize: 10, letterSpacing: 1.6, marginTop: 26, marginBottom: 2 },
+  pills: { gap: 8, paddingVertical: 10 },
+  section: { fontSize: 22, marginTop: 22, marginBottom: 12 },
+  strip: { gap: 14, paddingRight: space.lg },
+  stripCard: { width: 110, gap: 6 },
+  stripCover: { width: 96, height: 144, borderRadius: radius.sm, overflow: 'hidden', borderWidth: 1, borderColor: '#ffffff20' },
+  stripLabel: { fontSize: 9, letterSpacing: 1.2, marginTop: 2 },
+  stripTitle: { fontSize: 12, lineHeight: 15 },
+  overlay: { ...StyleSheet.absoluteFill, zIndex: 10, justifyContent: 'flex-end', backgroundColor: '#000000aa' },
+  sheetLead: { fontSize: 15, marginBottom: 12 },
+  reasonRow: { flexDirection: 'row', gap: 10, paddingVertical: 10 },
+  reasonDot: { fontSize: 17 },
+  reasonText: { flex: 1, fontSize: 15, lineHeight: 22 },
+  notTitle: { fontSize: 30 },
+  notCopy: { fontSize: 15, lineHeight: 23, marginVertical: 14 },
+  noPick: { padding: 24, borderRadius: radius.lg, borderWidth: 1, gap: 10 },
+  noPickTitle: { fontSize: 24 },
+  noPickCopy: { fontSize: 15, lineHeight: 22 },
+});

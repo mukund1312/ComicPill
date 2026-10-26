@@ -31,7 +31,7 @@ type Cell =
   | { kind: 'collection'; key: string; collection: ReaderCollection };
 
 const SORTS: SortKey[] = ['recent', 'title', 'added'];
-const MIN_CELL = 112;
+const MIN_CELL = 168;
 const VIEW_KEY = 'reader_view';
 
 type Sheet = { title?: string; options: SheetOption[] } | null;
@@ -44,7 +44,7 @@ export default function ReaderShelfScreen() {
   const styles = useMemo(() => makeStyles(c, typography), [c, typography]);
 
   const [view, setViewState] = useState<View_>(() => (getMeta(VIEW_KEY) === 'list' ? 'list' : 'grid'));
-  const columns = view === 'list' ? 1 : Math.max(3, Math.floor((width - space.lg * 2) / MIN_CELL)); // tablets get more columns
+  const columns = view === 'list' ? 1 : Math.max(2, Math.floor((width - space.lg * 2) / MIN_CELL)); // two generous columns on phones, more on tablets
   const cellWidth = (width - space.lg * 2 - space.md * (columns - 1)) / columns;
   const [comics, setComics] = useState<ReaderComic[]>([]);
   const [folders, setFolders] = useState<ReaderFolder[]>([]);
@@ -106,6 +106,17 @@ export default function ReaderShelfScreen() {
   };
   // Importing while you are inside a folder puts the files in that folder.
   const importHere = () => runImport(() => pickAndImportComics({ folderId: openFolder ?? undefined }));
+
+  // A folder wears the covers of the first comics inside it (oldest first), so it never looks blank.
+  const folderCovers = useMemo(() => {
+    const byFolder = new Map<string, string[]>();
+    for (const comic of [...comics].sort((a, b) => a.addedAt - b.addedAt)) {
+      if (!comic.folderId || !comic.coverPath || comic.locked) continue;
+      const list = byFolder.get(comic.folderId) ?? [];
+      if (list.length < 3) { list.push(comic.coverPath); byFolder.set(comic.folderId, list); }
+    }
+    return byFolder;
+  }, [comics]);
 
   const cells: Cell[] = useMemo(() => {
     const searching = query.trim().length > 0;
@@ -221,8 +232,8 @@ export default function ReaderShelfScreen() {
         : <EmptyState title={inside ? 'This is empty' : 'No files yet'} copy={inside ? 'Import files straight into this folder, or move comics here from their long-press menu.' : 'Import CBZ, CBR, CB7, ZIP, PDF or comic EPUB files from your phone to read them here.'} action={inside && segment === 'library' ? 'Import here' : inside ? undefined : 'Import comics'} onAction={inside && segment !== 'library' ? undefined : importHere} />;
 
   const renderItem = ({ item }: { item: Cell }) => {
-    if (item.kind === 'folder') return <Tile styles={styles} view={view} width={cellWidth} label={item.folder.name} sub={`${item.folder.count} ${item.folder.count === 1 ? 'comic' : 'comics'}`} glyph={item.folder.locked && !isUnlocked('folder', item.folder.id) ? '🔒' : '▤'} onPress={() => requireUnlock('folder', item.folder.id, item.folder.name, item.folder.locked, () => setOpenFolder(item.folder.id))} onLongPress={() => folderMenu(item.folder)} />;
-    if (item.kind === 'collection') return <Tile styles={styles} view={view} width={cellWidth} label={item.collection.name} sub={`${item.collection.count} ${item.collection.count === 1 ? 'comic' : 'comics'}`} glyph="❖" onPress={() => setOpenCollection(item.collection.id)} onLongPress={() => collectionMenu(item.collection)} />;
+    if (item.kind === 'folder') return <Tile styles={styles} view={view} width={cellWidth} label={item.folder.name} sub={`${item.folder.count} ${item.folder.count === 1 ? 'title' : 'titles'}`} covers={item.folder.locked && !isUnlocked('folder', item.folder.id) ? [] : folderCovers.get(item.folder.id) ?? []} glyph={item.folder.locked && !isUnlocked('folder', item.folder.id) ? '🔒' : '▤'} onPress={() => requireUnlock('folder', item.folder.id, item.folder.name, item.folder.locked, () => setOpenFolder(item.folder.id))} onLongPress={() => folderMenu(item.folder)} />;
+    if (item.kind === 'collection') return <Tile styles={styles} view={view} width={cellWidth} label={item.collection.name} sub={`${item.collection.count} ${item.collection.count === 1 ? 'title' : 'titles'}`} covers={[]} glyph="❖" onPress={() => setOpenCollection(item.collection.id)} onLongPress={() => collectionMenu(item.collection)} />;
     const comic = item.comic; const masked = coverHidden(comic);
     const cover = (
       <View style={[styles.cover, view === 'list' && styles.coverList]}>
@@ -285,17 +296,28 @@ export default function ReaderShelfScreen() {
   );
 }
 
-function Tile({ styles, view, width, label, sub, glyph, onPress, onLongPress }: { styles: ReturnType<typeof makeStyles>; view: View_; width: number; label: string; sub: string; glyph: string; onPress: () => void; onLongPress: () => void }) {
-  const box = <View style={[styles.cover, styles.tile, view === 'list' && styles.coverList]}><Text style={styles.glyph}>{glyph}</Text></View>;
+function Tile({ styles, view, width, label, sub, glyph, covers, onPress, onLongPress }: { styles: ReturnType<typeof makeStyles>; view: View_; width: number; label: string; sub: string; glyph: string; covers: string[]; onPress: () => void; onLongPress: () => void }) {
+  // Up to three covers fanned out behind the first, like a stack of issues; an empty folder shows its glyph.
+  const stack = (
+    <View style={[styles.stack, view === 'list' && styles.stackList]}>
+      {covers.length === 0 ? <View style={[styles.cover, styles.tile, styles.stackFill]}><Text style={styles.glyph}>{glyph}</Text></View> : null}
+      {covers.slice(1).reverse().map((uri, i) => (
+        <View key={uri} style={[styles.stackBack, { transform: [{ translateX: (i === 0 && covers.length > 2 ? 1 : -1) * 9 }, { rotate: `${(i === 0 && covers.length > 2 ? 1 : -1) * 7}deg` }, { scale: 0.93 }], opacity: 0.9 }]}>
+          <Image source={{ uri }} style={styles.coverImage} contentFit="cover" recyclingKey={`${uri}-back`} />
+        </View>
+      ))}
+      {covers.length ? <View style={[styles.cover, styles.stackFill]}><Image source={{ uri: covers[0] }} style={styles.coverImage} contentFit="cover" recyclingKey={covers[0]} transition={120} /></View> : null}
+    </View>
+  );
   if (view === 'list') {
-    return <PressableScale to={0.985} style={styles.listRow} onPress={onPress} onLongPress={onLongPress}>{box}<View style={styles.listBody}><Text numberOfLines={2} style={styles.title}>{label}</Text><Text style={styles.sub}>{sub}</Text></View></PressableScale>;
+    return <PressableScale to={0.985} style={styles.listRow} onPress={onPress} onLongPress={onLongPress}>{stack}<View style={styles.listBody}><Text numberOfLines={2} style={styles.title}>{label}</Text><Text style={styles.sub}>{sub}</Text></View></PressableScale>;
   }
-  return <PressableScale style={[styles.cell, { width }]} onPress={onPress} onLongPress={onLongPress}>{box}<Text numberOfLines={2} style={styles.title}>{label}</Text><Text style={styles.sub}>{sub}</Text></PressableScale>;
+  return <PressableScale style={[styles.cell, { width }]} onPress={onPress} onLongPress={onLongPress}>{stack}<Text numberOfLines={1} style={styles.title}>{label}</Text><Text style={styles.sub}>{sub}</Text></PressableScale>;
 }
 
 function makeStyles(c: ThemeColors, t: TypographyPreset) {
   return StyleSheet.create({
-    content: { padding: space.lg, paddingBottom: 105 },
+    content: { padding: space.lg, paddingBottom: 110 },
     header: { gap: space.md, marginBottom: space.md },
     pills: { gap: 8 },
     subrow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -305,15 +327,19 @@ function makeStyles(c: ThemeColors, t: TypographyPreset) {
     add: { color: c.primary, fontSize: 28 },
     headerActions: { flexDirection: 'row', alignItems: 'center', gap: space.lg },
     searchIcon: { color: c.primary, fontSize: 26 },
-    cell: { gap: 6, marginBottom: space.lg, alignSelf: 'center' },
-    cover: { aspectRatio: 2 / 3, borderRadius: radius.sm, backgroundColor: c.surfaceRaised, overflow: 'hidden', borderWidth: 1, borderColor: c.border, alignItems: 'center', justifyContent: 'center' },
+    cell: { gap: 6, marginBottom: space.xl, alignSelf: 'center' },
+    stack: { aspectRatio: 2 / 3, width: '100%' },
+    stackList: { width: 58, height: 86, aspectRatio: undefined },
+    stackFill: { width: '100%', height: '100%' },
+    stackBack: { ...StyleSheet.absoluteFill, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: c.border },
+    cover: { aspectRatio: 2 / 3, borderRadius: 14, backgroundColor: c.surfaceRaised, overflow: 'hidden', borderWidth: 1, borderColor: c.border, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.45, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 6 },
     coverList: { width: 58, aspectRatio: undefined, height: 86 },
     coverImage: { width: '100%', height: '100%' },
     tile: { alignItems: 'center', justifyContent: 'center' },
     glyph: { color: c.primary, fontSize: 36 },
     badge: { position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: 10, backgroundColor: c.success, color: c.primaryForeground, textAlign: 'center', fontSize: 13, lineHeight: 20, overflow: 'hidden' },
-    title: { color: c.textPrimary, fontFamily: t.displayMedium, fontSize: 12, lineHeight: 15 },
-    sub: { color: c.textMuted, fontFamily: t.bodyMedium, fontSize: 11 },
+    title: { color: c.textPrimary, fontFamily: t.displayMedium, fontSize: 14, lineHeight: 18, marginTop: 4 },
+    sub: { color: c.textMuted, fontFamily: t.body, fontSize: 12 },
     listRow: { flexDirection: 'row', gap: space.md, alignItems: 'center', paddingVertical: space.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border },
     listBody: { flex: 1, gap: 4 },
   });
