@@ -40,7 +40,7 @@ export function nativeArchive(kind: NativeKind | 'pdf'): Native {
 export const translateNativeError = (e: unknown): ComicOpenError => {
   const msg = e instanceof Error ? e.message : String(e);
   if (__DEV__ || /7z:/.test(msg)) console.warn('archive error:', msg.slice(0, 300));
-  if (/RAR5/i.test(msg)) return new ComicOpenError('RAR5 archives are not supported yet. Re-save the comic as CBZ.');
+  if (/RAR5/i.test(msg)) return new ComicOpenError('RAR5 archives are not supported on Android yet. Re-save the comic as CBZ.');
   if (/password|encrypted/i.test(msg)) return new ComicOpenError('This archive is password-protected.');
   return new ComicOpenError(`Could not read this archive — it may be corrupt. [${msg.slice(-240)}]`);
 };

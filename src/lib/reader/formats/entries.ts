@@ -1,6 +1,6 @@
 import { naturalCompare } from './naturalSort';
 
-export const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif'] as const;
+export const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'jfif', 'png', 'webp', 'gif', 'avif', 'bmp', 'heic', 'heif', 'tif', 'tiff', 'jxl'] as const;
 
 export function extensionOf(name: string): string {
   const dot = name.lastIndexOf('.');

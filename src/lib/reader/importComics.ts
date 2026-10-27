@@ -5,9 +5,11 @@ import { Directory, File, Paths } from 'expo-file-system';
 import { ComicOpenError, extractNestedComic, listNestedComics, openComicSource } from './ComicSource';
 import { parseComicInfo, displayTitle } from './formats/comicInfo';
 import { linkReaderComic, setWorkCover, unlinkReaderComic } from './libraryLink';
+import { saveCover } from './cover';
+import type { ComicSource } from './ComicSource';
 import { Platform } from 'react-native';
 import { optionalNative } from './nativeArchive';
-import { BOOKMARK_PREFIX, NESTED_SEP, cacheDirFor, cachedFileFor, copyFromSource, ensureLocalCopy, freeSpaceFor, isCached, trimCloudCache } from './cloudCache';
+import { BOOKMARK_PREFIX, NESTED_SEP, cacheDirFor, cachedFileFor, copyFromSource, ensureLocalCopy, freeSpaceFor, isCached, trimIfAuto } from './cloudCache';
 import { createFolder, deleteReaderComic, fillInComic, getReaderComic, insertReaderComic, isDuplicateSource, setComicStorage, sourceKeyOf, unpreparedLinkIds, type ReaderMode } from './readerLibrary';
 
 export type ImportResult = { imported: string[]; /** Already in the library, so left alone. */ skipped: string[]; failed: Array<{ name: string; reason: string }> };
@@ -71,12 +73,7 @@ async function importFile(uri: string, name: string, result: ImportResult, opts:
       throw e;
     }
     let coverPath: string | null = null;
-    try {
-      const first = new File(await source.getPageUri(0));
-      const cover = new File(dir, `cover.${first.extension.replace('.', '') || 'jpg'}`);
-      await first.copy(cover);
-      coverPath = cover.uri;
-    } catch { /* a missing cover is not fatal */ }
+    try { coverPath = await saveCover(await source.getPageUri(0), dir); } catch { /* a missing cover is not fatal */ }
     // ComicInfo.xml gives a real title, series, writer and the manga (right-to-left) hint.
     const xml = await source.readComicInfo();
     const info = xml ? parseComicInfo(xml) : {};
@@ -89,7 +86,7 @@ async function importFile(uri: string, name: string, result: ImportResult, opts:
     try { linkReaderComic({ id, title: displayTitle(info, titleOf(name)), series: info.series ?? null, writer: info.writer ?? null, coverPath, workId: null }); } catch { /* the file is still readable without the link */ }
     source.close();
     // A linked comic's file sits in the cache: keep the cache within its limit as we go, not only when something is read.
-    if (opts.sourceUri) trimCloudCache(id);
+    if (opts.sourceUri) trimIfAuto(id);
     result.imported.push(name);
   } catch (e) {
     try { if (dir.exists) dir.delete(); } catch { /* ignore */ }
@@ -145,8 +142,8 @@ export async function pickAndImportComics(opts: Pick<ImportOptions, 'folderId'> 
 }
 
 /**
- * Pick comics from Drive, Dropbox or any cloud app and keep them THERE. They appear on the shelf immediately; their covers and page counts
- * are then read in the background, one at a time, while you carry on using the app.
+ * Pick comics from Drive, Dropbox or any cloud app and keep them THERE. They appear on the shelf at once, from their file names, and
+ * nothing is downloaded: a comic is fetched when you open it, and its cover and page count are filled in then.
  */
 export async function pickAndLinkComics(opts: Pick<ImportOptions, 'folderId'> & ImportProgress = {}): Promise<ImportResult> {
   const picked = await pickInPlace(true);
@@ -154,17 +151,10 @@ export async function pickAndLinkComics(opts: Pick<ImportOptions, 'folderId'> & 
   if (!picked.length) return result;
   const root = comicsRoot();
   if (!root.exists) root.create({ intermediates: true });
-  const added: string[] = [];
   await eachWithProgress(picked, opts, (f) => f.name, async (f) => {
-    try { const id = linkWithoutDownloading({ ...f, folderId: opts.folderId }, result); if (id) added.push(id); }
+    try { linkWithoutDownloading({ ...f, folderId: opts.folderId }, result); }
     catch { result.failed.push({ name: f.name, reason: 'Could not link this file.' }); }
   }, 'Linking');
-  // Now the slow part, in the background: fetch each one, read its cover and page count, and let the fetched copy go.
-  if (added.length && !opts.cancel?.cancelled) {
-    const prepared = await prepareLinkedComics({ ...opts, ids: added });
-    result.failed.push(...prepared.failed);
-    result.skipped.push(...prepared.skipped);
-  }
   return result;
 }
 
@@ -320,6 +310,32 @@ export async function pickAndLinkFolder(opts: { parentId?: string } & ImportProg
   return result;
 }
 
+/** Fill in a linked comic's cover, page count and details from its opened file. Returns its title. */
+export async function completeLinkedComic(comic: { id: string; title: string; workId: string | null }, source: ComicSource): Promise<string> {
+  const root = comicsRoot();
+  let coverPath: string | null = null;
+  try {
+    const dir = new Directory(root, comic.id);
+    if (!dir.exists) dir.create({ intermediates: true });
+    coverPath = await saveCover(await source.getPageUri(0), dir);
+  } catch { /* a missing cover is not fatal */ }
+  const xml = await source.readComicInfo();
+  const info = xml ? parseComicInfo(xml) : {};
+  const title = displayTitle(info, comic.title);
+  const mode: ReaderMode | null = info.rtl ? 'rtl' : null;
+  fillInComic(comic.id, { title, pageCount: source.pageCount, coverPath, series: info.series ?? null, issue: info.number ?? null, writer: info.writer ?? null, mode });
+  try { const workId = linkReaderComic({ id: comic.id, title, series: info.series ?? null, writer: info.writer ?? null, coverPath, workId: comic.workId }); if (coverPath) setWorkCover(workId, coverPath); } catch { /* the shelf already has it */ }
+  return title;
+}
+
+/** A linked zip that turns out to hold several comics: they are linked in its place. Returns how many. */
+export async function expandLinkedBundle(comic: { id: string; sourceUri: string | null; folderId: string | null }): Promise<number> {
+  if (!comic.sourceUri || comic.sourceUri.includes(NESTED_SEP)) return 0;
+  const held = await importBundle(cachedFileFor(comic.id).uri, emptyResult(), { folderId: comic.folderId ?? undefined, sourceUri: comic.sourceUri });
+  if (held) removeComic(comic.id);
+  return held;
+}
+
 /** Read the cover, page count and details of linked comics that haven't been looked at yet, one at a time. Each file is fetched, read, then released. */
 export async function prepareLinkedComics(opts: ImportProgress & { /** Only these; by default every linked comic that is still waiting. */ ids?: string[] } = {}): Promise<ImportResult> {
   const result = emptyResult();
@@ -332,22 +348,7 @@ export async function prepareLinkedComics(opts: ImportProgress & { /** Only thes
     try {
       const source = await openComicSource(await ensureLocalCopy(comic), `prepare-${id}`);
       try {
-        let coverPath: string | null = null;
-        try {
-          const dir = new Directory(root, id);
-          if (!dir.exists) dir.create({ intermediates: true });
-          const first = new File(await source.getPageUri(0));
-          const cover = new File(dir, `cover.${first.extension.replace('.', '') || 'jpg'}`);
-          await first.copy(cover);
-          coverPath = cover.uri;
-        } catch { /* a missing cover is not fatal */ }
-        const xml = await source.readComicInfo();
-        const info = xml ? parseComicInfo(xml) : {};
-        const title = displayTitle(info, comic.title);
-        const mode: ReaderMode | null = info.rtl ? 'rtl' : null;
-        fillInComic(id, { title, pageCount: source.pageCount, coverPath, series: info.series ?? null, issue: info.number ?? null, writer: info.writer ?? null, mode });
-        try { const workId = linkReaderComic({ id, title, series: info.series ?? null, writer: info.writer ?? null, coverPath, workId: comic.workId }); if (coverPath) setWorkCover(workId, coverPath); } catch { /* the shelf already has it */ }
-        result.imported.push(title);
+        result.imported.push(await completeLinkedComic(comic, source));
       } finally { source.close(); }
     } catch (e) {
       // A linked zip that is really a bundle of comics: its comics are linked in its place.

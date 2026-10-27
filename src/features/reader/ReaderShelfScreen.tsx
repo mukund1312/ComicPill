@@ -25,6 +25,8 @@ import {
 } from '../../lib/reader/readerLibrary';
 import { keepCopyOnDevice, pickAndImportComics, pickAndImportFolder, pickAndLinkComics, pickAndLinkFolder, prepareLinkedComics, removeComic, removeComics, type ImportProgress, type ImportResult } from '../../lib/reader/importComics';
 import { getJob, runJob, subscribeJob, useJob } from '../../lib/reader/importJob';
+import { formatBytes } from '../../lib/reader/bytes';
+import { confirm } from '../../ui/dialogs';
 import { canMoveFolders, pathTo, shutFolders } from '../../lib/reader/folderTree';
 import { freeSpaceFor, isCached } from '../../lib/reader/cloudCache';
 import { Icon } from '../../ui/Icon';
@@ -71,6 +73,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   const [sheet, setSheet] = useState<Sheet>(null);
   const [prompt, setPrompt] = useState<Prompt>(null);
   // Selecting several comics, to move or delete them together or drag them onto a folder.
+  const [readyOnly, setReadyOnly] = useState(false);
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const selectedRef = useRef(selected);
@@ -146,14 +149,14 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
     if (segment === 'collections' && !openCollection) {
       return collections.filter((col) => col.name.toLowerCase().includes(query.trim().toLowerCase())).map((collection) => ({ kind: 'collection', key: collection.id, collection }));
     }
-    let pool = visible;
+    let pool = readyOnly ? visible.filter((comic) => !comic.sourceUri || isCached(comic.id)) : visible; // “ready” = on the device now
     if (segment === 'collections' && openCollection) { const ids = new Set(collectionComicIds(openCollection)); pool = visible.filter((comic) => ids.has(comic.id)); }
     else if (searching) pool = visible; // search looks everywhere, folders included
     else pool = visible.filter((comic) => comic.folderId === openFolder);
     const sorted = sortComics(pool.filter((comic) => matchesQuery(comic, query)), sort);
     const folderCells: Cell[] = segment === 'library' && !searching ? sortFolders(folders.filter((f) => f.parentId === openFolder), sort).map((folder) => ({ kind: 'folder', key: `f-${folder.id}`, folder })) : [];
     return [...folderCells, ...sorted.map((comic): Cell => ({ kind: 'comic', key: comic.id, comic }))];
-  }, [segment, comics, folders, collections, lockedFolders, query, sort, openFolder, openCollection]);
+  }, [segment, comics, folders, collections, lockedFolders, query, sort, openFolder, openCollection, readyOnly]);
 
   const folderLabel = (id: string) => pathTo(folders, id).map((p) => folders.find((f) => f.id === p)?.name ?? '').join(' › ');
   /** A list of every folder (with its path) to move things into. `current` gets the tick. */
@@ -235,12 +238,24 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   const backLabel = segment === 'collections' ? 'Collections' : parentName ?? 'Library';
   const goBack = () => { if (segment === 'collections') setOpenCollection(null); else setOpenFolder(folders.find((f) => f.id === openFolder)?.parentId ?? null); };
 
+  // Covers normally fill in when a comic is first opened. This fetches every waiting comic once, so it says how much that is first.
+  const loadCoversNow = async () => {
+    const waiting = unpreparedLinkIds().map((id) => listReaderComics().find((c) => c.id === id)?.sizeBytes ?? 0);
+    const total = waiting.reduce((n, b) => n + b, 0);
+    const ok = await confirm({
+      title: 'Download covers?',
+      message: `This fetches ${waiting.length} ${waiting.length === 1 ? 'comic' : 'comics'}${total ? ` (about ${formatBytes(total)})` : ''} one at a time just to read their covers. Your cloud app keeps its own copy of each, which uses space too. Covers also appear on their own the first time you open a comic.`,
+      confirmLabel: 'Download', cancelLabel: 'Not now',
+    });
+    if (ok) runImport('Loading covers', 'Prepared', (p) => prepareLinkedComics(p));
+  };
+
   const addMenu = () => setSheet({
     options: [
       { label: openFolder ? `Import files into “${insideName ?? 'this folder'}”…` : 'Import files…', onPress: importHere },
       { label: 'Link from Drive or Dropbox (saves space)…', onPress: () => runImport('Linking', 'Linked', (p) => pickAndLinkComics({ folderId: openFolder ?? undefined, ...p })) },
       { label: 'Link a whole folder from Drive or Dropbox…', onPress: () => runImport('Linking folder', 'Linked', (p) => pickAndLinkFolder({ parentId: openFolder ?? undefined, ...p })) },
-      ...(unpreparedLinkIds().length ? [{ label: `Load covers for linked comics (${unpreparedLinkIds().length} left)`, onPress: () => runImport('Loading covers', 'Prepared', (p) => prepareLinkedComics(p)) }] : []),
+      ...(unpreparedLinkIds().length ? [{ label: `Download covers for linked comics (${unpreparedLinkIds().length} left)…`, onPress: () => { void loadCoversNow(); } }] : []),
       { label: 'Browse an OPDS server…', onPress: () => router.push('/reader/opds') },
       { label: 'Import a folder…', onPress: () => runImport('Importing folder', 'Imported', (p) => pickAndImportFolder({ parentId: openFolder ?? undefined, ...p })) },
       { label: openFolder ? `New folder inside “${insideName ?? 'this folder'}”…` : 'New folder…', onPress: () => setPrompt({ title: 'New folder', submitLabel: 'Create', onSubmit: (name) => { createFolder(name, openFolder); refresh(); } }) },
@@ -256,6 +271,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
     options: [
       { label: 'Grid', checked: view === 'grid', onPress: () => setView('grid') },
       { label: 'List', checked: view === 'list', onPress: () => setView('list') },
+      { label: 'Only comics that are ready on this device', checked: readyOnly, onPress: () => setReadyOnly((v) => !v) },
       ...SORT_KEYS.map((k) => ({ label: `Sort: ${SORT_LABEL[k]}`, checked: sort === k, onPress: () => setSort(k) })),
     ],
   });
@@ -288,6 +304,8 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   const scrollY = useRef(0);
   const frameRef = useRef<View>(null);
   const frameBox = useRef({ x: 0, y: 0, h: 0 });
+  const listWrapRef = useRef<View>(null);
+  const listBox = useRef({ y: 0, h: 0 }); // the scrolling part only: the controls above it don't scroll
   const folderViews = useRef(new Map<string, View>());
   const backView = useRef<View>(null);
   const finger = useRef({ x: 0, y: 0 });
@@ -335,7 +353,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
     if (probing.current) return;
     probing.current = true;
     try {
-      const { x, y } = finger.current; const box = frameBox.current;
+      const { x, y } = finger.current; const box = listBox.current;
       if (box.h) { const fromTop = y - box.y; if (fromTop < 90) scrollBy(-18); else if (fromTop > box.h - 90) scrollBy(18); } // near an edge: keep scrolling
       hoverOn(await targetAt(x, y));
     } finally { probing.current = false; }
@@ -349,6 +367,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
       feedback.tap(); // picked up
       setDragLead(id);
       frameRef.current?.measureInWindow((fx, fy, _w, h) => { frameBox.current = { x: fx, y: fy, h }; place(finger.current.x, finger.current.y); });
+      listWrapRef.current?.measureInWindow((_x, ly, _w, lh) => { listBox.current = { y: ly, h: lh }; });
       tick.current = setInterval(() => { void probe(); }, 110);
     },
     move: (x: number, y: number) => { finger.current = { x, y }; place(x, y); },
@@ -425,6 +444,26 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
     <AppShell active="library" back title={mode === 'collections' ? 'Collections' : onMyDevice()} right={<HeaderActions><HeaderButton icon="search" label="Search" active={searchOpen} onPress={() => { setSearchOpen((o) => !o); if (searchOpen) setQuery(''); }} /><HeaderButton icon="add" label="Add" disabled={busy || job.running} onPress={addMenu} /></HeaderActions>}>
       <GestureHandlerRootView style={styles.frame}>
       <View ref={frameRef} collapsable={false} style={styles.frame}>
+      <Animated.View entering={FadeIn.duration(220)} style={[styles.header, styles.stickyHead]}>
+        {searchOpen || query ? <Input placeholder="Search title, series or writer" value={query} onChangeText={setQuery} /> : null}
+        {true ? (
+          <View style={styles.subrow}>
+            {inside ? (
+              <View style={styles.crumbs}>
+                <View ref={backView} collapsable={false} style={[styles.backBox, hoverTarget === 'up' && styles.backHot]}>
+                  <Pressable onPress={goBack} hitSlop={8}><Text style={styles.back}>‹ {backLabel}</Text></Pressable>
+                </View>
+                <Text numberOfLines={1} style={styles.here}>{insideName}</Text>
+              </View>
+            ) : <Text style={styles.count}>{segment === 'collections' ? `${collections.length} ${collections.length === 1 ? 'collection' : 'collections'}` : `${comics.length} ${comics.length === 1 ? 'comic' : 'comics'}`}</Text>}
+            <View style={styles.subActions}>
+              {segment === 'library' ? <Pressable accessibilityRole="button" onPress={() => (selecting ? endSelecting() : setSelecting(true))} hitSlop={8}><Text style={styles.sort}>{selecting ? 'Done' : 'Select'}</Text></Pressable> : null}
+              <Pressable accessibilityRole="button" accessibilityLabel="View and sort" onPress={viewMenu} hitSlop={8}><Text style={styles.sort}>{SORT_LABEL[sort]}  ⌄</Text></Pressable>
+            </View>
+          </View>
+        ) : null}
+      </Animated.View>
+      <View ref={listWrapRef} collapsable={false} style={styles.frame}>
       <FlashList
         ref={listRef}
         scrollEnabled={!dragging}
@@ -438,29 +477,9 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
         getItemType={(cell) => cell.kind}
         contentContainerStyle={styles.content}
         renderItem={renderItem}
-        ListHeaderComponent={
-          <Animated.View entering={FadeIn.duration(220)} style={styles.header}>
-            {searchOpen || query ? <Input placeholder="Search title, series or writer" value={query} onChangeText={setQuery} /> : null}
-            {true ? (
-              <View style={styles.subrow}>
-                {inside ? (
-                  <View style={styles.crumbs}>
-                    <View ref={backView} collapsable={false} style={[styles.backBox, hoverTarget === 'up' && styles.backHot]}>
-                      <Pressable onPress={goBack} hitSlop={8}><Text style={styles.back}>‹ {backLabel}</Text></Pressable>
-                    </View>
-                    <Text numberOfLines={1} style={styles.here}>{insideName}</Text>
-                  </View>
-                ) : <Text style={styles.count}>{segment === 'collections' ? `${collections.length} ${collections.length === 1 ? 'collection' : 'collections'}` : `${comics.length} ${comics.length === 1 ? 'comic' : 'comics'}`}</Text>}
-                <View style={styles.subActions}>
-                  {segment === 'library' ? <Pressable accessibilityRole="button" onPress={() => (selecting ? endSelecting() : setSelecting(true))} hitSlop={8}><Text style={styles.sort}>{selecting ? 'Done' : 'Select'}</Text></Pressable> : null}
-                  <Pressable accessibilityRole="button" accessibilityLabel="View and sort" onPress={viewMenu} hitSlop={8}><Text style={styles.sort}>{SORT_LABEL[sort]}  ⌄</Text></Pressable>
-                </View>
-              </View>
-            ) : null}
-          </Animated.View>
-        }
         ListEmptyComponent={empty}
       />
+      </View>
       {dragging ? <DragStack covers={dragCovers} count={selected.size} x={dragX} y={dragY} /> : null}
       {notice ? <View pointerEvents="none" style={styles.toast}><Text style={styles.toastText}>{notice}</Text></View> : null}
       {selecting ? (
@@ -528,6 +547,7 @@ function makeStyles(c: ThemeColors, t: TypographyPreset) {
   return StyleSheet.create({
     content: { padding: space.lg, paddingBottom: 110 },
     header: { gap: space.md, marginBottom: space.md },
+    stickyHead: { paddingHorizontal: space.lg, paddingTop: space.sm, marginBottom: space.sm },
     pills: { gap: 8 },
     subrow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     count: { color: c.textSecondary, fontFamily: t.body, fontSize: 13 },

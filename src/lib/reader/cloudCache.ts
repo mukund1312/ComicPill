@@ -5,11 +5,11 @@ import * as LegacyFS from 'expo-file-system/legacy';
 import { Directory, File, Paths } from 'expo-file-system';
 import { getReaderComic, type ReaderComic } from './readerLibrary';
 import { pickEvictions } from './evict';
+import { budgetMode, cloudBudgetBytes, LOW_SPACE_RESERVE } from './cloudBudget';
+import { isLowOnSpace, planRoom, type ReadyComic, type RoomPlan } from './makeRoom';
 import { optionalNative } from './nativeArchive';
 import { extractNestedComic } from './ComicSource';
 
-/** How much fetched cloud comics may take before the least-recently-read ones are dropped. */
-export const CLOUD_CACHE_LIMIT = 2 * 1024 * 1024 * 1024;
 
 const cacheRoot = () => new Directory(Paths.cache, 'comics-cache');
 export const cacheDirFor = (id: string) => new Directory(cacheRoot(), id);
@@ -17,7 +17,7 @@ export const cachedFileFor = (id: string) => new File(cacheDirFor(id), 'book');
 
 const sizeOf = (file: File): number => { try { return file.exists ? (file.size ?? 0) : 0; } catch { return 0; } };
 
-export function trimCloudCache(keepId: string, limit = CLOUD_CACHE_LIMIT): void {
+export function trimCloudCache(keepId: string, limit = cloudBudgetBytes()): void {
   try {
     const root = cacheRoot();
     if (!root.exists) return;
@@ -29,6 +29,28 @@ export function trimCloudCache(keepId: string, limit = CLOUD_CACHE_LIMIT): void 
   } catch { /* trimming is housekeeping, never a reason to fail */ }
 }
 
+/** In "automatic" mode the least recently read comics go when the budget is passed. In "ask" mode nothing is removed without the reader's say-so. */
+export function trimIfAuto(keepId: string): void { if (budgetMode() === 'auto') trimCloudCache(keepId); }
+
+/** The comics that are downloaded right now, with what each takes: the ones that could be put away. */
+export function readyComics(exceptId?: string): ReadyComic[] {
+  const out: ReadyComic[] = [];
+  try {
+    const root = cacheRoot();
+    if (!root.exists) return out;
+    for (const dir of root.list()) {
+      if (!(dir instanceof Directory) || dir.name === exceptId) continue;
+      const comic = getReaderComic(dir.name);
+      if (!comic) continue;
+      out.push({ id: comic.id, title: comic.title, bytes: sizeOf(new File(dir, 'book')), lastReadAt: comic.lastReadAt ?? comic.addedAt });
+    }
+  } catch { /* an unreadable cache simply offers nothing to put away */ }
+  return out;
+}
+
+/** Would fetching this comic fit in the space the reader allowed, and if not, what would make it fit? */
+export const planFetch = (comic: ReaderComic): RoomPlan => planRoom(readyComics(comic.id), cloudBudgetBytes(), comic.sizeBytes ?? 0);
+
 export const isCached = (id: string): boolean => { try { return cachedFileFor(id).exists; } catch { return false; } };
 
 /** Delete the fetched copy (the link and the cover stay). Returns true if something was freed. */
@@ -38,6 +60,12 @@ export function freeSpaceFor(id: string): boolean {
 }
 
 export class CloudFetchError extends Error {}
+export class LowSpaceError extends CloudFetchError {}
+
+/** Where to clear the other copy: the cloud app keeps its own download, which ComicPill can't remove. */
+export const CLOUD_APP_CACHE_HINT = 'Google Drive and Dropbox keep their own downloaded copy too. Clear it in their settings (Drive: Settings → Clear cache).';
+
+const formatGb = (bytes: number) => `${(bytes / 1024 ** 3).toFixed(1)} GB`;
 
 /** iOS keeps a cloud link as a bookmark; Android keeps the picked address itself. A file inside a linked folder is `bookmark:<folder>|<path inside it>`. */
 export const BOOKMARK_PREFIX = 'bookmark:';
@@ -58,11 +86,18 @@ export async function copyFromSource(sourceUri: string, destUri: string): Promis
   await LegacyFS.copyAsync({ from: sourceUri, to: destUri });
 }
 
-/** The path to read this comic from: its own file, or — for a cloud link — a cached copy, fetched now if it isn't there. */
-export async function ensureLocalCopy(comic: ReaderComic): Promise<string> {
+/** The path to read this comic from: its own file, or — for a cloud link — a cached copy, fetched now if it isn't there. `onProgress` reports how much has arrived. */
+export async function ensureLocalCopy(comic: ReaderComic, onProgress?: (p: { bytes: number; total: number | null }) => void): Promise<string> {
   if (!comic.sourceUri) return comic.path;
   const target = cachedFileFor(comic.id);
   if (target.exists && sizeOf(target) > 0) return target.uri;
+  const need = comic.sizeBytes ?? 0;
+  const free = Paths.availableDiskSpace;
+  // A comic inside a zip needs the whole zip on the device for a moment as well.
+  if (need > 0 && isLowOnSpace(free, need * 2, LOW_SPACE_RESERVE)) {
+    throw new LowSpaceError(`There isn’t enough free space on this device (${formatGb(free)} free, this comic needs about ${formatGb(need)}). Free some space first. ${CLOUD_APP_CACHE_HINT}`);
+  }
+  const watch = onProgress ? setInterval(() => onProgress({ bytes: sizeOf(target), total: need || null }), 400) : null;
   try {
     const dir = cacheDirFor(comic.id);
     if (!dir.exists) dir.create({ intermediates: true });
@@ -77,7 +112,7 @@ export async function ensureLocalCopy(comic: ReaderComic): Promise<string> {
   } catch {
     try { cacheDirFor(comic.id).delete(); } catch { /* ignore */ }
     throw new CloudFetchError('Couldn’t fetch this comic from its cloud app. Check your connection and that the app (Drive, Dropbox…) still has access, then try again.');
-  }
-  trimCloudCache(comic.id);
+  } finally { if (watch) clearInterval(watch); }
+  trimIfAuto(comic.id);
   return target.uri;
 }

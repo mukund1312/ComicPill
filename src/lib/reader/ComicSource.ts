@@ -208,7 +208,7 @@ export async function openComicSource(fileUri: string, cacheKey: string): Promis
   if (kind === 'zip') backend = zipBackend(file);
   else if (kind === 'rar4') backend = await nativeBackend(file, 'rar');
   else if (kind === 'sevenzip') backend = await nativeBackend(file, '7z');
-  else if (kind === 'rar5') throw new ComicOpenError('RAR5 archives are not supported yet. Re-save the comic as CBZ.');
+  else if (kind === 'rar5') backend = await nativeBackend(file, 'rar'); // iOS reads these; Android says so clearly if it can't
   else if (kind === 'pdf') backend = await pdfBackend(file);
   else throw new ComicOpenError('Unrecognised file type.');
   return makeSource(backend, cacheKey);

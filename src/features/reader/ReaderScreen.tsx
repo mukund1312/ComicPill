@@ -23,7 +23,13 @@ import { contentBox, decodeBase64, FULL_PAGE, type Panel } from '../../lib/reade
 import { isUnlocked } from '../../lib/reader/lock';
 import { recognizeText } from '../../lib/mind/capture/ocr';
 import { optionalNative } from '../../lib/reader/nativeArchive';
-import { CloudFetchError, ensureLocalCopy, isCached } from '../../lib/reader/cloudCache';
+import { CloudFetchError, ensureLocalCopy, freeSpaceFor, isCached, planFetch, readyComics } from '../../lib/reader/cloudCache';
+import { budgetMode, cloudBudgetBytes } from '../../lib/reader/cloudBudget';
+import { completeLinkedComic, expandLinkedBundle } from '../../lib/reader/importComics';
+import { formatBytes } from '../../lib/reader/bytes';
+import type { ReadyComic, RoomPlan } from '../../lib/reader/makeRoom';
+import { MakeRoomSheet } from './MakeRoomSheet';
+import { notice } from '../../ui/dialogs';
 import { ComicOpenError, openComicSource, type ComicSource, type PageSize } from '../../lib/reader/ComicSource';
 import { buildUnits, unitIndexOf } from '../../lib/reader/formats/spreads';
 import { BACKGROUND_COLORS, resolveReading, type Fit, type Reading } from '../../lib/reader/presets';
@@ -54,6 +60,8 @@ export default function ReaderScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [comic] = useState<ReaderComic | null>(() => (id ? getReaderComic(id) : null));
   const [source, setSource] = useState<ComicSource | null>(null);
+  const [arrived, setArrived] = useState<{ bytes: number; total: number | null } | null>(null);
+  const [room, setRoom] = useState<{ plan: RoomPlan; ready: ReadyComic[]; resolve: (ids: string[] | null) => void } | null>(null);
   const [sizes, setSizes] = useState<Sizes | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(comic ? null : 'Comic not found.');
   const [settings] = useState<ReaderSettings>(() => loadReaderSettings());
@@ -91,14 +99,33 @@ export default function ReaderScreen() {
     let live = true; let opened: ComicSource | null = null;
     (async () => {
       try {
-        const localPath = await ensureLocalCopy(comic); // a cloud link is fetched here the first time
+        // A comic that isn't downloaded yet must fit in the space the reader set aside; if it doesn't, something is put away first.
+        if (comic.sourceUri && !isCached(comic.id)) {
+          const plan = planFetch(comic);
+          if (plan.over > 0) {
+            if (budgetMode() === 'auto') plan.suggested.forEach(freeSpaceFor);
+            else {
+              const putAway = await new Promise<string[] | null>((resolve) => setRoom({ plan, ready: readyComics(comic.id), resolve }));
+              setRoom(null);
+              if (!putAway) { if (live) router.back(); return; }
+              putAway.forEach(freeSpaceFor);
+            }
+          }
+        }
+        const localPath = await ensureLocalCopy(comic, (p) => { if (live) setArrived(p); }); // a cloud link is fetched here the first time
         const s = await openComicSource(localPath, `read-${comic.id}`);
         if (!live) { s.close(); return; }
         opened = s; setSource(s);
-        if (comic.sourceUri && comic.pageCount === 0) setPageCount(comic.id, s.pageCount); // a linked comic nobody has read the details of yet
+        // A linked comic that has no cover or page count yet gets them now that it is open.
+        if (comic.sourceUri && (comic.pageCount === 0 || !comic.coverPath)) void completeLinkedComic(comic, s).catch(() => undefined);
         const result = await loadSizes(comic, s, () => live);
         if (live) setSizes(result);
       } catch (e) {
+        // A linked zip that is really several comics: they are linked in its place.
+        if (e instanceof ComicOpenError && e.code === 'no-pages' && comic.sourceUri) {
+          const held = await expandLinkedBundle(comic).catch(() => 0);
+          if (held > 0) { notice('This zip held several comics', `${held} comics were added to your shelf in its place.`); if (live) router.back(); return; }
+        }
         if (live) setError(e instanceof ComicOpenError || e instanceof CloudFetchError ? e.message : 'Could not open this comic.');
       }
     })();
@@ -107,7 +134,20 @@ export default function ReaderScreen() {
 
   if (gate) return <UnlockGate kind={gate.kind} id={gate.id} name={gate.name} onUnlocked={() => setUnlockTick((t) => t + 1)} />;
   if (error) return <View style={styles.center}><Text style={styles.errorText}>{error}</Text><Pressable onPress={() => router.back()} style={styles.button}><Text style={styles.buttonText}>Back</Text></Pressable></View>;
-  if (!comic || !source || sizes === undefined || !reading) return <View style={styles.center}><ActivityIndicator color={color.accent} /><Text style={styles.errorText}>{comic?.sourceUri && !isCached(comic.id) ? 'Fetching from your cloud app…' : 'Preparing pages…'}</Text></View>;
+  if (room && comic) return <View style={styles.center}><MakeRoomSheet title={comic.title} need={comic.sizeBytes ?? 0} budget={cloudBudgetBytes()} plan={room.plan} ready={room.ready} onConfirm={(ids) => room.resolve(ids)} onCancel={() => room.resolve(null)} /></View>;
+  if (!comic || !source || sizes === undefined || !reading) {
+    const fetching = !!comic?.sourceUri && !isCached(comic.id);
+    const total = arrived?.total ?? comic?.sizeBytes ?? null;
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator color={color.accent} />
+        <Text style={styles.errorText}>{fetching ? 'Fetching from your cloud app…' : 'Preparing pages…'}</Text>
+        {fetching && arrived && arrived.bytes > 0 && total ? <Text style={styles.fetchSub}>{formatBytes(arrived.bytes)} of {formatBytes(total)}</Text> : null}
+        {fetching && (!arrived || arrived.bytes === 0) ? <Text style={styles.fetchSub}>{comic?.sizeBytes ? `${formatBytes(comic.sizeBytes)}. ` : ''}Your cloud app downloads it first, which can take a while on a slow connection.</Text> : null}
+        {fetching ? <Pressable onPress={() => router.back()} style={styles.button}><Text style={styles.buttonText}>Cancel</Text></Pressable> : null}
+      </View>
+    );
+  }
   return <Reader comic={comic} source={source} sizes={sizes} reading={reading} settings={settings} />;
 }
 
@@ -529,6 +569,7 @@ const styles = StyleSheet.create({
   fill: { width: '100%', height: '100%' },
   center: { flex: 1, backgroundColor: color.bg, alignItems: 'center', justifyContent: 'center', padding: space.xl, gap: space.lg },
   errorText: { color: color.text, fontFamily: font.body, fontSize: type.body, textAlign: 'center' },
+  fetchSub: { color: color.muted, fontFamily: font.body, fontSize: type.caption, textAlign: 'center', maxWidth: 320 },
   button: { minHeight: 48, paddingHorizontal: space.xl, borderRadius: radius.md, backgroundColor: color.accent, alignItems: 'center', justifyContent: 'center' },
   buttonText: { color: color.text, fontFamily: font.bodySemibold, fontSize: type.caption },
   top: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, paddingBottom: space.md, backgroundColor: '#000000cc' },

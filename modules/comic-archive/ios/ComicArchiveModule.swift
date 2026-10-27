@@ -152,7 +152,8 @@ public class ComicArchiveModule: Module {
 
   static func openRar(_ url: URL) throws -> URKArchive {
     let archive: URKArchive
-    do { archive = try URKArchive(url: url) } catch { throw Exception(name: "RAR5", description: "RAR5 archives are not supported") }
+    // RAR4 and RAR5 both open here. A failure is reported as it is, not guessed to be a format problem.
+    do { archive = try URKArchive(url: url) } catch { throw Exception(name: "RAR_OPEN", description: "Cannot open RAR archive: \(error.localizedDescription)") }
     if archive.isPasswordProtected() { throw Exception(name: "ENCRYPTED", description: "Archive is password-protected") }
     return archive
   }
