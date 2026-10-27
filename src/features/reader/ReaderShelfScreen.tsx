@@ -42,6 +42,7 @@ type Cell =
   | { kind: 'folder'; key: string; folder: ReaderFolder }
   | { kind: 'collection'; key: string; collection: ReaderCollection };
 
+const EDGE_W = 56; // how far from the left edge counts as “back out of this folder” while dragging
 const MIN_CELL = 168; const TABLET_CELL = 224;
 const VIEW_KEY = 'reader_view';
 const SORT_KEY = 'reader_sort';
@@ -312,6 +313,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   const hover = useRef<{ target: string | null; timer: ReturnType<typeof setTimeout> | null }>({ target: null, timer: null });
   const tick = useRef<ReturnType<typeof setInterval> | null>(null);
   const probing = useRef(false);
+  const edgeSpent = useRef(false); // the left edge already took you up once and the finger hasn't left it
   const [dragging, setDragging] = useState(false);
   const [dragLead, setDragLead] = useState<string | null>(null);
   const [hoverTarget, setHoverTarget] = useState<string | null>(null);
@@ -328,8 +330,13 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   });
   const within = (b: Box | null, x: number, y: number) => !!b && x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h;
   /** What is under the finger: a folder's id, 'up' (the back button), or nothing. */
-  const targetAt = async (x: number, y: number): Promise<string | null> => {
+  const targetAt = async (x: number, y: number, forDrop = false): Promise<string | null> => {
     const { openFolder: here, lockedFolders: locked } = latest.current;
+    // The left edge of the screen goes back out of the folder you are in, so a folder entered by mistake is easy to leave.
+    // (It only moves you; letting go there drops nothing. And it fires once per visit: leave the edge to use it again.)
+    const inEdge = !!here && x <= frameBox.current.x + EDGE_W;
+    if (!inEdge) edgeSpent.current = false;
+    if (inEdge && !forDrop && !edgeSpent.current) return 'up';
     if (here && within(await boxOf(backView.current), x, y)) return 'up';
     const entries = [...folderViews.current.entries()].filter(([id]) => !locked.has(id) || isUnlocked('folder', id));
     const boxes = await Promise.all(entries.map(([, view]) => boxOf(view)));
@@ -345,8 +352,9 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
     if (target) feedback.select(); // over a folder
     if (target) hover.current.timer = setTimeout(() => {
       hover.current = { target: null, timer: null }; setHoverTarget(null);
-      setOpenFolder(target === 'up' ? parentOfOpen() : target);
-    }, 800);
+      if (target === 'up') { edgeSpent.current = finger.current.x <= frameBox.current.x + EDGE_W; setOpenFolder(parentOfOpen()); }
+      else setOpenFolder(target);
+    }, target === 'up' ? 600 : 1000); // longer into a folder, so passing over one on the way elsewhere doesn't open it
   };
   const scrollBy = (dy: number) => { scrollY.current = Math.max(0, scrollY.current + dy); listRef.current?.scrollToOffset({ offset: scrollY.current, animated: false }); };
   const probe = async () => {
@@ -371,12 +379,13 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
       tick.current = setInterval(() => { void probe(); }, 110);
     },
     move: (x: number, y: number) => { finger.current = { x, y }; place(x, y); },
+    scroll: (dy: number) => { scrollBy(dy); },
     end: async () => {
       if (!tick.current) return; // the hold never turned into a drag
       clearInterval(tick.current);
       tick.current = null;
       if (hover.current.timer) clearTimeout(hover.current.timer);
-      const target = await targetAt(finger.current.x, finger.current.y);
+      const target = await targetAt(finger.current.x, finger.current.y, true);
       hover.current = { target: null, timer: null }; setHoverTarget(null); setDragging(false);
       if (!target) return;
       const destination = target === 'up' ? parentOfOpen() : target;
@@ -479,6 +488,9 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
         renderItem={renderItem}
         ListEmptyComponent={empty}
       />
+      {/* While one finger holds the pile, a second finger anywhere on the list scrolls it. */}
+      {dragging ? <SecondFingerScroll api={dragApi} /> : null}
+      {dragging && openFolder ? <View pointerEvents="none" style={[styles.edgeBand, hoverTarget === 'up' && styles.edgeBandHot]}><Icon name="chevron-back" size={28} color="#fff" /></View> : null}
       </View>
       {dragging ? <DragStack covers={dragCovers} count={selected.size} x={dragX} y={dragY} /> : null}
       {notice ? <View pointerEvents="none" style={styles.toast}><Text style={styles.toastText}>{notice}</Text></View> : null}
@@ -534,7 +546,13 @@ function Tile({ styles, view, width, label, sub, glyph, covers, highlight, regis
 }
 
 /** Lets a comic be held and dragged while selecting. A short hold starts the drag; moving sooner just scrolls. */
-type DragApi = { start: (id: string, x: number, y: number) => void; move: (x: number, y: number) => void; end: () => void };
+type DragApi = { start: (id: string, x: number, y: number) => void; move: (x: number, y: number) => void; scroll: (dy: number) => void; end: () => void };
+
+/** Catches a second finger's swipe while the first is holding the selection, and scrolls the shelf with it. */
+function SecondFingerScroll({ api }: { api: DragApi }) {
+  const gesture = useMemo(() => Gesture.Pan().runOnJS(true).onChange((e) => { api.scroll(-e.changeY); }), [api]);
+  return <GestureDetector gesture={gesture}><View style={StyleSheet.absoluteFill} /></GestureDetector>;
+}
 function DragSource({ enabled, id, api, children }: { enabled: boolean; id: string; api: DragApi; children: ReactNode }) {
   const gesture = useMemo(() => Gesture.Pan().enabled(enabled).runOnJS(true).activateAfterLongPress(350)
     .onStart((e) => { api.start(id, e.absoluteX, e.absoluteY); })
@@ -580,6 +598,8 @@ function makeStyles(c: ThemeColors, t: TypographyPreset) {
     subActions: { flexDirection: 'row', alignItems: 'center', gap: space.lg },
     carried: { opacity: 0.3, transform: [{ scale: 0.94 }] },
     picked: { ...StyleSheet.absoluteFill, backgroundColor: '#00000066', alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: c.primary, borderRadius: 14 },
+    edgeBand: { position: 'absolute', left: 0, top: 0, bottom: 0, width: EDGE_W, alignItems: 'center', justifyContent: 'center', backgroundColor: `${c.primary}26` },
+    edgeBandHot: { backgroundColor: `${c.primary}99` },
     dropRing: { ...StyleSheet.absoluteFill, borderRadius: 16, borderWidth: 3, borderColor: c.primary, backgroundColor: '#ffffff14' },
     bar: { position: 'absolute', left: space.lg, right: space.lg, bottom: 24, flexDirection: 'row', alignItems: 'center', gap: space.lg, padding: space.md, paddingHorizontal: space.lg, borderRadius: 18, backgroundColor: c.surfaceRaised, borderWidth: 1, borderColor: c.border, shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 12 },
     barBody: { flex: 1, gap: 4 },
