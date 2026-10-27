@@ -1,4 +1,6 @@
 import { StageFrame } from './StageFrame';
+import { PicksPanel } from './PicksPanel';
+import { useLayout } from '../../ui/layout';
 import { PreferenceDiscoveryGrid } from './PreferenceDiscoveryGrid';
 import { useDiscoveryStep } from './useDiscoveryStep';
 import { COPY, type DiscoveryStage } from './pools';
@@ -12,13 +14,15 @@ export function DiscoveryStageScreen({ stage, listKey, picks: allPicks, seed, on
   const { choices, picks, toggle, search } = useDiscoveryStep(stage, allPicks, seed, (id) => onToggle(listKey, id));
   const copy = COPY[stage];
   const need = Math.max(0, minPicks - allPicks.length);
+  const { isTablet, isLandscape } = useLayout(); const split = isTablet && isLandscape;
   return (
     <StageFrame
       title={copy.title} subtitle={copy.subtitle} progress={progress} onBack={onBack}
       primaryLabel={need > 0 ? `Pick ${need} more` : 'Continue'} primaryDisabled={need > 0} onPrimary={onNext}
       onSkip={onNext} skipLabel={minPicks > 0 ? 'I’ll do this later' : 'Skip this'}
+      picksPanel={split ? <PicksPanel picks={picks} onRemove={toggle} /> : undefined}
     >
-      <PreferenceDiscoveryGrid choices={choices} picks={picks} onToggle={toggle} search={search} emptyHint={copy.empty} />
+      <PreferenceDiscoveryGrid choices={choices} picks={picks} onToggle={toggle} search={search} emptyHint={copy.empty} picksElsewhere={split} />
     </StageFrame>
   );
 }

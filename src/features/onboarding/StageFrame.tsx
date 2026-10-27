@@ -6,6 +6,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../ui/primitives';
 import { CenteredCard } from '../../ui/CenteredCard';
+import { useLayout } from '../../ui/layout';
 import { space } from '../../ui/tokens';
 import { useAppearance } from '../../ui/theme';
 
@@ -21,15 +22,25 @@ export function ProgressDots({ index, total }: { index: number; total: number })
   );
 }
 
-export function StageFrame({ title, subtitle, progress, onBack, primaryLabel, onPrimary, primaryDisabled, onSkip, skipLabel = 'Skip', hint, children, footerExtra }: PropsWithChildren<{
+export function StageFrame({ title, subtitle, progress, onBack, primaryLabel, onPrimary, primaryDisabled, onSkip, skipLabel = 'Skip', hint, children, footerExtra, picksPanel }: PropsWithChildren<{
   title: string; subtitle?: string; progress?: { index: number; total: number } | null; onBack?: (() => void) | null;
   primaryLabel?: string; onPrimary?: () => void; primaryDisabled?: boolean; onSkip?: () => void; skipLabel?: string; hint?: string; footerExtra?: ReactNode;
+  /** On a landscape tablet: a left column of what you've picked, with the choices on the right. */
+  picksPanel?: ReactNode;
 }>) {
   const { theme, typography } = useAppearance();
   const c = theme.colors;
+  const { isTablet, isLandscape } = useLayout();
+  const split = isTablet && isLandscape && !!picksPanel;
+  const heading = (
+    <>
+      <Text accessibilityRole="header" style={[styles.title, { color: c.textPrimary, fontFamily: typography.display }, split && { fontSize: 38, lineHeight: 44 }]}>{title}</Text>
+      {subtitle ? <Text style={[styles.subtitle, { color: c.textSecondary, fontFamily: typography.body }]}>{subtitle}</Text> : null}
+    </>
+  );
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top', 'bottom']}>
-      <CenteredCard fill maxWidth={720}>
+      <CenteredCard fill maxWidth={split ? 1180 : 720}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.top}>
           {onBack ? (
@@ -38,11 +49,17 @@ export function StageFrame({ title, subtitle, progress, onBack, primaryLabel, on
           {progress ? <ProgressDots index={progress.index} total={progress.total} /> : <View />}
           <View style={styles.back} />
         </View>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}>
-          <Text accessibilityRole="header" style={[styles.title, { color: c.textPrimary, fontFamily: typography.display }]}>{title}</Text>
-          {subtitle ? <Text style={[styles.subtitle, { color: c.textSecondary, fontFamily: typography.body }]}>{subtitle}</Text> : null}
-          <View style={styles.body}>{children}</View>
-        </ScrollView>
+        {split ? (
+          <View style={styles.splitRow}>
+            <View style={[styles.splitLeft, { borderRightColor: c.border }]}>{heading}<View style={styles.splitPicks}>{picksPanel}</View></View>
+            <ScrollView style={styles.splitRight} contentContainerStyle={styles.splitRightContent} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}>{children}</ScrollView>
+          </View>
+        ) : (
+          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}>
+            {heading}
+            <View style={styles.body}>{children}</View>
+          </ScrollView>
+        )}
         {onPrimary || onSkip ? (
           <View style={[styles.footer, { backgroundColor: c.background, borderTopColor: c.border }]}>
             {hint ? <Text style={[styles.hint, { color: c.textMuted, fontFamily: typography.body }]}>{hint}</Text> : null}
@@ -59,6 +76,11 @@ export function StageFrame({ title, subtitle, progress, onBack, primaryLabel, on
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
+  splitRow: { flex: 1, flexDirection: 'row' },
+  splitLeft: { width: '38%', paddingHorizontal: space.xl, paddingTop: 8, paddingBottom: space.lg, borderRightWidth: StyleSheet.hairlineWidth },
+  splitPicks: { flex: 1, minHeight: 0, marginTop: space.lg },
+  splitRight: { flex: 1 },
+  splitRightContent: { padding: space.xl, paddingTop: 8 },
   flex: { flex: 1 },
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space.lg, minHeight: 44 },
   back: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },

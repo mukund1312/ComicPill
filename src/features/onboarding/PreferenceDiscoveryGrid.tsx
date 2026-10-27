@@ -54,7 +54,7 @@ export function Tile({ choice, selected, onPress, reduced, index = 0, shape = 'c
   );
 }
 
-export function PreferenceDiscoveryGrid({ choices, picks, onToggle, search, emptyHint, picksTitle = 'YOUR PICKS' }: {
+export function PreferenceDiscoveryGrid({ choices, picks, onToggle, search, emptyHint, picksTitle = 'YOUR PICKS', picksElsewhere = false }: {
   choices: Choice[];
   picks: Choice[];
   onToggle: (id: string) => void;
@@ -62,6 +62,8 @@ export function PreferenceDiscoveryGrid({ choices, picks, onToggle, search, empt
   search: (query: string) => Choice[];
   emptyHint: string;
   picksTitle?: string;
+  /** The picks are shown in a separate column (tablet), so don't repeat them here. */
+  picksElsewhere?: boolean;
 }) {
   const { theme, typography } = useAppearance();
   const c = theme.colors;
@@ -107,7 +109,7 @@ export function PreferenceDiscoveryGrid({ choices, picks, onToggle, search, empt
         </View>
       ) : null}
 
-      {picks.length > 0 ? (
+      {picks.length > 0 && !picksElsewhere ? (
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: c.textMuted, fontFamily: typography.bodySemibold }]}>{picksTitle} · {picks.length}</Text>
           <View style={[styles.row, styles.picksRow, { backgroundColor: c.surface, borderColor: c.border }]}>

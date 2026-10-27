@@ -3,6 +3,8 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { StageFrame } from './StageFrame';
+import { PicksPanel, type PanelPick } from './PicksPanel';
+import { useLayout } from '../../ui/layout';
 import { EntityImage } from './EntityImage';
 import { ART_STYLES, GENRE_CARDS, STORY_TRAITS } from '../../lib/onboarding/entities';
 import type { PickKey } from '../../lib/onboarding/flow';
@@ -42,9 +44,16 @@ function VisualCard({ label, blurb, workId, selected, onPress, index, width }: {
 
 const CARD_W = 158;
 
+/** The left-hand "your picks" column on a landscape tablet (nothing on a phone). */
+function usePanel(items: PanelPick[], key: PickKey, onToggle: (key: PickKey, id: string) => void) {
+  const { isTablet, isLandscape } = useLayout();
+  return isTablet && isLandscape ? <PicksPanel picks={items} onRemove={(id) => onToggle(key, id)} /> : undefined;
+}
+
 export function ArtStage({ picks, onToggle, ...rest }: CardStageProps) {
+  const panel = usePanel(ART_STYLES.filter((a) => picks.includes(a.id)).map((a) => ({ id: a.id, label: a.label, workId: a.exemplarWorkId })), 'artStyles', onToggle);
   return (
-    <StageFrame title="What art pulls you in?" subtitle="Tap every look you’d happily read. There’s no wrong answer." {...rest} primaryLabel="Continue" onPrimary={rest.onNext} onSkip={rest.onNext} skipLabel="Skip this">
+    <StageFrame picksPanel={panel} title="What art pulls you in?" subtitle="Tap every look you’d happily read. There’s no wrong answer." {...rest} primaryLabel="Continue" onPrimary={rest.onNext} onSkip={rest.onNext} skipLabel="Skip this">
       <View style={styles.grid}>
         {ART_STYLES.map((a, i) => <VisualCard key={a.id} index={i} width={CARD_W} label={a.label} blurb={a.blurb} workId={a.exemplarWorkId} selected={picks.includes(a.id)} onPress={() => onToggle('artStyles', a.id)} />)}
       </View>
@@ -53,8 +62,9 @@ export function ArtStage({ picks, onToggle, ...rest }: CardStageProps) {
 }
 
 export function GenreStage({ picks, onToggle, ...rest }: CardStageProps) {
+  const panel = usePanel(GENRE_CARDS.filter((g) => picks.includes(g.id)).map((g) => ({ id: g.id, label: g.label, workId: g.exemplarWorkId })), 'genres', onToggle);
   return (
-    <StageFrame title="What kinds of stories?" subtitle="Choose the genres you keep coming back to." {...rest} primaryLabel="Continue" onPrimary={rest.onNext} onSkip={rest.onNext} skipLabel="Skip this">
+    <StageFrame picksPanel={panel} title="What kinds of stories?" subtitle="Choose the genres you keep coming back to." {...rest} primaryLabel="Continue" onPrimary={rest.onNext} onSkip={rest.onNext} skipLabel="Skip this">
       <View style={styles.grid}>
         {GENRE_CARDS.map((g, i) => <VisualCard key={g.id} index={i} width={CARD_W} label={g.label} workId={g.exemplarWorkId} selected={picks.includes(g.id)} onPress={() => onToggle('genres', g.id)} />)}
       </View>
@@ -66,8 +76,9 @@ export function TraitStage({ picks, onToggle, onFinish, finishLabel, ...rest }: 
   const { theme, typography } = useAppearance();
   const c = theme.colors;
   const reduced = useReducedMotion();
+  const panel = usePanel(STORY_TRAITS.filter((t) => picks.includes(t.id)).map((t) => ({ id: t.id, label: t.label })), 'traits', onToggle);
   return (
-    <StageFrame title="How should a story feel?" subtitle="Pick what you want more of." progress={rest.progress} onBack={rest.onBack} primaryLabel={finishLabel} onPrimary={onFinish} onSkip={onFinish} skipLabel="Skip this">
+    <StageFrame picksPanel={panel} title="How should a story feel?" subtitle="Pick what you want more of." progress={rest.progress} onBack={rest.onBack} primaryLabel={finishLabel} onPrimary={onFinish} onSkip={onFinish} skipLabel="Skip this">
       <View style={styles.chips}>
         {STORY_TRAITS.map((t, i) => {
           const on = picks.includes(t.id);
