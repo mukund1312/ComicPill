@@ -122,7 +122,7 @@ function CollageBackdrop({ workId, scrollY }: { workId: string | undefined; scro
         <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#7A6458', mixBlendMode: 'screen' }]} />
       </Animated.View>
       {/* keep the header and the lower text readable; the middle stays bright */}
-      <LinearGradient colors={[`${c.background}CC`, `${c.background}00`, `${c.background}1A`, `${c.background}D0`, c.background]} locations={[0, 0.15, 0.42, 0.7, 0.9]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={[`${c.background}CC`, `${c.background}00`, `${c.background}59`, `${c.background}E6`, c.background]} locations={[0, 0.12, 0.36, 0.56, 0.78]} style={StyleSheet.absoluteFill} />
     </View>
   );
 }

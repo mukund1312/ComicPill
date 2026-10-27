@@ -30,7 +30,7 @@ export default function PasscodeScreen() {
     const problem = passwordProblem(pw1);
     if (problem) { Alert.alert('Too short', problem); return; }
     if (pw1 !== pw2) { Alert.alert('Those don’t match', 'Type the same passcode in both boxes.'); return; }
-    await setLock(pw1); closeForm();
+    try { await setLock(pw1); closeForm(); } catch (e) { Alert.alert('Couldn’t save the passcode', String(e).slice(0, 240)); }
   };
   const items: FlowItem[] = useMemo(() => {
     try {
@@ -48,7 +48,7 @@ export default function PasscodeScreen() {
       <SafeAreaView style={StyleSheet.absoluteFill} edges={['top']} pointerEvents="box-none">
         <View style={styles.top}><HeaderButton icon="chevron-back" label="Back" onPress={() => router.back()} /></View>
       </SafeAreaView>
-      <ScrollView style={styles.sheetWrap} contentContainerStyle={styles.sheet} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.sheetWrap} contentContainerStyle={styles.sheet} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <Text style={[styles.title, { color: c.textPrimary, fontFamily: typography.display }]}>Passcode & privacy</Text>
         <Text style={[styles.copy, { color: c.textSecondary, fontFamily: typography.body }]}>Choose whether ComicPill asks for a passcode when it opens. You can change this any time.</Text>
         <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.border }]}>
