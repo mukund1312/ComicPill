@@ -225,5 +225,5 @@ export function listNestedComics(fileUri: string): string[] {
 
 export function extractNestedComic(fileUri: string, entry: string, dest: File): void {
   const zip = ZipReader.open(new File(fileUri));
-  try { writeBytes(dest, zip.readEntry(entry)); } finally { zip.close(); }
+  try { zip.extractTo(entry, dest); } finally { zip.close(); }
 }

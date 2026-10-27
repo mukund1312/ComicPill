@@ -1,4 +1,5 @@
 // "Reading Now": what you're in the middle of, and what you've finished. The first thing the Panels-style tab bar opens.
+import { onMyDevice } from '../../lib/platform/device';
 import { useCallback, useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
@@ -29,7 +30,7 @@ export default function ReadingNowScreen() {
   const open = (comic: ReaderComic) => router.push(`/reader/${comic.id}`);
 
   const more = () => setMenu([
-    { label: 'Open On My Phone', onPress: () => router.push('/reader/phone') },
+    { label: `Open ${onMyDevice()}`, onPress: () => router.push('/reader/phone') },
     { label: 'Import files…', onPress: () => router.push('/library') },
     { label: 'Reader settings', onPress: () => router.push('/reader/settings') },
   ]);

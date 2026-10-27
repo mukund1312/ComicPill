@@ -93,7 +93,7 @@ async function importFile(uri: string, name: string, result: ImportResult, opts:
   } catch (e) {
     try { if (dir.exists) dir.delete(); } catch { /* ignore */ }
     try { if (opts.sourceUri) cacheDirFor(id).delete(); } catch { /* ignore */ }
-    result.failed.push({ name, reason: e instanceof ComicOpenError ? e.message : 'Could not import this file.' });
+    result.failed.push({ name, reason: reasonOf(e, 'Could not import this file') });
   }
 }
 
@@ -154,6 +154,14 @@ async function importBundle(zipUri: string, result: ImportResult, opts: ImportOp
     } finally { try { if (tmp.exists) tmp.delete(); } catch { /* ignore */ } }
   }
   return entries.length;
+}
+
+/** Why something failed, in words: our own messages as they are, anything else with its detail so it can be reported. */
+function reasonOf(e: unknown, fallback: string): string {
+  if (e instanceof ComicOpenError) return e.message;
+  const detail = e instanceof Error ? e.message.replace(/\s+/g, ' ').slice(0, 140) : '';
+  if (__DEV__ || detail) console.warn('import failed:', e);
+  return detail ? `${fallback} (${detail}).` : `${fallback}.`;
 }
 
 const sizeOf = (f: File): number | undefined => { try { return f.size || undefined; } catch { return undefined; } };
@@ -324,7 +332,7 @@ export async function prepareLinkedComics(opts: ImportProgress = {}): Promise<Im
           if (await importBundle(cachedFileFor(id).uri, result, { folderId: comic.folderId ?? undefined, sourceUri: comic.sourceUri })) { removeComic(id); return; }
         } catch { /* reported below */ }
       }
-      result.failed.push({ name: comic.title, reason: e instanceof ComicOpenError ? e.message : 'Could not fetch or read this comic.' });
+      result.failed.push({ name: comic.title, reason: reasonOf(e, 'Could not fetch or read this comic') });
     } finally {
       if (!wasCached) freeSpaceFor(id); // a bulk pass must not fill the cache with files nobody asked to read
     }

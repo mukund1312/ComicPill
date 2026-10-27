@@ -1,4 +1,5 @@
 // The Library tab: one tidy hub that points at everything you own — files on this phone, your collection, imports, and the extra tools.
+import { deviceIcon, onMyDevice } from '../../lib/platform/device';
 import { useCallback, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
@@ -34,7 +35,7 @@ export default function LibraryHubScreen() {
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
   const libraries: Row[] = [
-    { icon: 'phone-portrait-outline', label: 'On My Phone', sub: plural(counts.phone, 'comic', 'comics'), onPress: () => router.push('/reader/phone') },
+    { icon: deviceIcon(), label: onMyDevice(), sub: plural(counts.phone, 'comic', 'comics'), onPress: () => router.push('/reader/phone') },
     { icon: 'albums-outline', label: 'My Collection', sub: plural(counts.collection, 'comic', 'comics'), onPress: () => router.push('/collection') },
     { icon: 'folder-open-outline', label: 'Collections', sub: plural(counts.collections, 'collection', 'collections'), onPress: () => router.push('/reader/collections') },
   ];

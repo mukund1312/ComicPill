@@ -8,6 +8,7 @@ import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withSpring } from '
 import { ActionSheet, PromptModal, type SheetOption } from './dialogs';
 import { DragStack, STACK_H, STACK_W } from './DragStack';
 import { feedback } from '../../lib/platform/feedback';
+import { onMyDevice } from '../../lib/platform/device';
 import { AppShell } from '../../ui/AppShell';
 import { HeaderActions, HeaderButton } from '../../ui/Icon';
 import { useLayout } from '../../ui/layout';
@@ -420,7 +421,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   };
 
   return (
-    <AppShell active="library" back title={mode === 'collections' ? 'Collections' : 'On My Phone'} right={<HeaderActions><HeaderButton icon="search" label="Search" active={searchOpen} onPress={() => { setSearchOpen((o) => !o); if (searchOpen) setQuery(''); }} /><HeaderButton icon="add" label="Add" disabled={busy || job.running} onPress={addMenu} /></HeaderActions>}>
+    <AppShell active="library" back title={mode === 'collections' ? 'Collections' : onMyDevice()} right={<HeaderActions><HeaderButton icon="search" label="Search" active={searchOpen} onPress={() => { setSearchOpen((o) => !o); if (searchOpen) setQuery(''); }} /><HeaderButton icon="add" label="Add" disabled={busy || job.running} onPress={addMenu} /></HeaderActions>}>
       <GestureHandlerRootView style={styles.frame}>
       <View ref={frameRef} collapsable={false} style={styles.frame}>
       <FlashList

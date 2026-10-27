@@ -1,4 +1,5 @@
 // One search box across your files, your collection and the whole catalog.
+import { onMyDevice } from '../../lib/platform/device';
 import { useMemo, useState } from 'react';
 import { Keyboard, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
@@ -39,7 +40,7 @@ export default function SearchScreen() {
         {q && files.length === 0 && works.length === 0 ? <Text style={[styles.hintText, { color: c.textSecondary, fontFamily: typography.body, marginTop: 40 }]}>No matches for “{q}”.</Text> : null}
         {files.length ? (
           <Animated.View entering={FadeIn.duration(200)}>
-            <Text style={[styles.section, { color: c.textPrimary, fontFamily: typography.display }]}>On My Phone</Text>
+            <Text style={[styles.section, { color: c.textPrimary, fontFamily: typography.display }]}>{onMyDevice()}</Text>
             {files.map((comic) => (
               <PressableScale key={comic.id} to={0.985} style={[styles.row, { borderBottomColor: c.border }]} onPress={() => router.push(`/reader/${comic.id}`)}>
                 <View style={[styles.thumb, { backgroundColor: c.surfaceRaised }]}>{comic.coverPath ? <Image source={{ uri: comic.coverPath }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}</View>

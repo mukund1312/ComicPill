@@ -7,6 +7,7 @@ import { ComicOpenError } from './errors';
 import { localHeaderLength, parseCentralDirectory, parseEocd, parseZip64Eocd, parseZip64Locator, type ZipEntry } from './formats/zipIndex';
 
 const TAIL_BYTES = 65557 + 20 + 56; // max comment + zip64 locator + slack
+const EXTRACT_CHUNK = 4 * 1024 * 1024;
 
 export class ZipReader {
   readonly entries: ZipEntry[];
@@ -46,8 +47,8 @@ export class ZipReader {
   has(name: string) { return this.byName.has(name); }
   names() { return this.entries.map((e) => e.name); }
 
-  /** Compressed bytes of an entry (at most `limit` of them) plus its method. */
-  private raw(name: string, limit: number): { bytes: Uint8Array; entry: ZipEntry } {
+  /** The entry, checked, and where its data begins. */
+  private locate(name: string): { entry: ZipEntry; dataStart: number } {
     const entry = this.byName.get(name);
     if (!entry) throw new ComicOpenError(`"${name}" is missing from the archive.`);
     if (entry.encrypted) throw new ComicOpenError('This archive is password-protected.');
@@ -55,9 +56,33 @@ export class ZipReader {
     // Local header = 30 fixed bytes + name + extra; read enough to find where the data starts.
     this.handle.offset = entry.headerOffset;
     const header = this.handle.readBytes(Math.min(30 + 65535 * 2, (this.handle.size ?? 0) - entry.headerOffset));
-    const dataStart = entry.headerOffset + (localHeaderLength(header) ?? 30);
+    return { entry, dataStart: entry.headerOffset + (localHeaderLength(header) ?? 30) };
+  }
+
+  /** Compressed bytes of an entry (at most `limit` of them) plus its method. */
+  private raw(name: string, limit: number): { bytes: Uint8Array; entry: ZipEntry } {
+    const { entry, dataStart } = this.locate(name);
     this.handle.offset = dataStart;
     return { bytes: this.handle.readBytes(Math.min(entry.compressedSize, limit)), entry };
+  }
+
+  /** Write an entry to `dest` a few megabytes at a time, so a very large comic never has to fit in memory whole. */
+  extractTo(name: string, dest: File): void {
+    const { entry, dataStart } = this.locate(name);
+    dest.create();
+    const out = dest.open(FileMode.WriteOnly);
+    try {
+      const inflater = entry.method === 8 ? new Inflate((chunk) => { out.writeBytes(chunk); }) : null;
+      for (let done = 0; done < entry.compressedSize;) {
+        const n = Math.min(EXTRACT_CHUNK, entry.compressedSize - done);
+        this.handle.offset = dataStart + done;
+        const bytes = this.handle.readBytes(n);
+        done += n;
+        if (inflater) inflater.push(bytes, done >= entry.compressedSize); else out.writeBytes(bytes);
+      }
+    } catch (e) {
+      throw e instanceof ComicOpenError ? e : new ComicOpenError(`Could not unpack "${name}": ${e instanceof Error ? e.message.slice(0, 120) : 'the file may be corrupt'}.`);
+    } finally { out.close(); }
   }
 
   readEntry(name: string): Uint8Array {
