@@ -39,7 +39,7 @@ const moods: { id: string; label: string }[] = [
 ];
 
 const HERO_H = 566;
-const HERO_H_TABLET = 640;
+const HERO_H_TABLET = 720;
 
 /** The cover itself, whole and sharp, glowing over the backdrop; it settles into a smaller card as you scroll. */
 function HeroArt({ source, title, scrollY, width, onPress }: { source: ReturnType<typeof coverSourceFor>; title: string; scrollY: SharedValue<number>; width: number; onPress: () => void }) {

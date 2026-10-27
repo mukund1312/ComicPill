@@ -20,7 +20,7 @@ const filters: Array<[Filter, string]> = [['all', 'All'], ['owned', 'Owned'], ['
 const PUBLISHERS: PublisherFilter[] = ['Marvel', 'DC', 'Indie', 'Manga'];
 
 export default function LibraryScreen() {
-  const layout = useLayout(); const cols = layout.columns(170);
+  const layout = useLayout(); const cols = layout.columns(layout.isTablet ? 220 : 170);
   const library = useLibrary(); const [filter, setFilter] = useState<Filter>('all'); const [query, setQuery] = useState(''); const [filtersOpen, setFiltersOpen] = useState(false); const [moreOpen, setMoreOpen] = useState(false); const c0 = useAppearance().theme.colors;
   const [comicFilters, setComicFilters] = useState<ComicFilters>(EMPTY_COMIC_FILTERS);
   const digitalOnly = useTravelMode((s) => s.digitalOnly);

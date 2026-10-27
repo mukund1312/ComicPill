@@ -23,7 +23,7 @@ import { EMPTY_COMIC_FILTERS, type PublisherFilter } from '../../lib/util/comicF
 const PUBLISHERS: PublisherFilter[] = ['Marvel', 'DC', 'Indie', 'Manga'];
 
 export default function DiscoverScreen() {
-  const layout = useLayout(); const cols = layout.columns(170);
+  const layout = useLayout(); const cols = layout.columns(layout.isTablet ? 220 : 170);
   const discover = useDiscover(); const [rating, setRating] = useState(false); const [filtersOpen, setFiltersOpen] = useState(false); const query = '';
   const catalog = useMemo(() => discover.catalog.filter((work) => work.title.toLowerCase().includes(query.trim().toLowerCase())).sort((a, b) => Number(b.workId.startsWith('file-')) - Number(a.workId.startsWith('file-'))), [discover.catalog, query]);
   return <AppShell active="discover" title="Discover" right={<HeaderActions><HeaderButton icon="heart-outline" label="Wishlist" onPress={() => router.push('/collection')} /><HeaderButton icon="search" label="Search" onPress={() => router.push('/search')} /><HeaderButton icon="options-outline" label="Filter" active={discover.filtersActive} onPress={() => setFiltersOpen(true)} /></HeaderActions>}>

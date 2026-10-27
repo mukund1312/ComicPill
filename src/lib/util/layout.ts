@@ -3,9 +3,9 @@
 //   tablet  — 600dp or more on its short side
 //   rail    — wide enough (840dp+) that the tabs move from a floating bar to a side rail
 
-export const RAIL_WIDTH = 92;
+export const RAIL_WIDTH = 276;
 const TABLET_MIN = 600;
-const RAIL_MIN = 840;
+const RAIL_MIN = 960;
 
 export type Layout = {
   width: number; height: number;
@@ -22,7 +22,7 @@ export type Layout = {
 
 export function layoutFor(width: number, height: number): Layout {
   const isTablet = Math.min(width, height) >= TABLET_MIN;
-  const rail = width >= RAIL_MIN;
+  const rail = isTablet && width >= RAIL_MIN;
   const contentWidth = rail ? width - RAIL_WIDTH : width;
   const maxContent = isTablet ? Math.min(contentWidth, rail ? 1040 : 720) : contentWidth;
   return {

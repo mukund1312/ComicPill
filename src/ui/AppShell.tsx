@@ -1,6 +1,6 @@
 import { useEffect, type PropsWithChildren, type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { router } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { router, usePathname } from 'expo-router';
 import Animated, { Easing, FadeIn, interpolate, useAnimatedStyle, useSharedValue, withSpring, type SharedValue } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { space } from './tokens';
@@ -62,23 +62,60 @@ function TabBar({ active }: { active: Tab }) {
   );
 }
 
-/** The tabs as a slim vertical rail, for screens wide enough that a bottom bar would be a long way from the thumb. */
-function TabRail({ active }: { active: Tab }) {
+type SideRow = { icon: IconName; label: string; sub?: string; href: string; tab?: Exclude<Tab, 'none'> };
+const SIDE_MAIN: SideRow[] = [
+  { icon: 'home-outline', label: 'Today', href: '/', tab: 'today' },
+  { icon: 'book-outline', label: 'Reading Now', href: '/reader', tab: 'reading' },
+  { icon: 'search-outline', label: 'Search', href: '/search', tab: 'search' },
+  { icon: 'storefront-outline', label: 'Discover', href: '/discover', tab: 'discover' },
+];
+const SIDE_LIBRARIES: SideRow[] = [
+  { icon: 'phone-landscape-outline', label: 'On My Tablet', href: '/reader/phone' },
+  { icon: 'albums-outline', label: 'My Collection', href: '/collection' },
+  { icon: 'folder-open-outline', label: 'Collections', href: '/reader/collections' },
+];
+const SIDE_IMPORT: SideRow[] = [
+  { icon: 'document-outline', label: 'Import from Files', href: '/library' },
+  { icon: 'server-outline', label: 'Connect a Server', href: '/reader/opds' },
+  { icon: 'scan-outline', label: 'Scan a Comic', href: '/scan' },
+];
+
+/** The iPad-style sidebar: the main places up top, then your libraries and the ways to bring comics in. */
+function Sidebar({ active }: { active: Tab }) {
   const { theme, typography } = useAppearance(); const c = theme.colors;
   const top = useSafeAreaInsets().top; const bottom = useSafeAreaInsets().bottom;
+  const avatar = useProfile((p) => p.avatar); const displayName = useProfile((p) => p.displayName); const username = useProfile((p) => p.username);
+  const path = usePathname();
+  const row = (r: SideRow, i: number, last: boolean) => {
+    // Highlight by where you actually are, so a library inside the Library tab lights up on its own row.
+    const on = r.label === 'Import from Files' || r.label === 'Connect a Server' || r.label === 'Scan a Comic' ? false : path === r.href;
+    return (
+      <Pressable key={r.label} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => { feedback.select(); router.replace(r.href as never); }}
+        style={[styles.sideRow, on && { backgroundColor: c.primaryMuted }, !last && !on && { borderBottomColor: c.border, borderBottomWidth: StyleSheet.hairlineWidth }]}>
+        <Icon name={r.icon} size={22} color={on ? c.primary : c.textSecondary} />
+        <Text numberOfLines={1} style={[styles.sideLabel, { color: on ? c.primary : c.textPrimary, fontFamily: on ? typography.bodySemibold : typography.bodyMedium }]}>{r.label}</Text>
+      </Pressable>
+    );
+  };
+  const group = (title: string | null, rows: SideRow[]) => (
+    <View style={{ marginTop: title ? 22 : 8 }}>
+      {title ? <Text style={[styles.sideHead, { color: c.textPrimary, fontFamily: typography.display }]}>{title}</Text> : null}
+      <View style={[styles.sideCard, { backgroundColor: c.surfaceRaised }]}>{rows.map((r, i) => row(r, i, i === rows.length - 1))}</View>
+    </View>
+  );
   return (
-    <View style={[styles.rail, { backgroundColor: c.surface, borderRightColor: c.border, paddingTop: top + 18, paddingBottom: bottom + 16 }]}>
-      <View style={styles.railMark}><Icon name="book" size={22} color={c.primary} /></View>
-      {tabs.map((tab) => {
-        const on = tab.id === active;
-        return (
-          <Pressable key={tab.id} accessibilityRole="button" accessibilityLabel={tab.label} accessibilityState={{ selected: on }}
-            onPress={() => { if (!on) { feedback.select(); router.replace(tab.href as never); } }} style={styles.railTab}>
-            <View style={[styles.railPill, on && { backgroundColor: c.primaryMuted }]}><Icon name={on ? tab.iconActive : tab.icon} size={22} color={on ? c.primary : c.textMuted} /></View>
-            <Text numberOfLines={1} style={[styles.tabLabel, { color: on ? c.primary : c.textMuted, fontFamily: on ? typography.bodySemibold : typography.bodyMedium }]}>{tab.label}</Text>
-          </Pressable>
-        );
-      })}
+    <View style={[styles.side, { backgroundColor: c.surface, borderRightColor: c.border, paddingTop: top + 14, paddingBottom: bottom + 14 }]}>
+      <View style={styles.sideTop}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Open profile" onPress={() => router.push('/profile')}><Avatar uri={avatar} initial={initialOf({ displayName, username })} size={40} /></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="Settings" hitSlop={8} onPress={() => router.push('/settings')} style={[styles.sideBtn, { backgroundColor: c.surfaceRaised }]}><Icon name="settings-outline" size={20} color={c.textPrimary} /></Pressable>
+      </View>
+      <Text style={[styles.sideTitle, { color: c.textPrimary, fontFamily: typography.display }]}>Menu</Text>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {group(null, SIDE_MAIN)}
+        {group('Libraries', SIDE_LIBRARIES)}
+        {group('Import Services', SIDE_IMPORT)}
+        {group(null, [{ icon: 'library-outline', label: 'Library hub', href: '/library', tab: 'library' }])}
+      </ScrollView>
     </View>
   );
 }
@@ -92,7 +129,7 @@ export function AppShell({ active, title, children, logo = false, right, back = 
   const avatar = useProfile((p) => p.avatar); const displayName = useProfile((p) => p.displayName); const username = useProfile((p) => p.username);
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background, flexDirection: layout.rail ? 'row' : 'column' }]} edges={layout.rail ? [] : ['top']}>
-      {layout.rail ? <TabRail active={active} /> : null}
+      {layout.rail ? <Sidebar active={active} /> : null}
       <View style={[styles.main, { paddingTop: layout.rail ? insetTop : 0 }]}>
       {/* artwork that bleeds across the whole screen, behind the header and the tab bar */}
       {bleed ? <View pointerEvents="none" style={StyleSheet.absoluteFill}>{bleed}</View> : null}
@@ -108,7 +145,7 @@ export function AppShell({ active, title, children, logo = false, right, back = 
       ) : (
         <View style={styles.header}>
           {logo ? <Animated.View style={[styles.logoLockup, logoStyle, { transformOrigin: 'left center' }]}><Wordmark small /><ThemeEmblem id={theme.id} size={26} /></Animated.View> : <Text accessibilityRole="header" style={[styles.headerTitle, { color: c.textPrimary, fontFamily: typography.display }]}>{title}</Text>}
-          <View style={styles.headerRight}>{right ?? <Pressable accessibilityRole="button" accessibilityLabel="Open profile" hitSlop={8} onPress={() => router.push('/profile')}><Avatar uri={avatar} initial={initialOf({ displayName, username })} size={38} /></Pressable>}</View>
+          <View style={styles.headerRight}>{right ?? (layout.rail ? null : <Pressable accessibilityRole="button" accessibilityLabel="Open profile" hitSlop={8} onPress={() => router.push('/profile')}><Avatar uri={avatar} initial={initialOf({ displayName, username })} size={38} /></Pressable>)}</View>
         </View>
       )}
       {/* The same gentle rise on every tab, so moving around the app always feels the same. */}
@@ -131,10 +168,14 @@ const styles = StyleSheet.create({
   body: { flex: 1 },
   main: { flex: 1 },
   column: { flex: 1, width: '100%', alignSelf: 'center' },
-  rail: { width: RAIL_WIDTH, borderRightWidth: StyleSheet.hairlineWidth, alignItems: 'center', gap: 6 },
-  railMark: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
-  railTab: { width: RAIL_WIDTH, alignItems: 'center', gap: 4, paddingVertical: 8 },
-  railPill: { width: 56, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  side: { width: RAIL_WIDTH, borderRightWidth: StyleSheet.hairlineWidth, paddingHorizontal: 14 },
+  sideTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4 },
+  sideBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  sideTitle: { fontSize: 34, letterSpacing: -1, marginTop: 14, paddingHorizontal: 6 },
+  sideHead: { fontSize: 20, letterSpacing: -0.3, marginBottom: 8, paddingHorizontal: 6 },
+  sideCard: { borderRadius: 18, overflow: 'hidden' },
+  sideRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 14, minHeight: 50 },
+  sideLabel: { fontSize: 16, flex: 1 },
   barWrap: { paddingHorizontal: BAR_MARGIN, paddingTop: 6 },
   bar: { height: BAR_HEIGHT, borderRadius: BAR_HEIGHT / 2, borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', paddingHorizontal: BAR_PAD, shadowOpacity: 0.55, shadowRadius: 22, shadowOffset: { width: 0, height: 10 }, elevation: 16 },
   highlight: { position: 'absolute', left: BAR_PAD, top: 6, bottom: 6, borderRadius: (BAR_HEIGHT - 12) / 2 },

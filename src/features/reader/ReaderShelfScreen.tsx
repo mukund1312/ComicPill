@@ -33,7 +33,7 @@ type Cell =
   | { kind: 'collection'; key: string; collection: ReaderCollection };
 
 const SORTS: SortKey[] = ['recent', 'title', 'added'];
-const MIN_CELL = 168;
+const MIN_CELL = 168; const TABLET_CELL = 224;
 const VIEW_KEY = 'reader_view';
 const sizeLabel = (bytes: number | null) => (bytes == null ? null : bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);
 
@@ -47,7 +47,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   const styles = useMemo(() => makeStyles(c, typography), [c, typography]);
 
   const [view, setViewState] = useState<View_>(() => (getMeta(VIEW_KEY) === 'list' ? 'list' : 'grid'));
-  const columns = view === 'list' ? 1 : Math.max(2, Math.floor((width - space.lg * 2) / MIN_CELL)); // two generous columns on phones, more on tablets
+  const columns = view === 'list' ? 1 : Math.max(2, Math.floor((width - space.lg * 2) / (layout.isTablet ? TABLET_CELL : MIN_CELL))); // two generous columns on phones, more on tablets
   const cellWidth = (width - space.lg * 2 - space.md * (columns - 1)) / columns;
   const [comics, setComics] = useState<ReaderComic[]>([]);
   const [folders, setFolders] = useState<ReaderFolder[]>([]);

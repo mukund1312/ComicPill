@@ -24,12 +24,12 @@ export function WelcomeStage({ onStart, onNewcomer, onSkipAll }: { onStart: () =
   const { theme, typography } = useAppearance();
   const c = theme.colors;
   const reduced = useReducedMotion();
-  const { width: sw, height: sh } = useWindowDimensions(); const tablet = Math.min(sw, sh) >= 600;
+  const { width: sw, height: sh } = useWindowDimensions(); const tablet = Math.min(sw, sh) >= 600; const reelH = Math.round(sh * 0.52); // the ribbon fills about half the screen on a tablet
   const items = useMemo(() => reelItems(), []);
   const enter = (i: number) => (reduced ? undefined : FadeInDown.delay(i * 120).duration(360));
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]}>
-      <View style={styles.reel}>{items.length ? <CoverFlow items={items} height={tablet ? 620 : 400} /> : null}</View>
+      <View style={styles.reel}>{items.length ? <CoverFlow items={items} height={tablet ? reelH : 400} cardWidth={tablet ? Math.min((reelH - 90) / 1.5, sw * 0.3) : undefined} /> : null}</View>
       <View style={styles.body}>
         <Animated.View entering={enter(0)} style={{ alignItems: 'center' }}><Wordmark /></Animated.View>
         <Animated.Text entering={enter(1)} style={[styles.title, { color: c.textPrimary, fontFamily: typography.display }]}>Your comics, beautifully organised.</Animated.Text>
