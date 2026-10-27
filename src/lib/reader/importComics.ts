@@ -7,7 +7,7 @@ import { parseComicInfo, displayTitle } from './formats/comicInfo';
 import { linkReaderComic, setWorkCover, unlinkReaderComic } from './libraryLink';
 import { Platform } from 'react-native';
 import { optionalNative } from './nativeArchive';
-import { BOOKMARK_PREFIX, cacheDirFor, cachedFileFor, copyFromSource, ensureLocalCopy, freeSpaceFor, isCached, trimCloudCache } from './cloudCache';
+import { BOOKMARK_PREFIX, NESTED_SEP, cacheDirFor, cachedFileFor, copyFromSource, ensureLocalCopy, freeSpaceFor, isCached, trimCloudCache } from './cloudCache';
 import { createFolder, deleteReaderComic, fillInComic, getReaderComic, insertReaderComic, isDuplicateSource, setComicStorage, sourceKeyOf, unpreparedLinkIds, type ReaderMode } from './readerLibrary';
 
 export type ImportResult = { imported: string[]; /** Already in the library, so left alone. */ skipped: string[]; failed: Array<{ name: string; reason: string }> };
@@ -28,6 +28,8 @@ export type ImportOptions = {
   moveSource?: boolean;
   /** Size of the original file in bytes. With the name it tells whether this file is already in the library. */
   size?: number;
+  /** `uri` is a comic just taken out of a linked zip bundle: keep it as a cached link, don't fetch anything. */
+  nested?: boolean;
 };
 
 /** Runs `one` for each item, reporting progress, and stops early when asked. */
@@ -41,7 +43,7 @@ async function eachWithProgress<T>(items: T[], progress: ImportProgress, nameOf:
 }
 
 async function importFile(uri: string, name: string, result: ImportResult, opts: ImportOptions = {}, depth = 0): Promise<void> {
-  if (depth === 0 && opts.size && isDuplicateSource(name, opts.size, titleOf(name))) { result.skipped.push(name); return; }
+  if (opts.size && isDuplicateSource(name, opts.size, titleOf(name))) { result.skipped.push(name); return; }
   const id = randomUUID();
   const dir = new Directory(comicsRoot(), id);
   try {
@@ -50,8 +52,8 @@ async function importFile(uri: string, name: string, result: ImportResult, opts:
     const bookDir = opts.sourceUri ? cacheDirFor(id) : dir;
     if (opts.sourceUri) bookDir.create({ intermediates: true });
     const stored = new File(bookDir, 'book');
-    if (opts.sourceUri) await copyFromSource(opts.sourceUri, stored.uri);
-    else if (opts.moveSource) {
+    if (opts.sourceUri && !opts.nested) await copyFromSource(opts.sourceUri, stored.uri);
+    else if (opts.moveSource || opts.nested) {
       // A rename, not a second multi-gigabyte copy; if the move isn't possible it falls back to copying.
       try { await new File(uri).move(stored); } catch { await new File(uri).copy(stored); }
     } else await new File(uri).copy(stored); // async in SDK 57: opening before it resolves reads a partial file
@@ -60,19 +62,10 @@ async function importFile(uri: string, name: string, result: ImportResult, opts:
       source = await openComicSource(stored.uri, `import-${id}`);
     } catch (e) {
       // A plain zip with no pages of its own may be a bundle of comics: import each one inside.
-      if (e instanceof ComicOpenError && e.code === 'no-pages' && depth === 0) {
-        // Only zips can hold nested comics; anything else keeps its original "no pages" error.
-        let nested: string[] = [];
-        try { nested = listNestedComics(stored.uri); } catch { /* not a zip */ }
-        if (nested.length) {
-          for (const entry of nested) {
-            const tmp = new File(Paths.cache, `nested-${randomUUID()}`);
-            try { extractNestedComic(stored.uri, entry, tmp); await importFile(tmp.uri, entry.split('/').pop() ?? entry, result, { ...opts, sourceUri: undefined }, depth + 1); }
-            finally { try { if (tmp.exists) tmp.delete(); } catch { /* ignore */ } }
-          }
-          dir.delete(); try { if (bookDir.exists) bookDir.delete(); } catch { /* cache */ }
-          return;
-        }
+      // Only zips can hold nested comics; anything else keeps its original "no pages" error.
+      if (e instanceof ComicOpenError && e.code === 'no-pages' && depth === 0 && await importBundle(stored.uri, result, opts)) {
+        dir.delete(); try { if (bookDir.exists) bookDir.delete(); } catch { /* cache */ }
+        return;
       }
       throw e;
     }
@@ -89,7 +82,7 @@ async function importFile(uri: string, name: string, result: ImportResult, opts:
     insertReaderComic({
       id, title: displayTitle(info, titleOf(name)), path: stored.uri, format: source.format, pageCount: source.pageCount, coverPath,
       series: info.series ?? null, issue: info.number ?? null, writer: info.writer ?? null, folderId: opts.folderId ?? null,
-      mode: info.rtl ? 'rtl' : 'ltr', sourceUri: opts.sourceUri ?? null, sizeBytes: (() => { try { return new File(stored.uri).size ?? null; } catch { return null; } })(), sourceKey: depth === 0 && opts.size ? sourceKeyOf(name, opts.size) : null,
+      mode: info.rtl ? 'rtl' : 'ltr', sourceUri: opts.sourceUri ?? null, sizeBytes: (() => { try { return new File(stored.uri).size ?? null; } catch { return null; } })(), sourceKey: opts.size ? sourceKeyOf(name, opts.size) : null,
     });
     // Into the library too, owned digitally — and into the catalog if it isn't there yet.
     try { linkReaderComic({ id, title: displayTitle(info, titleOf(name)), series: info.series ?? null, writer: info.writer ?? null, coverPath, workId: null }); } catch { /* the file is still readable without the link */ }
@@ -147,6 +140,21 @@ export async function pickAndLinkComics(opts: Pick<ImportOptions, 'folderId'> & 
 
 /** Delete several comics from the device at once. */
 export function removeComics(ids: string[]): void { for (const id of ids) removeComic(id); }
+
+/** A zip with no pages of its own may be a bundle of comics: import each one inside. A linked bundle's comics stay links. Returns how many it held. */
+async function importBundle(zipUri: string, result: ImportResult, opts: ImportOptions): Promise<number> {
+  let entries: string[] = [];
+  try { entries = listNestedComics(zipUri); } catch { /* not a zip */ }
+  for (const entry of entries) {
+    const tmp = new File(Paths.cache, `nested-${randomUUID()}`);
+    try {
+      extractNestedComic(zipUri, entry, tmp);
+      const sourceUri = opts.sourceUri ? `${opts.sourceUri}${NESTED_SEP}${entry}` : undefined;
+      await importFile(tmp.uri, entry.split('/').pop() ?? entry, result, { folderId: opts.folderId, sourceUri, nested: !!sourceUri, size: sizeOf(tmp) }, 1);
+    } finally { try { if (tmp.exists) tmp.delete(); } catch { /* ignore */ } }
+  }
+  return entries.length;
+}
 
 const sizeOf = (f: File): number | undefined => { try { return f.size || undefined; } catch { return undefined; } };
 
@@ -310,6 +318,12 @@ export async function prepareLinkedComics(opts: ImportProgress = {}): Promise<Im
         result.imported.push(title);
       } finally { source.close(); }
     } catch (e) {
+      // A linked zip that is really a bundle of comics: its comics are linked in its place.
+      if (e instanceof ComicOpenError && e.code === 'no-pages' && !comic.sourceUri.includes(NESTED_SEP)) {
+        try {
+          if (await importBundle(cachedFileFor(id).uri, result, { folderId: comic.folderId ?? undefined, sourceUri: comic.sourceUri })) { removeComic(id); return; }
+        } catch { /* reported below */ }
+      }
       result.failed.push({ name: comic.title, reason: e instanceof ComicOpenError ? e.message : 'Could not fetch or read this comic.' });
     } finally {
       if (!wasCached) freeSpaceFor(id); // a bulk pass must not fill the cache with files nobody asked to read

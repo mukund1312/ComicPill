@@ -6,6 +6,7 @@ import { Directory, File, Paths } from 'expo-file-system';
 import { getReaderComic, type ReaderComic } from './readerLibrary';
 import { pickEvictions } from './evict';
 import { optionalNative } from './nativeArchive';
+import { extractNestedComic } from './ComicSource';
 
 /** How much fetched cloud comics may take before the least-recently-read ones are dropped. */
 export const CLOUD_CACHE_LIMIT = 2 * 1024 * 1024 * 1024;
@@ -41,6 +42,9 @@ export class CloudFetchError extends Error {}
 /** iOS keeps a cloud link as a bookmark; Android keeps the picked address itself. A file inside a linked folder is `bookmark:<folder>|<path inside it>`. */
 export const BOOKMARK_PREFIX = 'bookmark:';
 
+/** A comic inside a linked zip bundle is remembered as `<link to the zip><NESTED_SEP><its path inside the zip>`. */
+export const NESTED_SEP = '\u001F';
+
 /** Copy a linked comic from its cloud app to `destUri`. */
 export async function copyFromSource(sourceUri: string, destUri: string): Promise<void> {
   if (sourceUri.startsWith(BOOKMARK_PREFIX)) {
@@ -62,7 +66,14 @@ export async function ensureLocalCopy(comic: ReaderComic): Promise<string> {
   try {
     const dir = cacheDirFor(comic.id);
     if (!dir.exists) dir.create({ intermediates: true });
-    await copyFromSource(comic.sourceUri, target.uri);
+    const sep = comic.sourceUri.indexOf(NESTED_SEP);
+    if (sep < 0) await copyFromSource(comic.sourceUri, target.uri);
+    else {
+      // Inside a zip bundle: fetch the zip, take this one comic out, and let the zip go.
+      const bundle = new File(dir, 'bundle.tmp');
+      try { await copyFromSource(comic.sourceUri.slice(0, sep), bundle.uri); extractNestedComic(bundle.uri, comic.sourceUri.slice(sep + 1), target); }
+      finally { try { if (bundle.exists) bundle.delete(); } catch { /* it sits in the cache anyway */ } }
+    }
   } catch {
     try { cacheDirFor(comic.id).delete(); } catch { /* ignore */ }
     throw new CloudFetchError('Couldn’t fetch this comic from its cloud app. Check your connection and that the app (Drive, Dropbox…) still has access, then try again.');
