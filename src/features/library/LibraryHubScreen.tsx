@@ -10,7 +10,7 @@ import { useAppearance } from '../../ui/theme';
 import { space } from '../../ui/tokens';
 import { sqlite } from '../../lib/db/client';
 import { listCollections } from '../../lib/reader/readerLibrary';
-import { pickAndImportComics, pickAndImportFolder, type ImportResult } from '../../lib/reader/importComics';
+import { pickAndImportComics, pickAndImportFolder, pickAndLinkComics, type ImportResult } from '../../lib/reader/importComics';
 
 type Row = { icon: IconName; label: string; sub?: string; tint?: string; onPress: () => void };
 
@@ -41,7 +41,8 @@ export default function LibraryHubScreen() {
     { icon: 'folder-open-outline', label: 'Collections', sub: plural(counts.collections, 'collection', 'collections'), onPress: () => router.push('/reader/collections') },
   ];
   const imports: Row[] = [
-    { icon: 'document-outline', label: busy ? 'Importing…' : 'Import from Files', tint: '#3B82F6', onPress: () => { if (!busy) void runImport(() => pickAndImportComics({})); } },
+    { icon: 'cloud-outline', label: busy ? 'Working…' : 'Link from Drive or Dropbox', sub: 'Saves space: the comic stays in the cloud', tint: '#3B82F6', onPress: () => { if (!busy) void runImport(() => pickAndLinkComics({})); } },
+    { icon: 'document-outline', label: 'Import from Files', sub: 'Keeps a copy on this device', tint: '#3B82F6', onPress: () => { if (!busy) void runImport(() => pickAndImportComics({})); } },
     { icon: 'folder-outline', label: 'Import a folder', tint: '#3B82F6', onPress: () => { if (!busy) void runImport(pickAndImportFolder); } },
     { icon: 'server-outline', label: 'Connect a server (OPDS)', onPress: () => router.push('/reader/opds') },
     { icon: 'scan-outline', label: 'Scan a comic or shelf', onPress: () => router.push('/scan') },

@@ -14,6 +14,8 @@ type Native = {
   renderPdfPage(path: string, index: number, dest: string, targetWidth: number): Promise<void>;
   grayThumbnail?(path: string, maxWidth: number): Promise<{ width: number; height: number; data: string }>;
   recognizeText?(path: string): Promise<string>;
+  /** Keep access to a picked cloud file after the app closes. */
+  persistUriPermission?(uri: string): boolean;
 };
 
 /** Optional: absent on iOS and in Expo Go, where guided view is simply unavailable. */

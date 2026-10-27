@@ -19,7 +19,9 @@ import {
   listReaderComics, markComic, renameCollection, renameFolder, renameReaderComic, setComicFolder, setComicPreset, setFolderPreset, setLock, toggleInCollection,
   type ReaderCollection, type ReaderComic, type ReaderFolder,
 } from '../../lib/reader/readerLibrary';
-import { pickAndImportComics, pickAndImportFolder, removeComic, type ImportResult } from '../../lib/reader/importComics';
+import { keepCopyOnDevice, pickAndImportComics, pickAndImportFolder, pickAndLinkComics, removeComic, type ImportResult } from '../../lib/reader/importComics';
+import { freeSpaceFor, isCached } from '../../lib/reader/cloudCache';
+import { Icon } from '../../ui/Icon';
 import { checkPassword, isHiddenByFolder, isUnlocked, makeLock, markUnlocked, passwordProblem } from '../../lib/reader/lock';
 import { newSalt, sha256 } from '../../lib/reader/lockCrypto';
 import { listPresets } from '../../lib/reader/readerSettings';
@@ -174,6 +176,8 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
       { label: 'Open', onPress: () => openComic(comic) },
       { label: 'Rename', onPress: () => requireUnlock('comic', comic.id, comic.title, comic.locked, () => setPrompt({ title: 'Rename comic', initial: comic.title, onSubmit: (name) => { renameReaderComic(comic.id, name); refresh(); } })) },
       { label: isFinished(comic) ? 'Mark as unread' : 'Mark as read', onPress: () => { markComic(comic.id, !isFinished(comic), comic.pageCount); refresh(); } },
+      ...(comic.sourceUri ? [{ label: 'Keep a copy on this device', onPress: () => { setBusy(true); void keepCopyOnDevice(comic.id).then(() => Alert.alert('Saved', 'It now reads offline.')).catch(() => Alert.alert('Couldn’t save it', 'Check your connection and try again.')).finally(() => { setBusy(false); refresh(); }); } }] : []),
+      ...(comic.sourceUri && isCached(comic.id) ? [{ label: 'Free up space (keeps the link)', onPress: () => { freeSpaceFor(comic.id); refresh(); } }] : []),
       { label: 'Add to collection…', onPress: () => pickCollectionFor(comic) },
       { label: 'Move to folder…', onPress: () => pickFolderFor(comic) },
       { label: 'Reading preset…', onPress: () => pickPreset(comic.presetId, 'Reading preset', (id) => { setComicPreset(comic.id, id); refresh(); }) },
@@ -206,6 +210,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   const addMenu = () => setSheet({
     options: [
       { label: openFolder ? `Import files into “${insideName ?? 'this folder'}”…` : 'Import files…', onPress: importHere },
+      { label: 'Link from Drive or Dropbox (saves space)…', onPress: () => runImport(() => pickAndLinkComics({ folderId: openFolder ?? undefined })) },
       { label: 'Browse an OPDS server…', onPress: () => router.push('/reader/opds') },
       { label: 'Import a folder…', onPress: () => runImport(pickAndImportFolder) },
       { label: 'New folder…', onPress: () => setPrompt({ title: 'New folder', submitLabel: 'Create', onSubmit: (name) => { createFolder(name); refresh(); } }) },
@@ -239,6 +244,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
       <View style={[styles.cover, view === 'list' && styles.coverList]}>
         {masked ? <Text style={styles.glyph}>🔒</Text> : <FileCover uri={comic.coverPath} title={comic.title} style={styles.coverImage} recyclingKey={comic.id} transition={120} />}
         {isFinished(comic) && !masked ? <Text style={styles.badge}>✓</Text> : null}
+        {comic.sourceUri && !masked ? <View style={styles.cloudBadge}><Icon name={isCached(comic.id) ? 'cloud-done-outline' : 'cloud-outline'} size={14} color="#fff" /></View> : null}
       </View>
     );
     if (view === 'list') {
@@ -342,6 +348,7 @@ function makeStyles(c: ThemeColors, t: TypographyPreset) {
     coverImage: { width: '100%', height: '100%' },
     tile: { alignItems: 'center', justifyContent: 'center' },
     glyph: { color: c.primary, fontSize: 36 },
+    cloudBadge: { position: 'absolute', left: 6, top: 6, width: 24, height: 24, borderRadius: 12, backgroundColor: '#000000AA', alignItems: 'center', justifyContent: 'center' },
     badge: { position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: 10, backgroundColor: c.success, color: c.primaryForeground, textAlign: 'center', fontSize: 13, lineHeight: 20, overflow: 'hidden' },
     title: { color: c.textPrimary, fontFamily: t.displayMedium, fontSize: 14, lineHeight: 18, marginTop: 4 },
     sub: { color: c.textMuted, fontFamily: t.body, fontSize: 12 },

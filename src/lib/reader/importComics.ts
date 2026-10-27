@@ -5,7 +5,10 @@ import { Directory, File, Paths } from 'expo-file-system';
 import { ComicOpenError, extractNestedComic, listNestedComics, openComicSource } from './ComicSource';
 import { parseComicInfo, displayTitle } from './formats/comicInfo';
 import { linkReaderComic, unlinkReaderComic } from './libraryLink';
-import { createFolder, deleteReaderComic, getReaderComic, insertReaderComic } from './readerLibrary';
+import * as LegacyFS from 'expo-file-system/legacy';
+import { optionalNative } from './nativeArchive';
+import { cacheDirFor } from './cloudCache';
+import { createFolder, deleteReaderComic, getReaderComic, insertReaderComic, setComicStorage } from './readerLibrary';
 
 export type ImportResult = { imported: string[]; failed: Array<{ name: string; reason: string }> };
 
@@ -13,15 +16,19 @@ const titleOf = (name: string) => name.replace(/\.[^.]+$/, '').replace(/[_]+/g, 
 
 const comicsRoot = () => new Directory(Paths.document, 'comics');
 
-export type ImportOptions = { folderId?: string };
+export type ImportOptions = { folderId?: string; /** Keep the file where it is (Drive, Dropbox…) and only remember the link. */ sourceUri?: string };
 
 async function importFile(uri: string, name: string, result: ImportResult, opts: ImportOptions = {}, depth = 0): Promise<void> {
   const id = randomUUID();
   const dir = new Directory(comicsRoot(), id);
   try {
     dir.create();
-    const stored = new File(dir, 'book');
-    await new File(uri).copy(stored); // async in SDK 57: opening before it resolves reads a partial file
+    // A linked (cloud) comic's file goes to the cache, which cleans itself up; its cover stays here for good.
+    const bookDir = opts.sourceUri ? cacheDirFor(id) : dir;
+    if (opts.sourceUri) bookDir.create({ intermediates: true });
+    const stored = new File(bookDir, 'book');
+    if (opts.sourceUri) await LegacyFS.copyAsync({ from: uri, to: stored.uri });
+    else await new File(uri).copy(stored); // async in SDK 57: opening before it resolves reads a partial file
     let source;
     try {
       source = await openComicSource(stored.uri, `import-${id}`);
@@ -34,10 +41,10 @@ async function importFile(uri: string, name: string, result: ImportResult, opts:
         if (nested.length) {
           for (const entry of nested) {
             const tmp = new File(Paths.cache, `nested-${randomUUID()}`);
-            try { extractNestedComic(stored.uri, entry, tmp); await importFile(tmp.uri, entry.split('/').pop() ?? entry, result, opts, depth + 1); }
+            try { extractNestedComic(stored.uri, entry, tmp); await importFile(tmp.uri, entry.split('/').pop() ?? entry, result, { ...opts, sourceUri: undefined }, depth + 1); }
             finally { try { if (tmp.exists) tmp.delete(); } catch { /* ignore */ } }
           }
-          dir.delete();
+          dir.delete(); try { if (bookDir.exists) bookDir.delete(); } catch { /* cache */ }
           return;
         }
       }
@@ -56,7 +63,7 @@ async function importFile(uri: string, name: string, result: ImportResult, opts:
     insertReaderComic({
       id, title: displayTitle(info, titleOf(name)), path: stored.uri, format: source.format, pageCount: source.pageCount, coverPath,
       series: info.series ?? null, issue: info.number ?? null, writer: info.writer ?? null, folderId: opts.folderId ?? null,
-      mode: info.rtl ? 'rtl' : 'ltr', sizeBytes: (() => { try { return new File(stored.uri).size ?? null; } catch { return null; } })(),
+      mode: info.rtl ? 'rtl' : 'ltr', sourceUri: opts.sourceUri ?? null, sizeBytes: (() => { try { return new File(stored.uri).size ?? null; } catch { return null; } })(),
     });
     // Into the library too, owned digitally — and into the catalog if it isn't there yet.
     try { linkReaderComic({ id, title: displayTitle(info, titleOf(name)), series: info.series ?? null, writer: info.writer ?? null, coverPath, workId: null }); } catch { /* the file is still readable without the link */ }
@@ -64,6 +71,7 @@ async function importFile(uri: string, name: string, result: ImportResult, opts:
     result.imported.push(name);
   } catch (e) {
     try { if (dir.exists) dir.delete(); } catch { /* ignore */ }
+    try { if (opts.sourceUri) cacheDirFor(id).delete(); } catch { /* ignore */ }
     result.failed.push({ name, reason: e instanceof ComicOpenError ? e.message : 'Could not import this file.' });
   }
 }
@@ -84,9 +92,27 @@ export async function pickAndImportComics(opts: ImportOptions = {}): Promise<Imp
   return result;
 }
 
+/** Pick comics from Drive, Dropbox or any cloud app and keep them THERE: only a link, the cover and the page count stay on the phone. */
+export async function pickAndLinkComics(opts: Omit<ImportOptions, 'sourceUri'> = {}): Promise<ImportResult> {
+  const picked = await DocumentPicker.getDocumentAsync({ type: '*/*', multiple: true, copyToCacheDirectory: false });
+  const result: ImportResult = { imported: [], failed: [] };
+  if (picked.canceled) return result;
+  const root = comicsRoot();
+  if (!root.exists) root.create({ intermediates: true });
+  for (const asset of picked.assets) {
+    // Without this, Android forgets the file the moment the app closes.
+    try { optionalNative()?.persistUriPermission?.(asset.uri); } catch { /* some providers don't offer it; the link then lasts for this session */ }
+    await importFile(asset.uri, asset.name, result, { ...opts, sourceUri: asset.uri });
+  }
+  return result;
+}
+
 export function removeComic(id: string): void {
   const comic = getReaderComic(id);
-  if (comic) { try { const dir = new File(comic.path).parentDirectory; if (dir.exists) dir.delete(); } catch { /* ignore */ } }
+  if (comic) {
+    try { const dir = new Directory(comicsRoot(), id); if (dir.exists) dir.delete(); } catch { /* ignore */ }
+    try { const cached = cacheDirFor(id); if (cached.exists) cached.delete(); } catch { /* ignore */ }
+  }
   try { unlinkReaderComic(id); } catch { /* the library entry is cosmetic; the file removal matters more */ }
   deleteReaderComic(id);
 }
@@ -124,4 +150,19 @@ export async function importLocalFile(uri: string, name: string, opts: ImportOpt
   if (!root.exists) root.create({ intermediates: true });
   await importFile(uri, name, result, opts);
   return result;
+}
+
+/** Turn a cloud link into a normal comic stored on this phone (so it reads offline). */
+export async function keepCopyOnDevice(id: string): Promise<boolean> {
+  const comic = getReaderComic(id);
+  if (!comic?.sourceUri) return true;
+  const { ensureLocalCopy, freeSpaceFor } = await import('./cloudCache');
+  const cached = await ensureLocalCopy(comic);
+  const dir = new Directory(comicsRoot(), id);
+  if (!dir.exists) dir.create({ intermediates: true });
+  const dest = new File(dir, 'book');
+  await new File(cached).copy(dest);
+  setComicStorage(id, dest.uri, null);
+  freeSpaceFor(id);
+  return true;
 }

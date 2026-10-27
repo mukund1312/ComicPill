@@ -1,5 +1,6 @@
 package expo.modules.comicarchive
 
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
@@ -136,6 +137,15 @@ class ComicArchiveModule : Module() {
 
   override fun definition() = ModuleDefinition {
     Name("ComicArchive")
+
+    // Keep access to a file the reader picked from Drive, Dropbox or any other document provider, after the app is closed.
+    Function("persistUriPermission") { uri: String ->
+      try {
+        val ctx = appContext.reactContext ?: return@Function false
+        ctx.contentResolver.takePersistableUriPermission(Uri.parse(uri), Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        true
+      } catch (e: Exception) { false }
+    }
 
     AsyncFunction("listEntries") { path: String, kind: String ->
       try {

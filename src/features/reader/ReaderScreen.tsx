@@ -23,6 +23,7 @@ import { contentBox, decodeBase64, FULL_PAGE, type Panel } from '../../lib/reade
 import { isUnlocked } from '../../lib/reader/lock';
 import { recognizeText } from '../../lib/mind/capture/ocr';
 import { optionalNative } from '../../lib/reader/nativeArchive';
+import { CloudFetchError, ensureLocalCopy, isCached } from '../../lib/reader/cloudCache';
 import { ComicOpenError, openComicSource, type ComicSource, type PageSize } from '../../lib/reader/ComicSource';
 import { buildUnits, unitIndexOf } from '../../lib/reader/formats/spreads';
 import { BACKGROUND_COLORS, resolveReading, type Fit, type Reading } from '../../lib/reader/presets';
@@ -90,13 +91,14 @@ export default function ReaderScreen() {
     let live = true; let opened: ComicSource | null = null;
     (async () => {
       try {
-        const s = await openComicSource(comic.path, `read-${comic.id}`);
+        const localPath = await ensureLocalCopy(comic); // a cloud link is fetched here the first time
+        const s = await openComicSource(localPath, `read-${comic.id}`);
         if (!live) { s.close(); return; }
         opened = s; setSource(s);
         const result = await loadSizes(comic, s, () => live);
         if (live) setSizes(result);
       } catch (e) {
-        if (live) setError(e instanceof ComicOpenError ? e.message : 'Could not open this comic.');
+        if (live) setError(e instanceof ComicOpenError || e instanceof CloudFetchError ? e.message : 'Could not open this comic.');
       }
     })();
     return () => { live = false; opened?.close(); };
@@ -104,7 +106,7 @@ export default function ReaderScreen() {
 
   if (gate) return <UnlockGate kind={gate.kind} id={gate.id} name={gate.name} onUnlocked={() => setUnlockTick((t) => t + 1)} />;
   if (error) return <View style={styles.center}><Text style={styles.errorText}>{error}</Text><Pressable onPress={() => router.back()} style={styles.button}><Text style={styles.buttonText}>Back</Text></Pressable></View>;
-  if (!comic || !source || sizes === undefined || !reading) return <View style={styles.center}><ActivityIndicator color={color.accent} /><Text style={styles.errorText}>Preparing pages…</Text></View>;
+  if (!comic || !source || sizes === undefined || !reading) return <View style={styles.center}><ActivityIndicator color={color.accent} /><Text style={styles.errorText}>{comic?.sourceUri && !isCached(comic.id) ? 'Fetching from your cloud app…' : 'Preparing pages…'}</Text></View>;
   return <Reader comic={comic} source={source} sizes={sizes} reading={reading} settings={settings} />;
 }
 
