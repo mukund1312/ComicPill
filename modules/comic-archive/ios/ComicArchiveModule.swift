@@ -116,8 +116,12 @@ public class ComicArchiveModule: Module {
   }
 
   static func sevenZipEntries(_ url: URL) throws -> [SWCompression.SevenZipEntry] {
-    let data = try Data(contentsOf: url, options: .mappedIfSafe)
-    return try SevenZipContainer.open(container: data)
+    do {
+      let data = try Data(contentsOf: url, options: .mappedIfSafe)
+      return try SevenZipContainer.open(container: data)
+    } catch {
+      throw Exception(name: "SEVENZIP", description: "7z: \(error)")
+    }
   }
 
   static func openPdf(_ url: URL) throws -> PDFDocument {

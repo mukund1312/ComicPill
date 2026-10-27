@@ -1,4 +1,7 @@
 import { sqlite } from '../db/client';
+// eslint-disable-next-line import/no-unresolved -- package ships .ts source; tsc and Metro resolve it
+import { Paths } from 'expo-file-system';
+import { rebase } from './portablePath';
 import type { Lock } from './lock';
 import type { ShelfComic } from './shelf';
 
@@ -32,8 +35,16 @@ const parseSizes = (json: string | null): ReaderComic['sizes'] => {
   try { const v = json ? JSON.parse(json) : null; return Array.isArray(v) ? v : null; } catch { return null; }
 };
 
+// Today's app folders, with the trailing slash. Computed once: they don't change while the app runs.
+const ROOTS: Record<string, string> = {
+  '/Documents/': Paths.document.uri.endsWith('/') ? Paths.document.uri : `${Paths.document.uri}/`,
+  '/Library/Caches/': Paths.cache.uri.endsWith('/') ? Paths.cache.uri : `${Paths.cache.uri}/`,
+};
+/** A saved file address, pointed at this install's app folder (iOS changes it on update/reinstall). */
+const here = (p: string | null): string | null => (p ? rebase(p, ROOTS) : p);
+
 const map = (r: Row): ReaderComic => ({
-  id: r.id, title: r.title, path: r.path, format: r.format, pageCount: r.page_count, coverPath: r.cover_path,
+  id: r.id, title: r.title, path: here(r.path) ?? r.path, format: r.format, pageCount: r.page_count, coverPath: here(r.cover_path),
   addedAt: r.added_at, lastReadAt: r.last_read_at, progressPage: r.progress_page, mode: r.mode as ReaderMode,
   progressOffset: r.progress_offset ?? 0, sizes: parseSizes(r.sizes_json),
   series: r.series, issue: r.issue, writer: r.writer, folderId: r.folder_id, presetId: r.preset_id, locked: !!r.lock_hash, workId: r.work_id, sizeBytes: r.size_bytes ?? null, sourceUri: r.source_uri ?? null,
