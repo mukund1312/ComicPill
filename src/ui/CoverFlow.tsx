@@ -11,7 +11,7 @@ export type FlowItem = { title: string; workId?: string };
 export function CoverFlow({ items, height = 360, cardWidth }: { items: FlowItem[]; height?: number; cardWidth?: number }) {
   const { width, height: screenH } = useWindowDimensions(); const { theme } = useAppearance();
   const big = Math.min(width, screenH) >= 600; // tablets get bigger covers
-  const cardW = cardWidth ?? Math.min(big ? 280 : 180, width * 0.44); const gap = 14; const step = cardW + gap;
+  const cardW = cardWidth ?? Math.min(big ? 280 : 180, width * 0.44); const gap = 26; const step = cardW + gap;
   const row = useMemo(() => (items.length ? [...items, ...items, ...items] : []), [items]);
   const x = useSharedValue(0);
   useEffect(() => {
@@ -21,21 +21,21 @@ export function CoverFlow({ items, height = 360, cardWidth }: { items: FlowItem[
   }, [items.length, step, x]);
   const move = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
   const cards = row.map((it, i) => (
-    <View key={`${it.workId ?? it.title}-${i}`} style={{ width: cardW, marginRight: gap }}><ComicCover size="fluid" title={it.title} workId={it.workId} /></View>
+    <View key={`${it.workId ?? it.title}-${i}`} style={{ width: cardW, marginRight: gap }}>
+      {/* a soft shadow built from stacked translucent layers (Android's own shadow would draw above the fade) */}
+      {[34, 29, 24, 19, 14, 9, 5, 2].map((grow, k) => <View key={grow} pointerEvents="none" style={{ position: 'absolute', left: -grow, right: -grow, top: -grow + 16, bottom: -grow - 16, borderRadius: 14 + grow, backgroundColor: '#000', opacity: 0.06 + k * 0.014 }} />)}
+      <ComicCover size="fluid" title={it.title} workId={it.workId} />
+    </View>
   ));
   return (
     <View style={{ height, overflow: 'hidden' }}>
-      <Animated.View style={[styles.row, { paddingLeft: (width - cardW) / 2 - step }, move]}>{cards}</Animated.View>
-      {/* the reflection: the same row upside-down, faded out */}
-      <View pointerEvents="none" style={[styles.mirrorWrap, { top: cardW * 1.5 + 8 }]}>
-        <Animated.View style={[styles.row, { paddingLeft: (width - cardW) / 2 - step, transform: [{ scaleY: -1 }], opacity: 0.3 }, move]}>{cards}</Animated.View>
-      </View>
-      <LinearGradient pointerEvents="none" colors={['transparent', theme.colors.background]} locations={[0.35, 0.85]} style={StyleSheet.absoluteFill} />
+      <Animated.View style={[styles.row, { paddingTop: 28, paddingLeft: (width - cardW) / 2 - step }, move]}>{cards}</Animated.View>
+      {/* the ribbon melts into the page over its lower half: no edge, nothing to cut off */}
+      <LinearGradient pointerEvents="none" colors={[`${theme.colors.background}00`, `${theme.colors.background}00`, `${theme.colors.background}55`, `${theme.colors.background}CC`, theme.colors.background]} locations={[0, 0.34, 0.52, 0.68, 0.78]} style={StyleSheet.absoluteFill} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row' },
-  mirrorWrap: { position: 'absolute', left: 0, right: 0, height: 140, overflow: 'hidden' },
 });
