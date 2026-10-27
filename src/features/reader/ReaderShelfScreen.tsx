@@ -4,8 +4,10 @@ import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
-import Animated, { FadeIn, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { ActionSheet, PromptModal, type SheetOption } from './dialogs';
+import { DragStack, STACK_H, STACK_W } from './DragStack';
+import { feedback } from '../../lib/platform/feedback';
 import { AppShell } from '../../ui/AppShell';
 import { HeaderActions, HeaderButton } from '../../ui/Icon';
 import { useLayout } from '../../ui/layout';
@@ -291,9 +293,9 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   const tick = useRef<ReturnType<typeof setInterval> | null>(null);
   const probing = useRef(false);
   const [dragging, setDragging] = useState(false);
+  const [dragLead, setDragLead] = useState<string | null>(null);
   const [hoverTarget, setHoverTarget] = useState<string | null>(null);
   const dragX = useSharedValue(0); const dragY = useSharedValue(0);
-  const dragStyle = useAnimatedStyle(() => ({ transform: [{ translateX: dragX.value }, { translateY: dragY.value }] }));
   // The functions below run from a timer and from gestures, so they read the screen's current state from here.
   const latest = useRef({ openFolder, folders, lockedFolders });
   useEffect(() => { latest.current = { openFolder, folders, lockedFolders }; });
@@ -320,6 +322,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
     if (hover.current.timer) clearTimeout(hover.current.timer);
     hover.current = { target, timer: null };
     setHoverTarget(target);
+    if (target) feedback.select(); // over a folder
     if (target) hover.current.timer = setTimeout(() => {
       hover.current = { target: null, timer: null }; setHoverTarget(null);
       setOpenFolder(target === 'up' ? parentOfOpen() : target);
@@ -335,12 +338,14 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
       hoverOn(await targetAt(x, y));
     } finally { probing.current = false; }
   };
-  const place = (x: number, y: number) => { dragX.set(x - frameBox.current.x - 44); dragY.set(y - frameBox.current.y - 60); };
+  const place = (x: number, y: number) => { dragX.set(x - frameBox.current.x - STACK_W / 2); dragY.set(y - frameBox.current.y - STACK_H / 2); };
   const dragApi = useMemo(() => ({
     start: (id: string, x: number, y: number) => {
       if (!selectedRef.current.has(id)) commitSelected(new Set(selectedRef.current).add(id));
       finger.current = { x, y };
       setDragging(true);
+      feedback.tap(); // picked up
+      setDragLead(id);
       frameRef.current?.measureInWindow((fx, fy, _w, h) => { frameBox.current = { x: fx, y: fy, h }; place(finger.current.x, finger.current.y); });
       tick.current = setInterval(() => { void probe(); }, 110);
     },
@@ -355,6 +360,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
       if (!target) return;
       const destination = target === 'up' ? parentOfOpen() : target;
       const n = moveItems([...selectedRef.current], [], destination);
+      feedback.success();
       endSelecting(); refresh(); flash(`Moved ${n} to ${targetName(destination)}`);
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps -- the handlers read live state through refs; they must stay one stable object for the gestures
@@ -365,6 +371,14 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
       : query
         ? <EmptyState title="No matches" copy="Try a title, series or writer." />
         : <EmptyState title={inside ? 'This is empty' : 'No files yet'} copy={inside ? 'Import files straight into this folder, or move comics here from their long-press menu.' : 'Import CBZ, CBR, CB7, ZIP, PDF or comic EPUB files from your phone to read them here.'} action={inside && segment === 'library' ? 'Import here' : inside ? undefined : 'Import comics'} onAction={inside && segment !== 'library' ? undefined : importHere} />;
+
+  // The pile under the finger: the comic you picked up on top, then the others, in the order they sit on the shelf.
+  const dragCovers = useMemo(() => {
+    const chosen = comics.filter((comic) => selected.has(comic.id) && !comic.locked);
+    const lead = chosen.findIndex((comic) => comic.id === dragLead);
+    const ordered = lead > 0 ? [chosen[lead], ...chosen.slice(0, lead), ...chosen.slice(lead + 1)] : chosen;
+    return ordered.slice(0, 4).map((comic) => ({ uri: comic.coverPath, title: comic.title }));
+  }, [comics, selected, dragLead]);
 
   const folderSub = (f: ReaderFolder) => [f.count > 0 || f.subfolders === 0 ? `${f.count} ${f.count === 1 ? 'title' : 'titles'}` : null, f.subfolders ? `${f.subfolders} ${f.subfolders === 1 ? 'folder' : 'folders'}` : null].filter(Boolean).join(' · ');
 
@@ -382,7 +396,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
     );
     const press = () => (selecting ? toggleSelect(comic) : openComic(comic));
     const longPress = selecting ? undefined : () => comicMenu(comic);
-    const draggable = (body: ReactNode) => <DragSource enabled={selecting} id={comic.id} api={dragApi}><View collapsable={false} style={view === 'grid' ? { width: cellWidth, alignSelf: 'center' } : undefined}>{body}</View></DragSource>;
+    const draggable = (body: ReactNode) => <DragSource enabled={selecting} id={comic.id} api={dragApi}><View collapsable={false} style={[view === 'grid' ? { width: cellWidth, alignSelf: 'center' } : null, dragging && selected.has(comic.id) ? styles.carried : null]}>{body}</View></DragSource>;
     if (view === 'list') {
       return draggable(
         <PressableScale to={0.985} style={styles.listRow} onPress={press} onLongPress={longPress}>
@@ -445,7 +459,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
         }
         ListEmptyComponent={empty}
       />
-      {dragging ? <Animated.View pointerEvents="none" style={[styles.dragChip, dragStyle]}><Text style={styles.dragText}>{selected.size} {selected.size === 1 ? 'comic' : 'comics'}</Text></Animated.View> : null}
+      {dragging ? <DragStack covers={dragCovers} count={selected.size} x={dragX} y={dragY} /> : null}
       {notice ? <View pointerEvents="none" style={styles.toast}><Text style={styles.toastText}>{notice}</Text></View> : null}
       {selecting ? (
         <View style={styles.bar}>
@@ -490,10 +504,12 @@ function Tile({ styles, view, width, label, sub, glyph, covers, highlight, regis
   );
   // The wrapper is what the drag looks for under the finger; the ring shows it will accept the drop.
   const ring = highlight ? <View pointerEvents="none" style={styles.dropRing} /> : null;
+  // The folder swells as the pile comes over it, then settles back when it leaves.
+  const swell = useAnimatedStyle(() => ({ transform: [{ scale: withSpring(highlight ? 1.08 : 1, { damping: 14, stiffness: 240 }) }] }), [highlight]);
   if (view === 'list') {
-    return <View ref={registerRef} collapsable={false}><PressableScale to={0.985} style={styles.listRow} onPress={onPress} onLongPress={onLongPress}>{stack}<View style={styles.listBody}><Text numberOfLines={2} style={styles.title}>{label}</Text><Text style={styles.sub}>{sub}</Text></View></PressableScale>{ring}</View>;
+    return <View ref={registerRef} collapsable={false}><Animated.View style={swell}><PressableScale to={0.985} style={styles.listRow} onPress={onPress} onLongPress={onLongPress}>{stack}<View style={styles.listBody}><Text numberOfLines={2} style={styles.title}>{label}</Text><Text style={styles.sub}>{sub}</Text></View></PressableScale>{ring}</Animated.View></View>;
   }
-  return <View ref={registerRef} collapsable={false} style={{ width, alignSelf: 'center' }}><PressableScale style={[styles.cell, { width }]} onPress={onPress} onLongPress={onLongPress}>{stack}<Text numberOfLines={1} style={styles.title}>{label}</Text><Text style={styles.sub}>{sub}</Text></PressableScale>{ring}</View>;
+  return <View ref={registerRef} collapsable={false} style={{ width, alignSelf: 'center' }}><Animated.View style={swell}><PressableScale style={[styles.cell, { width }]} onPress={onPress} onLongPress={onLongPress}>{stack}<Text numberOfLines={1} style={styles.title}>{label}</Text><Text style={styles.sub}>{sub}</Text></PressableScale>{ring}</Animated.View></View>;
 }
 
 /** Lets a comic be held and dragged while selecting. A short hold starts the drag; moving sooner just scrolls. */
@@ -540,10 +556,9 @@ function makeStyles(c: ThemeColors, t: TypographyPreset) {
     backHot: { borderColor: c.primary },
     here: { color: c.textPrimary, fontFamily: t.displayMedium, fontSize: 16, flexShrink: 1 },
     subActions: { flexDirection: 'row', alignItems: 'center', gap: space.lg },
+    carried: { opacity: 0.3, transform: [{ scale: 0.94 }] },
     picked: { ...StyleSheet.absoluteFill, backgroundColor: '#00000066', alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: c.primary, borderRadius: 14 },
     dropRing: { ...StyleSheet.absoluteFill, borderRadius: 16, borderWidth: 3, borderColor: c.primary, backgroundColor: '#ffffff14' },
-    dragChip: { position: 'absolute', left: 0, top: 0, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, backgroundColor: c.primary, shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 10 },
-    dragText: { color: c.primaryForeground, fontFamily: t.bodySemibold, fontSize: 15 },
     bar: { position: 'absolute', left: space.lg, right: space.lg, bottom: 24, flexDirection: 'row', alignItems: 'center', gap: space.lg, padding: space.md, paddingHorizontal: space.lg, borderRadius: 18, backgroundColor: c.surfaceRaised, borderWidth: 1, borderColor: c.border, shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 12 },
     barBody: { flex: 1, gap: 4 },
     barText: { color: c.textPrimary, fontFamily: t.bodySemibold, fontSize: 14 },
