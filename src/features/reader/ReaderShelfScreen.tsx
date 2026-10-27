@@ -1,9 +1,10 @@
-import { useCallback, useMemo, useState } from 'react';
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { FlashList, type FlashListRef } from '@shopify/flash-list';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated, { FadeIn, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { ActionSheet, PromptModal, type SheetOption } from './dialogs';
 import { AppShell } from '../../ui/AppShell';
 import { HeaderActions, HeaderButton } from '../../ui/Icon';
@@ -16,13 +17,15 @@ import { space, radius } from '../../ui/tokens';
 import { getMeta, setMeta } from '../../lib/db/queries/meta';
 import {
   collectionComicIds, collectionsForComic, createCollection, createFolder, deleteCollection, deleteFolder, getLock, listCollections, listFolders,
-  listReaderComics, markComic, renameCollection, renameFolder, renameReaderComic, setComicFolder, setComicPreset, setFolderPreset, setLock, toggleInCollection,
+  listReaderComics, markComic, moveItems, unpreparedLinkIds, renameCollection, renameFolder, renameReaderComic, setComicFolder, setComicPreset, setFolderPreset, setLock, toggleInCollection,
   type ReaderCollection, type ReaderComic, type ReaderFolder,
 } from '../../lib/reader/readerLibrary';
-import { keepCopyOnDevice, pickAndImportComics, pickAndImportFolder, pickAndLinkComics, removeComic, type ImportResult } from '../../lib/reader/importComics';
+import { keepCopyOnDevice, pickAndImportComics, pickAndImportFolder, pickAndLinkComics, pickAndLinkFolder, prepareLinkedComics, removeComic, removeComics, type ImportProgress, type ImportResult } from '../../lib/reader/importComics';
+import { getJob, runJob, subscribeJob, useJob } from '../../lib/reader/importJob';
+import { canMoveFolders, pathTo, shutFolders } from '../../lib/reader/folderTree';
 import { freeSpaceFor, isCached } from '../../lib/reader/cloudCache';
 import { Icon } from '../../ui/Icon';
-import { checkPassword, isHiddenByFolder, isUnlocked, makeLock, markUnlocked, passwordProblem } from '../../lib/reader/lock';
+import { checkPassword, isUnlocked, makeLock, markUnlocked, passwordProblem } from '../../lib/reader/lock';
 import { newSalt, sha256 } from '../../lib/reader/lockCrypto';
 import { listPresets } from '../../lib/reader/readerSettings';
 import { isFinished, matchesQuery, progressFraction, readingNow, SORT_LABEL, sortComics, type SortKey } from '../../lib/reader/shelf';
@@ -63,6 +66,13 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   const [busy, setBusy] = useState(false);
   const [sheet, setSheet] = useState<Sheet>(null);
   const [prompt, setPrompt] = useState<Prompt>(null);
+  // Selecting several comics, to move or delete them together or drag them onto a folder.
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const selectedRef = useRef(selected);
+  const commitSelected = (next: Set<string>) => { selectedRef.current = next; setSelected(next); };
+  const [notice, setNotice] = useState<string | null>(null);
+  const flash = (text: string) => { setNotice(text); setTimeout(() => setNotice((n) => (n === text ? null : n)), 2600); };
 
   const refresh = useCallback(() => { setComics(listReaderComics()); setFolders(listFolders()); setCollections(listCollections()); }, []);
   useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
@@ -73,8 +83,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   const lockedFolders = useMemo(() => new Set(folders.filter((f) => f.locked).map((f) => f.id)), [folders]);
   const openFolders = new Set(folders.filter((f) => isUnlocked('folder', f.id)).map((f) => f.id)); // read each render: unlocks happen outside React state
   // A folder that was open but has locked again (the app left the foreground) goes back to the top.
-  const openFolder = openFolderRaw && lockedFolders.has(openFolderRaw) && !openFolders.has(openFolderRaw) ? null : openFolderRaw;
-  const hidden = (comic: ReaderComic) => isHiddenByFolder(comic, lockedFolders, openFolders);
+  const openFolder = openFolderRaw && pathTo(folders, openFolderRaw).some((id) => lockedFolders.has(id) && !openFolders.has(id)) ? null : openFolderRaw;
   const coverHidden = (comic: ReaderComic) => comic.locked && !isUnlocked('comic', comic.id);
 
   const askPassword = (kind: 'comic' | 'folder', id: string, name: string, then: () => void) => setPrompt({
@@ -102,15 +111,17 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   });
   const removeLock = (kind: 'comic' | 'folder', id: string, name: string) => requireUnlock(kind, id, name, true, () => { setLock(kind, id, null); refresh(); });
 
-  const report = (r: ImportResult) => {
-    if (r.failed.length) Alert.alert('Some files could not be imported', r.failed.map((f) => `${f.name}: ${f.reason}`).join('\n\n'));
+  // Imports run as the app's one background job: they keep going if you leave this screen, and the bar at the bottom of every screen shows how they are doing.
+  const job = useJob();
+  const runImport = async (label: string, verb: string, fn: (progress: ImportProgress) => Promise<ImportResult>) => {
+    const started = await runJob(label, async (progress) => ({ verb, result: await fn(progress) }));
+    if (!started) Alert.alert('Another import is running', 'Wait for it to finish, or press Stop on the bar at the bottom.');
+    refresh();
   };
-  const runImport = async (fn: () => Promise<ImportResult>) => {
-    setBusy(true);
-    try { report(await fn()); } finally { setBusy(false); refresh(); }
-  };
+  // Comics show up on the shelf as they are added, not only at the end.
+  useEffect(() => subscribeJob(() => { const j = getJob(); if (!j.running || j.done % 5 === 0) refresh(); }), [refresh]);
   // Importing while you are inside a folder puts the files in that folder.
-  const importHere = () => runImport(() => pickAndImportComics({ folderId: openFolder ?? undefined }));
+  const importHere = () => runImport('Importing', 'Imported', (p) => pickAndImportComics({ folderId: openFolder ?? undefined, ...p }));
 
   // A folder wears the covers of the first comics inside it (oldest first), so it never looks blank.
   const folderCovers = useMemo(() => {
@@ -126,7 +137,8 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
 
   const cells: Cell[] = useMemo(() => {
     const searching = query.trim().length > 0;
-    const visible = comics.filter((comic) => !isHiddenByFolder(comic, lockedFolders, new Set(folders.filter((f) => isUnlocked('folder', f.id)).map((f) => f.id))));
+    const shut = shutFolders(folders, lockedFolders, new Set(folders.filter((f) => isUnlocked('folder', f.id)).map((f) => f.id)));
+    const visible = comics.filter((comic) => !(comic.folderId && shut.has(comic.folderId)));
     if (segment === 'collections' && !openCollection) {
       return collections.filter((col) => col.name.toLowerCase().includes(query.trim().toLowerCase())).map((collection) => ({ kind: 'collection', key: collection.id, collection }));
     }
@@ -135,18 +147,24 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
     else if (searching) pool = visible; // search looks everywhere, folders included
     else pool = visible.filter((comic) => comic.folderId === openFolder);
     const sorted = sortComics(pool.filter((comic) => matchesQuery(comic, query)), sort);
-    const folderCells: Cell[] = segment === 'library' && !openFolder && !searching ? folders.map((folder) => ({ kind: 'folder', key: `f-${folder.id}`, folder })) : [];
+    const folderCells: Cell[] = segment === 'library' && !searching ? folders.filter((f) => f.parentId === openFolder).map((folder) => ({ kind: 'folder', key: `f-${folder.id}`, folder })) : [];
     return [...folderCells, ...sorted.map((comic): Cell => ({ kind: 'comic', key: comic.id, comic }))];
   }, [segment, comics, folders, collections, lockedFolders, query, sort, openFolder, openCollection]);
 
-  const pickFolderFor = (comic: ReaderComic) => setSheet({
-    title: 'Move to folder',
-    options: [
-      { label: 'No folder', checked: !comic.folderId, onPress: () => { setComicFolder(comic.id, null); refresh(); } },
-      ...folders.map((f) => ({ label: f.name, checked: comic.folderId === f.id, onPress: () => { setComicFolder(comic.id, f.id); refresh(); } })),
-      { label: 'New folder…', onPress: () => setPrompt({ title: 'New folder', submitLabel: 'Create', onSubmit: (name) => { setComicFolder(comic.id, createFolder(name)); refresh(); } }) },
-    ],
-  });
+  const folderLabel = (id: string) => pathTo(folders, id).map((p) => folders.find((f) => f.id === p)?.name ?? '').join(' › ');
+  /** A list of every folder (with its path) to move things into. `current` gets the tick. */
+  const chooseDestination = (title: string, forbidden: (folderId: string) => boolean, current: string | null | undefined, onPick: (target: string | null) => void) => {
+    const choices = folders.filter((f) => !forbidden(f.id)).map((f) => ({ id: f.id, label: folderLabel(f.id) })).sort((x, y) => x.label.localeCompare(y.label, undefined, { sensitivity: 'base' }));
+    setSheet({
+      title,
+      options: [
+        { label: 'Library (top level)', checked: current === null, onPress: () => onPick(null) },
+        ...choices.map((choice) => ({ label: choice.label, checked: current === choice.id, onPress: () => onPick(choice.id) })),
+        { label: 'New folder…', onPress: () => setPrompt({ title: 'New folder', submitLabel: 'Create', onSubmit: (name) => onPick(createFolder(name, null)) }) },
+      ],
+    });
+  };
+  const pickFolderFor = (comic: ReaderComic) => chooseDestination('Move to folder', () => false, comic.folderId, (target) => { setComicFolder(comic.id, target); refresh(); });
 
   const pickCollectionFor = (comic: ReaderComic) => {
     const member = new Set(collectionsForComic(comic.id));
@@ -190,9 +208,11 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
     title: f.name,
     options: [
       { label: 'Rename', onPress: () => requireUnlock('folder', f.id, f.name, f.locked, () => setPrompt({ title: 'Rename folder', initial: f.name, onSubmit: (name) => { renameFolder(f.id, name); refresh(); } })) },
+      { label: 'New folder inside…', onPress: () => requireUnlock('folder', f.id, f.name, f.locked, () => setPrompt({ title: `New folder in “${f.name}”`, submitLabel: 'Create', onSubmit: (name) => { createFolder(name, f.id); refresh(); } })) },
+      { label: 'Move to folder…', onPress: () => requireUnlock('folder', f.id, f.name, f.locked, () => chooseDestination(`Move “${f.name}”`, (id) => !canMoveFolders(folders, [f.id], id), f.parentId, (target) => { moveItems([], [f.id], target); refresh(); })) },
       { label: 'Reading preset for this folder…', onPress: () => pickPreset(f.presetId, 'Folder preset', (id) => { setFolderPreset(f.id, id); refresh(); }) },
       f.locked ? { label: 'Remove password lock', onPress: () => removeLock('folder', f.id, f.name) } : { label: 'Lock with a password…', onPress: () => chooseLock('folder', f.id, f.name) },
-      { label: 'Delete folder (keeps comics)', destructive: true, onPress: () => requireUnlock('folder', f.id, f.name, f.locked, () => { deleteFolder(f.id); refresh(); }) },
+      { label: 'Delete folder (keeps what’s inside)', destructive: true, onPress: () => requireUnlock('folder', f.id, f.name, f.locked, () => { deleteFolder(f.id); refresh(); }) },
     ],
   });
 
@@ -207,13 +227,20 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   const insideName = segment === 'library' ? folders.find((f) => f.id === openFolder)?.name : segment === 'collections' ? collections.find((col) => col.id === openCollection)?.name : undefined;
   const inside = !!insideName;
 
+  const parentName = openFolder ? folders.find((f) => f.id === folders.find((x) => x.id === openFolder)?.parentId)?.name : undefined;
+  const backLabel = segment === 'collections' ? 'Collections' : parentName ?? 'Library';
+  const goBack = () => { if (segment === 'collections') setOpenCollection(null); else setOpenFolder(folders.find((f) => f.id === openFolder)?.parentId ?? null); };
+
   const addMenu = () => setSheet({
     options: [
       { label: openFolder ? `Import files into “${insideName ?? 'this folder'}”…` : 'Import files…', onPress: importHere },
-      ...(Platform.OS === 'android' ? [{ label: 'Link from Drive or Dropbox (saves space)…', onPress: () => runImport(() => pickAndLinkComics({ folderId: openFolder ?? undefined })) }] : []),
+      { label: 'Link from Drive or Dropbox (saves space)…', onPress: () => runImport('Linking', 'Linked', (p) => pickAndLinkComics({ folderId: openFolder ?? undefined, ...p })) },
+      { label: 'Link a whole folder from Drive or Dropbox…', onPress: () => runImport('Linking folder', 'Linked', (p) => pickAndLinkFolder({ parentId: openFolder ?? undefined, ...p })) },
+      ...(unpreparedLinkIds().length ? [{ label: `Load covers for linked comics (${unpreparedLinkIds().length} left)`, onPress: () => runImport('Loading covers', 'Prepared', (p) => prepareLinkedComics(p)) }] : []),
       { label: 'Browse an OPDS server…', onPress: () => router.push('/reader/opds') },
-      { label: 'Import a folder…', onPress: () => runImport(pickAndImportFolder) },
-      { label: 'New folder…', onPress: () => setPrompt({ title: 'New folder', submitLabel: 'Create', onSubmit: (name) => { createFolder(name); refresh(); } }) },
+      { label: 'Import a folder…', onPress: () => runImport('Importing folder', 'Imported', (p) => pickAndImportFolder({ parentId: openFolder ?? undefined, ...p })) },
+      { label: openFolder ? `New folder inside “${insideName ?? 'this folder'}”…` : 'New folder…', onPress: () => setPrompt({ title: 'New folder', submitLabel: 'Create', onSubmit: (name) => { createFolder(name, openFolder); refresh(); } }) },
+      ...(segment === 'library' ? [{ label: 'Select comics…', onPress: () => setSelecting(true) }] : []),
       { label: 'New collection…', onPress: () => setPrompt({ title: 'New collection', submitLabel: 'Create', onSubmit: (name) => { createCollection(name); refresh(); } }) },
       { label: view === 'grid' ? 'Show as a list' : 'Show as a grid', onPress: () => setView(view === 'grid' ? 'list' : 'grid') },
       { label: 'Reader settings', onPress: () => router.push('/reader/settings') },
@@ -230,48 +257,164 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   });
 
 
+  // ---- selecting and dragging ---------------------------------------------------------------------
+  const toggleSelect = (comic: ReaderComic) => requireUnlock('comic', comic.id, comic.title, comic.locked, () => {
+    const next = new Set(selectedRef.current);
+    if (next.has(comic.id)) next.delete(comic.id); else next.add(comic.id);
+    commitSelected(next);
+  });
+  const endSelecting = () => { setSelecting(false); commitSelected(new Set()); };
+  const selectAll = () => commitSelected(new Set(cells.flatMap((cell) => (cell.kind === 'comic' && !cell.comic.locked ? [cell.comic.id] : []))));
+  const targetName = (id: string | null) => (id ? listFolders().find((f) => f.id === id)?.name ?? 'folder' : 'Library'); // reads the database: it also runs from the drag handlers
+  const moveSelected = () => chooseDestination(`Move ${selected.size} ${selected.size === 1 ? 'comic' : 'comics'}`, () => false, undefined, (target) => {
+    const n = moveItems([...selectedRef.current], [], target);
+    endSelecting(); refresh(); flash(`Moved ${n} to ${targetName(target)}`);
+  });
+  const deleteSelected = () => {
+    const ids = [...selected];
+    Alert.alert(`Delete ${ids.length} ${ids.length === 1 ? 'comic' : 'comics'}?`, 'They are removed from this device. Comics linked from Drive stay in Drive.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => { removeComics(ids); endSelecting(); refresh(); flash(`Deleted ${ids.length}`); } },
+    ]);
+  };
+
+  // Dragging: hold a comic and move it; the finger's place is checked against the folder tiles about ten times a second.
+  // Resting on a folder for a moment opens it (so you can keep going deeper); letting go on a folder moves the selection into it.
+  const listRef = useRef<FlashListRef<Cell>>(null);
+  const scrollY = useRef(0);
+  const frameRef = useRef<View>(null);
+  const frameBox = useRef({ x: 0, y: 0, h: 0 });
+  const folderViews = useRef(new Map<string, View>());
+  const backView = useRef<View>(null);
+  const finger = useRef({ x: 0, y: 0 });
+  const hover = useRef<{ target: string | null; timer: ReturnType<typeof setTimeout> | null }>({ target: null, timer: null });
+  const tick = useRef<ReturnType<typeof setInterval> | null>(null);
+  const probing = useRef(false);
+  const [dragging, setDragging] = useState(false);
+  const [hoverTarget, setHoverTarget] = useState<string | null>(null);
+  const dragX = useSharedValue(0); const dragY = useSharedValue(0);
+  const dragStyle = useAnimatedStyle(() => ({ transform: [{ translateX: dragX.value }, { translateY: dragY.value }] }));
+  // The functions below run from a timer and from gestures, so they read the screen's current state from here.
+  const latest = useRef({ openFolder, folders, lockedFolders });
+  useEffect(() => { latest.current = { openFolder, folders, lockedFolders }; });
+  useEffect(() => () => { if (tick.current) clearInterval(tick.current); if (hover.current.timer) clearTimeout(hover.current.timer); }, []);
+
+  type Box = { x: number; y: number; w: number; h: number };
+  const boxOf = (view: View | null) => new Promise<Box | null>((resolve) => {
+    if (!view) { resolve(null); return; }
+    view.measureInWindow((x, y, w, h) => resolve(w || h ? { x, y, w, h } : null));
+  });
+  const within = (b: Box | null, x: number, y: number) => !!b && x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h;
+  /** What is under the finger: a folder's id, 'up' (the back button), or nothing. */
+  const targetAt = async (x: number, y: number): Promise<string | null> => {
+    const { openFolder: here, lockedFolders: locked } = latest.current;
+    if (here && within(await boxOf(backView.current), x, y)) return 'up';
+    const entries = [...folderViews.current.entries()].filter(([id]) => !locked.has(id) || isUnlocked('folder', id));
+    const boxes = await Promise.all(entries.map(([, view]) => boxOf(view)));
+    const hit = boxes.findIndex((b) => within(b, x, y));
+    return hit >= 0 ? entries[hit][0] : null;
+  };
+  const parentOfOpen = () => latest.current.folders.find((f) => f.id === latest.current.openFolder)?.parentId ?? null;
+  const hoverOn = (target: string | null) => {
+    if (hover.current.target === target) return;
+    if (hover.current.timer) clearTimeout(hover.current.timer);
+    hover.current = { target, timer: null };
+    setHoverTarget(target);
+    if (target) hover.current.timer = setTimeout(() => {
+      hover.current = { target: null, timer: null }; setHoverTarget(null);
+      setOpenFolder(target === 'up' ? parentOfOpen() : target);
+    }, 800);
+  };
+  const scrollBy = (dy: number) => { scrollY.current = Math.max(0, scrollY.current + dy); listRef.current?.scrollToOffset({ offset: scrollY.current, animated: false }); };
+  const probe = async () => {
+    if (probing.current) return;
+    probing.current = true;
+    try {
+      const { x, y } = finger.current; const box = frameBox.current;
+      if (box.h) { const fromTop = y - box.y; if (fromTop < 90) scrollBy(-18); else if (fromTop > box.h - 90) scrollBy(18); } // near an edge: keep scrolling
+      hoverOn(await targetAt(x, y));
+    } finally { probing.current = false; }
+  };
+  const place = (x: number, y: number) => { dragX.set(x - frameBox.current.x - 44); dragY.set(y - frameBox.current.y - 60); };
+  const dragApi = useMemo(() => ({
+    start: (id: string, x: number, y: number) => {
+      if (!selectedRef.current.has(id)) commitSelected(new Set(selectedRef.current).add(id));
+      finger.current = { x, y };
+      setDragging(true);
+      frameRef.current?.measureInWindow((fx, fy, _w, h) => { frameBox.current = { x: fx, y: fy, h }; place(finger.current.x, finger.current.y); });
+      tick.current = setInterval(() => { void probe(); }, 110);
+    },
+    move: (x: number, y: number) => { finger.current = { x, y }; place(x, y); },
+    end: async () => {
+      if (!tick.current) return; // the hold never turned into a drag
+      clearInterval(tick.current);
+      tick.current = null;
+      if (hover.current.timer) clearTimeout(hover.current.timer);
+      const target = await targetAt(finger.current.x, finger.current.y);
+      hover.current = { target: null, timer: null }; setHoverTarget(null); setDragging(false);
+      if (!target) return;
+      const destination = target === 'up' ? parentOfOpen() : target;
+      const n = moveItems([...selectedRef.current], [], destination);
+      endSelecting(); refresh(); flash(`Moved ${n} to ${targetName(destination)}`);
+    },
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the handlers read live state through refs; they must stay one stable object for the gestures
+  }), []);
+
   const empty = segment === 'collections' && !openCollection
       ? <EmptyState title="No collections yet" copy="Group comics your own way — long-press a comic and choose “Add to collection”." action="New collection" onAction={() => setPrompt({ title: 'New collection', submitLabel: 'Create', onSubmit: (name) => { createCollection(name); refresh(); } })} />
       : query
         ? <EmptyState title="No matches" copy="Try a title, series or writer." />
         : <EmptyState title={inside ? 'This is empty' : 'No files yet'} copy={inside ? 'Import files straight into this folder, or move comics here from their long-press menu.' : 'Import CBZ, CBR, CB7, ZIP, PDF or comic EPUB files from your phone to read them here.'} action={inside && segment === 'library' ? 'Import here' : inside ? undefined : 'Import comics'} onAction={inside && segment !== 'library' ? undefined : importHere} />;
 
+  const folderSub = (f: ReaderFolder) => [f.count > 0 || f.subfolders === 0 ? `${f.count} ${f.count === 1 ? 'title' : 'titles'}` : null, f.subfolders ? `${f.subfolders} ${f.subfolders === 1 ? 'folder' : 'folders'}` : null].filter(Boolean).join(' · ');
+
   const renderItem = ({ item }: { item: Cell }) => {
-    if (item.kind === 'folder') return <Tile styles={styles} view={view} width={cellWidth} label={item.folder.name} sub={`${item.folder.count} ${item.folder.count === 1 ? 'title' : 'titles'}`} covers={item.folder.locked && !isUnlocked('folder', item.folder.id) ? [] : folderCovers.get(item.folder.id) ?? []} glyph={item.folder.locked && !isUnlocked('folder', item.folder.id) ? '🔒' : '▤'} onPress={() => requireUnlock('folder', item.folder.id, item.folder.name, item.folder.locked, () => setOpenFolder(item.folder.id))} onLongPress={() => folderMenu(item.folder)} />;
+    if (item.kind === 'folder') return <Tile styles={styles} view={view} width={cellWidth} highlight={hoverTarget === item.folder.id} registerRef={(v) => { if (v) folderViews.current.set(item.folder.id, v); else folderViews.current.delete(item.folder.id); }} label={item.folder.name} sub={folderSub(item.folder)} covers={item.folder.locked && !isUnlocked('folder', item.folder.id) ? [] : folderCovers.get(item.folder.id) ?? []} glyph={item.folder.locked && !isUnlocked('folder', item.folder.id) ? '🔒' : '▤'} onPress={() => requireUnlock('folder', item.folder.id, item.folder.name, item.folder.locked, () => setOpenFolder(item.folder.id))} onLongPress={() => folderMenu(item.folder)} />;
     if (item.kind === 'collection') return <Tile styles={styles} view={view} width={cellWidth} label={item.collection.name} sub={`${item.collection.count} ${item.collection.count === 1 ? 'title' : 'titles'}`} covers={[]} glyph="❖" onPress={() => setOpenCollection(item.collection.id)} onLongPress={() => collectionMenu(item.collection)} />;
     const comic = item.comic; const masked = coverHidden(comic);
     const cover = (
       <View style={[styles.cover, view === 'list' && styles.coverList]}>
         {masked ? <Text style={styles.glyph}>🔒</Text> : <FileCover uri={comic.coverPath} title={comic.title} style={styles.coverImage} recyclingKey={comic.id} transition={120} />}
         {isFinished(comic) && !masked ? <Text style={styles.badge}>✓</Text> : null}
+        {selected.has(comic.id) ? <View style={styles.picked}><Icon name="checkmark-circle" size={34} color="#fff" /></View> : null}
         {comic.sourceUri && !masked ? <View style={styles.cloudBadge}><Icon name={isCached(comic.id) ? 'cloud-done-outline' : 'cloud-outline'} size={14} color="#fff" /></View> : null}
       </View>
     );
+    const press = () => (selecting ? toggleSelect(comic) : openComic(comic));
+    const longPress = selecting ? undefined : () => comicMenu(comic);
+    const draggable = (body: ReactNode) => <DragSource enabled={selecting} id={comic.id} api={dragApi}><View collapsable={false} style={view === 'grid' ? { width: cellWidth, alignSelf: 'center' } : undefined}>{body}</View></DragSource>;
     if (view === 'list') {
-      return (
-        <PressableScale to={0.985} style={styles.listRow} onPress={() => openComic(comic)} onLongPress={() => comicMenu(comic)}>
+      return draggable(
+        <PressableScale to={0.985} style={styles.listRow} onPress={press} onLongPress={longPress}>
           {cover}
           <View style={styles.listBody}>
             <Text numberOfLines={2} style={styles.title}>{masked ? 'Locked comic' : comic.title}</Text>
             <Text numberOfLines={1} style={styles.sub}>{masked ? 'Enter the password to open' : [sizeLabel(comic.sizeBytes), `${comic.pageCount} pages`, comic.writer].filter(Boolean).join(' · ')}</Text>
             <Progress value={progressFraction(comic)} />
           </View>
-        </PressableScale>
+        </PressableScale>,
       );
     }
-    return (
-      <PressableScale style={[styles.cell, { width: cellWidth }]} onPress={() => openComic(comic)} onLongPress={() => comicMenu(comic)}>
+    return draggable(
+      <PressableScale style={[styles.cell, { width: cellWidth }]} onPress={press} onLongPress={longPress}>
         {cover}
         <Text numberOfLines={2} style={styles.title}>{masked ? 'Locked comic' : comic.title}</Text>
         <Text numberOfLines={1} style={styles.sub}>{masked ? 'Locked' : [sizeLabel(comic.sizeBytes), `${comic.pageCount} pages`].filter(Boolean).join(' · ')}</Text>
         {progressFraction(comic) > 0 && !isFinished(comic) ? <Progress value={progressFraction(comic)} /> : null}
-      </PressableScale>
+      </PressableScale>,
     );
   };
 
   return (
-    <AppShell active="library" back title={mode === 'collections' ? 'Collections' : 'On My Phone'} right={<HeaderActions><HeaderButton icon="search" label="Search" active={searchOpen} onPress={() => { setSearchOpen((o) => !o); if (searchOpen) setQuery(''); }} /><HeaderButton icon="add" label="Add" disabled={busy} onPress={addMenu} /></HeaderActions>}>
+    <AppShell active="library" back title={mode === 'collections' ? 'Collections' : 'On My Phone'} right={<HeaderActions><HeaderButton icon="search" label="Search" active={searchOpen} onPress={() => { setSearchOpen((o) => !o); if (searchOpen) setQuery(''); }} /><HeaderButton icon="add" label="Add" disabled={busy || job.running} onPress={addMenu} /></HeaderActions>}>
+      <GestureHandlerRootView style={styles.frame}>
+      <View ref={frameRef} collapsable={false} style={styles.frame}>
       <FlashList
+        ref={listRef}
+        scrollEnabled={!dragging}
+        onScroll={(e) => { scrollY.current = e.nativeEvent.contentOffset.y; }}
+        scrollEventThrottle={16}
+        extraData={`${selected.size}-${hoverTarget}-${selecting}`}
         key={`${view}-${columns}`}
         data={cells}
         numColumns={columns}
@@ -284,14 +427,39 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
             {searchOpen || query ? <Input placeholder="Search title, series or writer" value={query} onChangeText={setQuery} /> : null}
             {true ? (
               <View style={styles.subrow}>
-                {inside ? <Pressable onPress={() => { setOpenFolder(null); setOpenCollection(null); }}><Text style={styles.back}>‹ {insideName}</Text></Pressable> : <Text style={styles.count}>{segment === 'collections' ? `${collections.length} ${collections.length === 1 ? 'collection' : 'collections'}` : `${comics.length} ${comics.length === 1 ? 'comic' : 'comics'}`}</Text>}
-                <Pressable accessibilityRole="button" accessibilityLabel="View and sort" onPress={viewMenu} hitSlop={8}><Text style={styles.sort}>{SORT_LABEL[sort]}  ⌄</Text></Pressable>
+                {inside ? (
+                  <View style={styles.crumbs}>
+                    <View ref={backView} collapsable={false} style={[styles.backBox, hoverTarget === 'up' && styles.backHot]}>
+                      <Pressable onPress={goBack} hitSlop={8}><Text style={styles.back}>‹ {backLabel}</Text></Pressable>
+                    </View>
+                    <Text numberOfLines={1} style={styles.here}>{insideName}</Text>
+                  </View>
+                ) : <Text style={styles.count}>{segment === 'collections' ? `${collections.length} ${collections.length === 1 ? 'collection' : 'collections'}` : `${comics.length} ${comics.length === 1 ? 'comic' : 'comics'}`}</Text>}
+                <View style={styles.subActions}>
+                  {segment === 'library' ? <Pressable accessibilityRole="button" onPress={() => (selecting ? endSelecting() : setSelecting(true))} hitSlop={8}><Text style={styles.sort}>{selecting ? 'Done' : 'Select'}</Text></Pressable> : null}
+                  <Pressable accessibilityRole="button" accessibilityLabel="View and sort" onPress={viewMenu} hitSlop={8}><Text style={styles.sort}>{SORT_LABEL[sort]}  ⌄</Text></Pressable>
+                </View>
               </View>
             ) : null}
           </Animated.View>
         }
         ListEmptyComponent={empty}
       />
+      {dragging ? <Animated.View pointerEvents="none" style={[styles.dragChip, dragStyle]}><Text style={styles.dragText}>{selected.size} {selected.size === 1 ? 'comic' : 'comics'}</Text></Animated.View> : null}
+      {notice ? <View pointerEvents="none" style={styles.toast}><Text style={styles.toastText}>{notice}</Text></View> : null}
+      {selecting ? (
+        <View style={styles.bar}>
+          <View style={styles.barBody}>
+            <Text style={styles.barText}>{selected.size ? `${selected.size} selected` : 'Tap comics to select them'}</Text>
+            {selected.size ? <Text style={styles.sub}>Hold one and drag it onto a folder</Text> : null}
+          </View>
+          <Pressable onPress={selectAll} hitSlop={8}><Text style={styles.barBtn}>All</Text></Pressable>
+          <Pressable disabled={!selected.size} onPress={moveSelected} hitSlop={8}><Text style={[styles.barBtn, !selected.size && styles.barOff]}>Move</Text></Pressable>
+          <Pressable disabled={!selected.size} onPress={deleteSelected} hitSlop={8}><Text style={[styles.barDanger, !selected.size && styles.barOff]}>Delete</Text></Pressable>
+        </View>
+      ) : null}
+      </View>
+      </GestureHandlerRootView>
       <ActionSheet visible={!!sheet} title={sheet?.title} options={sheet?.options ?? []} onClose={() => setSheet(null)} />
       <PromptModal visible={!!prompt} title={prompt?.title ?? ''} initial={prompt?.initial} submitLabel={prompt?.submitLabel} secure={prompt?.secure} onSubmit={(v) => prompt?.onSubmit(v)} onClose={() => setPrompt(null)} />
     </AppShell>
@@ -307,7 +475,7 @@ function FileCover({ uri, title, style, recyclingKey, transition }: { uri: strin
   return <Image source={{ uri }} style={style} contentFit="cover" recyclingKey={recyclingKey} transition={transition} onError={() => setFailed(true)} />;
 }
 
-function Tile({ styles, view, width, label, sub, glyph, covers, onPress, onLongPress }: { styles: ReturnType<typeof makeStyles>; view: View_; width: number; label: string; sub: string; glyph: string; covers: string[]; onPress: () => void; onLongPress: () => void }) {
+function Tile({ styles, view, width, label, sub, glyph, covers, highlight, registerRef, onPress, onLongPress }: { styles: ReturnType<typeof makeStyles>; view: View_; width: number; label: string; sub: string; glyph: string; covers: string[]; highlight?: boolean; registerRef?: (v: View | null) => void; onPress: () => void; onLongPress: () => void }) {
   // Up to three covers fanned out behind the first, like a stack of issues; an empty folder shows its glyph.
   const stack = (
     <View style={[styles.stack, view === 'list' && styles.stackList]}>
@@ -320,10 +488,22 @@ function Tile({ styles, view, width, label, sub, glyph, covers, onPress, onLongP
       {covers.length ? <View style={[styles.cover, styles.stackFill]}><FileCover uri={covers[0]} title={label} style={styles.coverImage} recyclingKey={covers[0]} transition={120} /></View> : null}
     </View>
   );
+  // The wrapper is what the drag looks for under the finger; the ring shows it will accept the drop.
+  const ring = highlight ? <View pointerEvents="none" style={styles.dropRing} /> : null;
   if (view === 'list') {
-    return <PressableScale to={0.985} style={styles.listRow} onPress={onPress} onLongPress={onLongPress}>{stack}<View style={styles.listBody}><Text numberOfLines={2} style={styles.title}>{label}</Text><Text style={styles.sub}>{sub}</Text></View></PressableScale>;
+    return <View ref={registerRef} collapsable={false}><PressableScale to={0.985} style={styles.listRow} onPress={onPress} onLongPress={onLongPress}>{stack}<View style={styles.listBody}><Text numberOfLines={2} style={styles.title}>{label}</Text><Text style={styles.sub}>{sub}</Text></View></PressableScale>{ring}</View>;
   }
-  return <PressableScale style={[styles.cell, { width }]} onPress={onPress} onLongPress={onLongPress}>{stack}<Text numberOfLines={1} style={styles.title}>{label}</Text><Text style={styles.sub}>{sub}</Text></PressableScale>;
+  return <View ref={registerRef} collapsable={false} style={{ width, alignSelf: 'center' }}><PressableScale style={[styles.cell, { width }]} onPress={onPress} onLongPress={onLongPress}>{stack}<Text numberOfLines={1} style={styles.title}>{label}</Text><Text style={styles.sub}>{sub}</Text></PressableScale>{ring}</View>;
+}
+
+/** Lets a comic be held and dragged while selecting. A short hold starts the drag; moving sooner just scrolls. */
+type DragApi = { start: (id: string, x: number, y: number) => void; move: (x: number, y: number) => void; end: () => void };
+function DragSource({ enabled, id, api, children }: { enabled: boolean; id: string; api: DragApi; children: ReactNode }) {
+  const gesture = useMemo(() => Gesture.Pan().enabled(enabled).runOnJS(true).activateAfterLongPress(350)
+    .onStart((e) => { api.start(id, e.absoluteX, e.absoluteY); })
+    .onUpdate((e) => { api.move(e.absoluteX, e.absoluteY); })
+    .onFinalize(() => { void api.end(); }), [enabled, id, api]);
+  return <GestureDetector gesture={gesture}>{children}</GestureDetector>;
 }
 
 function makeStyles(c: ThemeColors, t: TypographyPreset) {
@@ -354,5 +534,23 @@ function makeStyles(c: ThemeColors, t: TypographyPreset) {
     sub: { color: c.textMuted, fontFamily: t.body, fontSize: 12 },
     listRow: { flexDirection: 'row', gap: space.md, alignItems: 'center', paddingVertical: space.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border },
     listBody: { flex: 1, gap: 4 },
+    frame: { flex: 1 },
+    crumbs: { flexDirection: 'row', alignItems: 'center', gap: space.sm, flexShrink: 1 },
+    backBox: { borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2, borderWidth: 2, borderColor: 'transparent' },
+    backHot: { borderColor: c.primary },
+    here: { color: c.textPrimary, fontFamily: t.displayMedium, fontSize: 16, flexShrink: 1 },
+    subActions: { flexDirection: 'row', alignItems: 'center', gap: space.lg },
+    picked: { ...StyleSheet.absoluteFill, backgroundColor: '#00000066', alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: c.primary, borderRadius: 14 },
+    dropRing: { ...StyleSheet.absoluteFill, borderRadius: 16, borderWidth: 3, borderColor: c.primary, backgroundColor: '#ffffff14' },
+    dragChip: { position: 'absolute', left: 0, top: 0, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, backgroundColor: c.primary, shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 10 },
+    dragText: { color: c.primaryForeground, fontFamily: t.bodySemibold, fontSize: 15 },
+    bar: { position: 'absolute', left: space.lg, right: space.lg, bottom: 24, flexDirection: 'row', alignItems: 'center', gap: space.lg, padding: space.md, paddingHorizontal: space.lg, borderRadius: 18, backgroundColor: c.surfaceRaised, borderWidth: 1, borderColor: c.border, shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 12 },
+    barBody: { flex: 1, gap: 4 },
+    barText: { color: c.textPrimary, fontFamily: t.bodySemibold, fontSize: 14 },
+    barBtn: { color: c.primary, fontFamily: t.bodySemibold, fontSize: 15 },
+    barDanger: { color: c.destructive, fontFamily: t.bodySemibold, fontSize: 15 },
+    barOff: { opacity: 0.35 },
+    toast: { position: 'absolute', alignSelf: 'center', bottom: 110, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 16, backgroundColor: c.surfaceRaised, borderWidth: 1, borderColor: c.border },
+    toastText: { color: c.textPrimary, fontFamily: t.bodySemibold, fontSize: 14 },
   });
 }

@@ -5,6 +5,7 @@ import * as LegacyFS from 'expo-file-system/legacy';
 import { Directory, File, Paths } from 'expo-file-system';
 import { getReaderComic, type ReaderComic } from './readerLibrary';
 import { pickEvictions } from './evict';
+import { optionalNative } from './nativeArchive';
 
 /** How much fetched cloud comics may take before the least-recently-read ones are dropped. */
 export const CLOUD_CACHE_LIMIT = 2 * 1024 * 1024 * 1024;
@@ -37,6 +38,22 @@ export function freeSpaceFor(id: string): boolean {
 
 export class CloudFetchError extends Error {}
 
+/** iOS keeps a cloud link as a bookmark; Android keeps the picked address itself. A file inside a linked folder is `bookmark:<folder>|<path inside it>`. */
+export const BOOKMARK_PREFIX = 'bookmark:';
+
+/** Copy a linked comic from its cloud app to `destUri`. */
+export async function copyFromSource(sourceUri: string, destUri: string): Promise<void> {
+  if (sourceUri.startsWith(BOOKMARK_PREFIX)) {
+    const native = optionalNative();
+    if (!native?.copyFromBookmark) throw new CloudFetchError('This build can’t open cloud links.');
+    const rest = sourceUri.slice(BOOKMARK_PREFIX.length);
+    const bar = rest.indexOf('|'); // base64 never contains it, so the first one splits bookmark from path
+    await native.copyFromBookmark(bar < 0 ? rest : rest.slice(0, bar), destUri.replace(/^file:\/\//, ''), bar < 0 ? '' : rest.slice(bar + 1));
+    return;
+  }
+  await LegacyFS.copyAsync({ from: sourceUri, to: destUri });
+}
+
 /** The path to read this comic from: its own file, or — for a cloud link — a cached copy, fetched now if it isn't there. */
 export async function ensureLocalCopy(comic: ReaderComic): Promise<string> {
   if (!comic.sourceUri) return comic.path;
@@ -45,7 +62,7 @@ export async function ensureLocalCopy(comic: ReaderComic): Promise<string> {
   try {
     const dir = cacheDirFor(comic.id);
     if (!dir.exists) dir.create({ intermediates: true });
-    await LegacyFS.copyAsync({ from: comic.sourceUri, to: target.uri });
+    await copyFromSource(comic.sourceUri, target.uri);
   } catch {
     try { cacheDirFor(comic.id).delete(); } catch { /* ignore */ }
     throw new CloudFetchError('Couldn’t fetch this comic from its cloud app. Check your connection and that the app (Drive, Dropbox…) still has access, then try again.');

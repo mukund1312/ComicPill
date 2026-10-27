@@ -83,6 +83,36 @@ public class ComicArchiveModule: Module {
       return ["width": w, "height": h, "data": Data(gray).base64EncodedString()]
     }
 
+    // A cloud file (Drive, Dropbox…) picked without copying: iOS only lets the app reopen it later through a bookmark.
+    Function("makeBookmark") { (uri: String) -> String? in
+      let url = Self.fileURL(uri)
+      let scoped = url.startAccessingSecurityScopedResource()
+      defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+      return try? url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil).base64EncodedString()
+    }
+
+    // Copies the bookmarked file to `dest`. The coordinated read makes the cloud app download it first if it isn't on the device yet.
+    // `relative` is the path of a file inside a bookmarked folder ("" when the bookmark is the file itself).
+    AsyncFunction("copyFromBookmark") { (bookmark: String, dest: String, relative: String) in
+      guard let data = Data(base64Encoded: bookmark) else { throw Exception(name: "BOOKMARK", description: "Invalid link") }
+      var stale = false
+      let root = try URL(resolvingBookmarkData: data, options: [], relativeTo: nil, bookmarkDataIsStale: &stale)
+      let scoped = root.startAccessingSecurityScopedResource()
+      defer { if scoped { root.stopAccessingSecurityScopedResource() } }
+      var url = root
+      for part in relative.split(separator: "/") { url.appendPathComponent(String(part)) }
+      let out = Self.fileURL(dest)
+      var coordError: NSError?
+      var copyError: Error?
+      NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &coordError) { readable in
+        do {
+          try? FileManager.default.removeItem(at: out)
+          try FileManager.default.copyItem(at: readable, to: out)
+        } catch { copyError = error }
+      }
+      if let e = coordError ?? copyError { throw Exception(name: "FETCH", description: e.localizedDescription) }
+    }
+
     // Text in a screenshot, read on the device.
     AsyncFunction("recognizeText") { (path: String, promise: Promise) in
       guard let cg = UIImage(contentsOfFile: Self.fileURL(path).path)?.cgImage else { promise.reject("DECODE", "Cannot open image"); return }

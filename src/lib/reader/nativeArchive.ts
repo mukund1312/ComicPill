@@ -16,6 +16,10 @@ type Native = {
   recognizeText?(path: string): Promise<string>;
   /** Keep access to a picked cloud file after the app closes. */
   persistUriPermission?(uri: string): boolean;
+  /** iOS: a base64 bookmark that reopens a picked cloud file later. */
+  makeBookmark?(uri: string): string | null;
+  /** iOS: copy a bookmarked file (or a file `relative`ly inside a bookmarked folder) to `dest`, downloading it from the cloud app if needed. */
+  copyFromBookmark?(bookmark: string, dest: string, relative: string): Promise<void>;
 };
 
 /** Optional: absent on iOS and in Expo Go, where guided view is simply unavailable. */

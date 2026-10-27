@@ -1,6 +1,6 @@
 // The Library tab: one tidy hub that points at everything you own — files on this phone, your collection, imports, and the extra tools.
 import { useCallback, useState } from 'react';
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { AppShell } from '../../ui/AppShell';
@@ -10,7 +10,8 @@ import { useAppearance } from '../../ui/theme';
 import { space } from '../../ui/tokens';
 import { sqlite } from '../../lib/db/client';
 import { listCollections } from '../../lib/reader/readerLibrary';
-import { pickAndImportComics, pickAndImportFolder, pickAndLinkComics, type ImportResult } from '../../lib/reader/importComics';
+import { pickAndImportComics, pickAndImportFolder, pickAndLinkComics, pickAndLinkFolder, type ImportProgress, type ImportResult } from '../../lib/reader/importComics';
+import { runJob, useJob } from '../../lib/reader/importJob';
 
 type Row = { icon: IconName; label: string; sub?: string; tint?: string; onPress: () => void };
 
@@ -18,20 +19,17 @@ export default function LibraryHubScreen() {
   const { theme, typography } = useAppearance(); const c = theme.colors;
   const [counts, setCounts] = useState({ phone: 0, collection: 0, collections: 0 });
   const [open, setOpen] = useState({ libraries: true, imports: true, tools: true });
-  const [busy, setBusy] = useState(false);
+  const running = useJob().running;
   useFocusEffect(useCallback(() => {
     const phone = sqlite.getFirstSync<{ n: number }>('SELECT COUNT(*) AS n FROM reader_comics')?.n ?? 0;
     const collection = sqlite.getFirstSync<{ n: number }>("SELECT COUNT(*) AS n FROM user_library WHERE own <> 'none'")?.n ?? 0;
     setCounts({ phone, collection, collections: listCollections().length });
   }, []));
 
-  const runImport = async (fn: () => Promise<ImportResult>) => {
-    setBusy(true);
-    try {
-      const r = await fn();
-      if (r.failed.length) Alert.alert('Some files could not be imported', r.failed.map((f) => `${f.name}: ${f.reason}`).join('\n\n'));
-      else if (r.imported.length) router.push('/reader/phone');
-    } finally { setBusy(false); }
+  // Imports run as the app's one background job; the bar at the bottom of every screen shows progress and how it went.
+  const runImport = async (label: string, verb: string, fn: (progress: ImportProgress) => Promise<ImportResult>) => {
+    const started = await runJob(label, async (progress) => ({ verb, result: await fn(progress) }));
+    if (!started) Alert.alert('Another import is running', 'Wait for it to finish, or press Stop on the bar at the bottom.');
   };
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
@@ -41,9 +39,10 @@ export default function LibraryHubScreen() {
     { icon: 'folder-open-outline', label: 'Collections', sub: plural(counts.collections, 'collection', 'collections'), onPress: () => router.push('/reader/collections') },
   ];
   const imports: Row[] = [
-    ...(Platform.OS === 'android' ? [{ icon: 'cloud-outline' as const, label: busy ? 'Working…' : 'Link from Drive or Dropbox', sub: 'Saves space: the comic stays in the cloud', tint: '#3B82F6', onPress: () => { if (!busy) void runImport(() => pickAndLinkComics({})); } }] : []),
-    { icon: 'document-outline', label: 'Import from Files', sub: 'Keeps a copy on this device', tint: '#3B82F6', onPress: () => { if (!busy) void runImport(() => pickAndImportComics({})); } },
-    { icon: 'folder-outline', label: 'Import a folder', tint: '#3B82F6', onPress: () => { if (!busy) void runImport(pickAndImportFolder); } },
+    { icon: 'cloud-outline', label: running ? 'An import is running…' : 'Link from Drive or Dropbox', sub: 'Saves space: the comic stays in the cloud', tint: '#3B82F6', onPress: () => { if (!running) void runImport('Linking', 'Linked', (p) => pickAndLinkComics(p)); } },
+    { icon: 'cloud-download-outline', label: 'Link a whole folder', sub: 'Every comic inside, with its folders; nothing is copied', tint: '#3B82F6', onPress: () => { if (!running) void runImport('Linking folder', 'Linked', (p) => pickAndLinkFolder(p)); } },
+    { icon: 'document-outline', label: 'Import from Files', sub: 'Keeps a copy on this device', tint: '#3B82F6', onPress: () => { if (!running) void runImport('Importing', 'Imported', (p) => pickAndImportComics(p)); } },
+    { icon: 'folder-outline', label: 'Import a folder', tint: '#3B82F6', onPress: () => { if (!running) void runImport('Importing folder', 'Imported', (p) => pickAndImportFolder(p)); } },
     { icon: 'server-outline', label: 'Connect a server (OPDS)', onPress: () => router.push('/reader/opds') },
     { icon: 'scan-outline', label: 'Scan a comic or shelf', onPress: () => router.push('/scan') },
   ];

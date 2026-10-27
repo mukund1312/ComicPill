@@ -28,7 +28,7 @@ import { ComicOpenError, openComicSource, type ComicSource, type PageSize } from
 import { buildUnits, unitIndexOf } from '../../lib/reader/formats/spreads';
 import { BACKGROUND_COLORS, resolveReading, type Fit, type Reading } from '../../lib/reader/presets';
 import {
-  getFolder, getReaderComic, listBookmarks, saveReaderMode, saveReaderProgress, saveReaderSizes, setComicPreset, toggleBookmark,
+  getFolder, getReaderComic, listBookmarks, saveReaderMode, saveReaderProgress, saveReaderSizes, setComicPreset, setPageCount, toggleBookmark,
   type ReaderComic, type ReaderMode,
 } from '../../lib/reader/readerLibrary';
 import { listPresets, loadReaderSettings, saveReaderSettings, type ReaderSettings } from '../../lib/reader/readerSettings';
@@ -95,6 +95,7 @@ export default function ReaderScreen() {
         const s = await openComicSource(localPath, `read-${comic.id}`);
         if (!live) { s.close(); return; }
         opened = s; setSource(s);
+        if (comic.sourceUri && comic.pageCount === 0) setPageCount(comic.id, s.pageCount); // a linked comic nobody has read the details of yet
         const result = await loadSizes(comic, s, () => live);
         if (live) setSizes(result);
       } catch (e) {

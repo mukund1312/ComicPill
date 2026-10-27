@@ -14,6 +14,7 @@ import { useProfile } from '../lib/state/settings';
 import { initialOf } from '../lib/settings/profileModel';
 import { RAIL_WIDTH, useLayout } from './layout';
 import { useSidebar } from '../lib/state/sidebar';
+import { ImportBar } from './ImportBar';
 
 type Tab = 'today' | 'reading' | 'library' | 'discover' | 'search' | 'none';
 const tabs: Array<{ id: Exclude<Tab, 'none'>; icon: IconName; iconActive: IconName; label: string; href: string }> = [
@@ -154,6 +155,7 @@ export function AppShell({ active, title, children, logo = false, right, back = 
       )}
       {/* The same gentle rise on every tab, so moving around the app always feels the same. */}
       <Animated.View key={active} entering={FadeIn.duration(260).easing(Easing.out(Easing.cubic))} style={styles.body}>{children}</Animated.View>
+      <ImportBar />
       </View>
       {layout.railCapable ? null : <TabBar active={active} />}
       </View>

@@ -3,6 +3,8 @@ import { sqlite } from '../db/client';
 import { Paths } from 'expo-file-system';
 import { rebase } from './portablePath';
 import type { Lock } from './lock';
+import { canMoveFolders } from './folderTree';
+import { sourceKeyOf } from './sourceKey';
 import type { ShelfComic } from './shelf';
 
 export type ReaderMode = 'ltr' | 'rtl' | 'webtoon';
@@ -62,14 +64,33 @@ export const getReaderComic = (id: string): ReaderComic | null => {
 };
 
 export type NewReaderComic = Pick<ReaderComic, 'id' | 'title' | 'path' | 'format' | 'pageCount' | 'coverPath'> &
-  Partial<Pick<ReaderComic, 'series' | 'issue' | 'writer' | 'folderId' | 'mode' | 'sizeBytes' | 'sourceUri'>>;
+  Partial<Pick<ReaderComic, 'series' | 'issue' | 'writer' | 'folderId' | 'mode' | 'sizeBytes' | 'sourceUri'>> & { /** `name|size` of the file it came from, so the same file isn't imported twice. */ sourceKey?: string | null };
 
 export const insertReaderComic = (c: NewReaderComic): void => {
   sqlite.runSync(
-    'INSERT INTO reader_comics (id, title, path, format, page_count, cover_path, added_at, series, issue, writer, folder_id, mode, size_bytes, source_uri) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    c.id, c.title, c.path, c.format, c.pageCount, c.coverPath, Date.now(), c.series ?? null, c.issue ?? null, c.writer ?? null, c.folderId ?? null, c.mode ?? 'ltr', c.sizeBytes ?? null, c.sourceUri ?? null,
+    'INSERT INTO reader_comics (id, title, path, format, page_count, cover_path, added_at, series, issue, writer, folder_id, mode, size_bytes, source_uri, source_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    c.id, c.title, c.path, c.format, c.pageCount, c.coverPath, Date.now(), c.series ?? null, c.issue ?? null, c.writer ?? null, c.folderId ?? null, c.mode ?? 'ltr', c.sizeBytes ?? null, c.sourceUri ?? null, c.sourceKey ?? null,
   );
 };
+
+export { sourceKeyOf };
+
+/** Is this file (same name and exact size) already in the library? Comics imported before keys existed match on size and title. */
+export const isDuplicateSource = (name: string, size: number, titleGuess: string): boolean =>
+  !!sqlite.getFirstSync(
+    'SELECT 1 FROM reader_comics WHERE source_key = ? OR (size_bytes = ? AND title = ? COLLATE NOCASE) LIMIT 1',
+    sourceKeyOf(name, size), size, titleGuess,
+  );
+
+/** Linked comics whose cover and page count haven't been read yet (a folder link saves them for later). */
+export const unpreparedLinkIds = (): string[] =>
+  sqlite.getAllSync<{ id: string }>('SELECT id FROM reader_comics WHERE source_uri IS NOT NULL AND page_count = 0 ORDER BY added_at').map((r) => r.id);
+
+export const fillInComic = (id: string, f: { title: string; pageCount: number; coverPath: string | null; series: string | null; issue: string | null; writer: string | null; /** Only set when the file says so (manga); null keeps the reader's choice. */ mode: ReaderMode | null }): void => {
+  sqlite.runSync('UPDATE reader_comics SET title = ?, page_count = ?, cover_path = ?, series = ?, issue = ?, writer = ?, mode = COALESCE(?, mode) WHERE id = ?', f.title, f.pageCount, f.coverPath, f.series, f.issue, f.writer, f.mode, id);
+};
+
+export const setPageCount = (id: string, pageCount: number): void => { sqlite.runSync('UPDATE reader_comics SET page_count = ? WHERE id = ? AND page_count = 0', pageCount, id); };
 
 export const saveReaderProgress = (id: string, page: number, offset = 0): void => {
   sqlite.runSync('UPDATE reader_comics SET progress_page = ?, progress_offset = ?, last_read_at = ? WHERE id = ?', page, offset, Date.now(), id);
@@ -119,28 +140,45 @@ export const toggleBookmark = (comicId: string, page: number): boolean => {
 };
 
 // ---- folders ----------------------------------------------------------------
-export type ReaderFolder = { id: string; name: string; presetId: string | null; count: number; locked: boolean };
+export type ReaderFolder = { id: string; name: string; presetId: string | null; parentId: string | null; count: number; subfolders: number; locked: boolean };
 
 export const listFolders = (): ReaderFolder[] =>
-  sqlite.getAllSync<{ id: string; name: string; preset_id: string | null; n: number; lock_hash: string | null }>(
-    'SELECT f.id, f.name, f.preset_id, f.lock_hash, (SELECT COUNT(*) FROM reader_comics c WHERE c.folder_id = f.id) AS n FROM reader_folders f ORDER BY f.name COLLATE NOCASE',
-  ).map((r) => ({ id: r.id, name: r.name, presetId: r.preset_id, count: r.n, locked: !!r.lock_hash }));
+  sqlite.getAllSync<{ id: string; name: string; preset_id: string | null; parent_id: string | null; n: number; sub: number; lock_hash: string | null }>(
+    `SELECT f.id, f.name, f.preset_id, f.parent_id, f.lock_hash,
+       (SELECT COUNT(*) FROM reader_comics c WHERE c.folder_id = f.id) AS n,
+       (SELECT COUNT(*) FROM reader_folders s WHERE s.parent_id = f.id) AS sub
+     FROM reader_folders f ORDER BY f.name COLLATE NOCASE`,
+  ).map((r) => ({ id: r.id, name: r.name, presetId: r.preset_id, parentId: r.parent_id, count: r.n, subfolders: r.sub, locked: !!r.lock_hash }));
 
-export const createFolder = (name: string): string => {
-  const existing = sqlite.getFirstSync<{ id: string }>('SELECT id FROM reader_folders WHERE name = ? COLLATE NOCASE', name);
+/** A new folder, at the top or inside `parentId`. A folder with that name in the same place is reused. */
+export const createFolder = (name: string, parentId: string | null = null): string => {
+  const existing = sqlite.getFirstSync<{ id: string }>('SELECT id FROM reader_folders WHERE name = ? COLLATE NOCASE AND parent_id IS ?', name, parentId);
   if (existing) return existing.id;
   const id = uid();
-  sqlite.runSync('INSERT INTO reader_folders (id, name, created_at) VALUES (?, ?, ?)', id, name, Date.now());
+  sqlite.runSync('INSERT INTO reader_folders (id, name, created_at, parent_id) VALUES (?, ?, ?, ?)', id, name, Date.now(), parentId);
   return id;
 };
 
 export const renameFolder = (id: string, name: string): void => { sqlite.runSync('UPDATE reader_folders SET name = ? WHERE id = ?', name, id); };
 export const setFolderPreset = (id: string, presetId: string | null): void => { sqlite.runSync('UPDATE reader_folders SET preset_id = ? WHERE id = ?', presetId, id); };
 
-/** Deleting a folder keeps its comics — they return to the top level. */
+/** Deleting a folder keeps what is inside: its comics and folders move up to the folder's parent. */
 export const deleteFolder = (id: string): void => {
-  sqlite.runSync('UPDATE reader_comics SET folder_id = NULL WHERE folder_id = ?', id);
+  const parent = sqlite.getFirstSync<{ parent_id: string | null }>('SELECT parent_id FROM reader_folders WHERE id = ?', id)?.parent_id ?? null;
+  sqlite.runSync('UPDATE reader_comics SET folder_id = ? WHERE folder_id = ?', parent, id);
+  sqlite.runSync('UPDATE reader_folders SET parent_id = ? WHERE parent_id = ?', parent, id);
   sqlite.runSync('DELETE FROM reader_folders WHERE id = ?', id);
+};
+
+/** Move comics and folders into `targetId` (null = the top). Folders never go inside themselves. Returns how many moved. */
+export const moveItems = (comicIds: string[], folderIds: string[], targetId: string | null): number => {
+  const nodes = listFolders();
+  const foldersOk = canMoveFolders(nodes, folderIds, targetId) ? folderIds : [];
+  sqlite.withTransactionSync(() => {
+    for (const id of comicIds) sqlite.runSync('UPDATE reader_comics SET folder_id = ? WHERE id = ?', targetId, id);
+    for (const id of foldersOk) sqlite.runSync('UPDATE reader_folders SET parent_id = ? WHERE id = ?', targetId, id);
+  });
+  return comicIds.length + foldersOk.length;
 };
 
 export const getFolder = (id: string): ReaderFolder | null => listFolders().find((f) => f.id === id) ?? null;

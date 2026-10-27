@@ -29,6 +29,13 @@ export function linkReaderComic(c: Linkable): string {
   return workId;
 }
 
+/** A cover that arrived after the catalog entry was made (a linked comic is read later). Only entries made for a file are touched. */
+export function setWorkCover(workId: string, coverPath: string): void {
+  if (!workId.startsWith('file-')) return;
+  sqlite.runSync('UPDATE works SET cover_path = ? WHERE id = ?', coverPath, workId);
+  registerFileCover(workId, coverPath);
+}
+
 /** Comics imported before linking existed (or whose link was lost) get linked now. Cheap when there is nothing to do. */
 export function backfillReaderLinks(): number {
   const rows = sqlite.getAllSync<{ id: string; title: string; series: string | null; writer: string | null; cover_path: string | null }>('SELECT id, title, series, writer, cover_path FROM reader_comics WHERE work_id IS NULL');
