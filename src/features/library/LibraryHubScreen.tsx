@@ -1,6 +1,6 @@
 // The Library tab: one tidy hub that points at everything you own — files on this phone, your collection, imports, and the extra tools.
 import { useCallback, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { AppShell } from '../../ui/AppShell';
@@ -41,7 +41,7 @@ export default function LibraryHubScreen() {
     { icon: 'folder-open-outline', label: 'Collections', sub: plural(counts.collections, 'collection', 'collections'), onPress: () => router.push('/reader/collections') },
   ];
   const imports: Row[] = [
-    { icon: 'cloud-outline', label: busy ? 'Working…' : 'Link from Drive or Dropbox', sub: 'Saves space: the comic stays in the cloud', tint: '#3B82F6', onPress: () => { if (!busy) void runImport(() => pickAndLinkComics({})); } },
+    ...(Platform.OS === 'android' ? [{ icon: 'cloud-outline' as const, label: busy ? 'Working…' : 'Link from Drive or Dropbox', sub: 'Saves space: the comic stays in the cloud', tint: '#3B82F6', onPress: () => { if (!busy) void runImport(() => pickAndLinkComics({})); } }] : []),
     { icon: 'document-outline', label: 'Import from Files', sub: 'Keeps a copy on this device', tint: '#3B82F6', onPress: () => { if (!busy) void runImport(() => pickAndImportComics({})); } },
     { icon: 'folder-outline', label: 'Import a folder', tint: '#3B82F6', onPress: () => { if (!busy) void runImport(pickAndImportFolder); } },
     { icon: 'server-outline', label: 'Connect a server (OPDS)', onPress: () => router.push('/reader/opds') },

@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
@@ -210,7 +210,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   const addMenu = () => setSheet({
     options: [
       { label: openFolder ? `Import files into “${insideName ?? 'this folder'}”…` : 'Import files…', onPress: importHere },
-      { label: 'Link from Drive or Dropbox (saves space)…', onPress: () => runImport(() => pickAndLinkComics({ folderId: openFolder ?? undefined })) },
+      ...(Platform.OS === 'android' ? [{ label: 'Link from Drive or Dropbox (saves space)…', onPress: () => runImport(() => pickAndLinkComics({ folderId: openFolder ?? undefined })) }] : []),
       { label: 'Browse an OPDS server…', onPress: () => router.push('/reader/opds') },
       { label: 'Import a folder…', onPress: () => runImport(pickAndImportFolder) },
       { label: 'New folder…', onPress: () => setPrompt({ title: 'New folder', submitLabel: 'Create', onSubmit: (name) => { createFolder(name); refresh(); } }) },

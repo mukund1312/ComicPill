@@ -10,7 +10,96 @@
     "backgroundColor": "#0B0C0F",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.mukund.comicpill"
+      "bundleIdentifier": "com.mukund.comicpill",
+      "infoPlist": {
+        "LSSupportsOpeningDocumentsInPlace": true,
+        "UIFileSharingEnabled": true,
+        "CFBundleDocumentTypes": [
+          {
+            "CFBundleTypeName": "Comic book archive",
+            "CFBundleTypeRole": "Viewer",
+            "LSHandlerRank": "Alternate",
+            "LSItemContentTypes": [
+              "com.comicpill.cbz",
+              "com.comicpill.cbr",
+              "com.comicpill.cb7",
+              "com.comicpill.cbt",
+              "public.zip-archive",
+              "com.adobe.pdf",
+              "org.idpf.epub-container"
+            ]
+          }
+        ],
+        "UTImportedTypeDeclarations": [
+          {
+            "UTTypeIdentifier": "com.comicpill.cbz",
+            "UTTypeDescription": "Comic book archive (ZIP)",
+            "UTTypeConformsTo": [
+              "public.data",
+              "public.archive"
+            ],
+            "UTTypeTagSpecification": {
+              "public.filename-extension": [
+                "cbz"
+              ],
+              "public.mime-type": [
+                "application/vnd.comicbook+zip",
+                "application/x-cbz"
+              ]
+            }
+          },
+          {
+            "UTTypeIdentifier": "com.comicpill.cbr",
+            "UTTypeDescription": "Comic book archive (RAR)",
+            "UTTypeConformsTo": [
+              "public.data",
+              "public.archive"
+            ],
+            "UTTypeTagSpecification": {
+              "public.filename-extension": [
+                "cbr"
+              ],
+              "public.mime-type": [
+                "application/vnd.comicbook-rar",
+                "application/x-cbr"
+              ]
+            }
+          },
+          {
+            "UTTypeIdentifier": "com.comicpill.cb7",
+            "UTTypeDescription": "Comic book archive (7z)",
+            "UTTypeConformsTo": [
+              "public.data",
+              "public.archive"
+            ],
+            "UTTypeTagSpecification": {
+              "public.filename-extension": [
+                "cb7"
+              ],
+              "public.mime-type": [
+                "application/x-cb7"
+              ]
+            }
+          },
+          {
+            "UTTypeIdentifier": "com.comicpill.cbt",
+            "UTTypeDescription": "Comic book archive (TAR)",
+            "UTTypeConformsTo": [
+              "public.data",
+              "public.archive"
+            ],
+            "UTTypeTagSpecification": {
+              "public.filename-extension": [
+                "cbt"
+              ],
+              "public.mime-type": [
+                "application/x-cbt"
+              ]
+            }
+          }
+        ]
+      },
+      "requireFullScreen": false
     },
     "android": {
       "package": "com.mukund.comicpill",
@@ -426,7 +515,8 @@
       ],
       "./plugins/withBaselineProfile",
       "expo-sharing",
-      "./plugins/withReleaseSigning"
+      "./plugins/withReleaseSigning",
+      "./plugins/withIosScenes"
     ]
   }
 }

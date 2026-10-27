@@ -26,7 +26,7 @@ const LABEL = { rar: 'CBR', '7z': 'CB7', pdf: 'PDF' } as const;
 export function nativeArchive(kind: NativeKind | 'pdf'): Native {
   const mod = requireOptionalNativeModule<Native>('ComicArchive');
   if (!mod) {
-    throw new ComicOpenError(`${LABEL[kind]} files need the Android development build of ComicPill${kind === 'pdf' ? '' : '. Re-save as CBZ to read it here'}.`);
+    throw new ComicOpenError(`${LABEL[kind]} files need the full ComicPill app (not Expo Go)${kind === 'pdf' ? '' : '. Re-save as CBZ to read it here'}.`);
   }
   return mod;
 }
