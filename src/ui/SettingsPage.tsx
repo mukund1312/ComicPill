@@ -7,17 +7,18 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { space } from './tokens';
 import { useAppearance } from './theme';
 import { Icon } from './Icon';
+import { useLayout } from './layout';
 
 export function SettingsPage({ title, subtitle, backLabel = 'Back', onBack, children, footer }: PropsWithChildren<{
   title: string; subtitle?: string; backLabel?: string; onBack?: () => void; footer?: ReactNode;
 }>) {
   const { theme, typography } = useAppearance();
   const c = theme.colors;
-  const bottom = useSafeAreaInsets().bottom;
+  const bottom = useSafeAreaInsets().bottom; const layout = useLayout();
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 48 + bottom }]} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 48 + bottom, maxWidth: Math.min(layout.width, 640), width: '100%', alignSelf: 'center' }]} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}>
           <Pressable accessibilityRole="button" accessibilityLabel={backLabel} hitSlop={12} onPress={onBack ?? (() => router.back())} style={styles.back}>
             <View style={[styles.backCircle, { backgroundColor: c.surfaceRaised }]}><Icon name="chevron-back" size={20} color={c.textPrimary} /></View>
           </Pressable>

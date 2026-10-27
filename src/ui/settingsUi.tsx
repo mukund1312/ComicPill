@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
   value: { fontSize: 14, flexShrink: 1, textAlign: 'right' },
   chevron: { fontSize: 22 },
   backdrop: { flex: 1, backgroundColor: '#000000AA' },
-  sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, padding: space.lg, paddingBottom: space.xxl, gap: 10 },
+  sheet: { width: '100%', maxWidth: 560, alignSelf: 'center', borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, padding: space.lg, paddingBottom: space.xxl, gap: 10 },
   handle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 6 },
   sheetTitle: { fontSize: 22, marginBottom: 2 },
   choice: { borderWidth: 1, borderRadius: 12, padding: space.md, flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: 54 },

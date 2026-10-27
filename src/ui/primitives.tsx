@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
   sectionAction: { fontSize: 14 },
   progressTrack: { height: 4, borderRadius: radius.pill, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: radius.pill },
-  sheet: { borderTopLeftRadius: 30, borderTopRightRadius: 30, borderWidth: StyleSheet.hairlineWidth, borderBottomWidth: 0, padding: space.lg, paddingBottom: space.xxl, shadowColor: '#000', shadowOpacity: 0.5, shadowRadius: 30, shadowOffset: { width: 0, height: -10 }, elevation: 24 },
+  sheet: { width: '100%', maxWidth: 560, alignSelf: 'center', borderTopLeftRadius: 30, borderTopRightRadius: 30, borderWidth: StyleSheet.hairlineWidth, borderBottomWidth: 0, padding: space.lg, paddingBottom: space.xxl, shadowColor: '#000', shadowOpacity: 0.5, shadowRadius: 30, shadowOffset: { width: 0, height: -10 }, elevation: 24 },
   handle: { width: 40, height: 5, alignSelf: 'center', borderRadius: radius.pill, marginBottom: space.lg, opacity: 0.5 },
   sheetTitle: { fontSize: 26, letterSpacing: -0.5, marginBottom: space.lg },
   input: { minHeight: 54, borderRadius: 16, paddingHorizontal: 16, fontSize: 16, borderWidth: StyleSheet.hairlineWidth },

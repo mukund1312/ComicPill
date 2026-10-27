@@ -12,6 +12,7 @@ import { Avatar } from './Avatar';
 import { feedback } from '../lib/platform/feedback';
 import { useProfile } from '../lib/state/settings';
 import { initialOf } from '../lib/settings/profileModel';
+import { RAIL_WIDTH, useLayout } from './layout';
 
 type Tab = 'today' | 'reading' | 'library' | 'discover' | 'search' | 'none';
 const tabs: Array<{ id: Exclude<Tab, 'none'>; icon: IconName; iconActive: IconName; label: string; href: string }> = [
@@ -28,7 +29,8 @@ const BAR_MARGIN = 14; const BAR_PAD = 6; const BAR_HEIGHT = 66;
 
 function TabBar({ active }: { active: Tab }) {
   const { theme, typography } = useAppearance(); const c = theme.colors;
-  const { width } = useWindowDimensions(); const bottom = useSafeAreaInsets().bottom;
+  const layout = useLayout(); const bottom = useSafeAreaInsets().bottom;
+  const width = Math.min(layout.width, 560); // on a tablet the floating bar stays a comfortable size instead of stretching across
   const index = tabs.findIndex((t) => t.id === active);
   const tabWidth = (width - BAR_MARGIN * 2 - BAR_PAD * 2) / tabs.length;
   const x = useSharedValue(lastTabIndex * tabWidth);
@@ -42,8 +44,8 @@ function TabBar({ active }: { active: Tab }) {
   const highlight = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
   const iconStyle = useAnimatedStyle(() => ({ transform: [{ scale: 0.82 + 0.18 * bump.value }] }));
   return (
-    <View pointerEvents="box-none" style={[styles.barWrap, { paddingBottom: Math.max(bottom, 10) + 4 }]}>
-      <View style={[styles.bar, { backgroundColor: `${c.surface}F7`, borderColor: c.border, shadowColor: c.shadow }]}>
+    <View pointerEvents="box-none" style={[styles.barWrap, { paddingBottom: Math.max(bottom, 10) + 4, alignItems: 'center' }]}>
+      <View style={[styles.bar, { width: width - BAR_MARGIN * 2 }, { backgroundColor: `${c.surface}F7`, borderColor: c.border, shadowColor: c.shadow }]}>
         {index >= 0 ? <Animated.View pointerEvents="none" style={[styles.highlight, { width: tabWidth, backgroundColor: c.primaryMuted }, highlight]} /> : null}
         {tabs.map((tab) => {
           const on = tab.id === active;
@@ -60,16 +62,41 @@ function TabBar({ active }: { active: Tab }) {
   );
 }
 
+/** The tabs as a slim vertical rail, for screens wide enough that a bottom bar would be a long way from the thumb. */
+function TabRail({ active }: { active: Tab }) {
+  const { theme, typography } = useAppearance(); const c = theme.colors;
+  const top = useSafeAreaInsets().top; const bottom = useSafeAreaInsets().bottom;
+  return (
+    <View style={[styles.rail, { backgroundColor: c.surface, borderRightColor: c.border, paddingTop: top + 18, paddingBottom: bottom + 16 }]}>
+      <View style={styles.railMark}><Icon name="book" size={22} color={c.primary} /></View>
+      {tabs.map((tab) => {
+        const on = tab.id === active;
+        return (
+          <Pressable key={tab.id} accessibilityRole="button" accessibilityLabel={tab.label} accessibilityState={{ selected: on }}
+            onPress={() => { if (!on) { feedback.select(); router.replace(tab.href as never); } }} style={styles.railTab}>
+            <View style={[styles.railPill, on && { backgroundColor: c.primaryMuted }]}><Icon name={on ? tab.iconActive : tab.icon} size={22} color={on ? c.primary : c.textMuted} /></View>
+            <Text numberOfLines={1} style={[styles.tabLabel, { color: on ? c.primary : c.textMuted, fontFamily: on ? typography.bodySemibold : typography.bodyMedium }]}>{tab.label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 export function AppShell({ active, title, children, logo = false, right, back = false, bleed, scrollY }: PropsWithChildren<{ active: Tab; title?: string; logo?: boolean; right?: ReactNode; back?: boolean; bleed?: ReactNode; scrollY?: SharedValue<number> }>) {
   const { theme, typography } = useAppearance(); const c = theme.colors;
+  const layout = useLayout(); const insetTop = useSafeAreaInsets().top;
   // As the page scrolls the wordmark rises a little and shrinks, and the avatar follows.
   const fallback = useSharedValue(0); const sy = scrollY ?? fallback;
   const logoStyle = useAnimatedStyle(() => ({ transform: [{ translateY: interpolate(sy.value, [0, 140], [0, -7], 'clamp') }, { scale: interpolate(sy.value, [0, 140], [1, 0.8], 'clamp') }] }));
   const avatar = useProfile((p) => p.avatar); const displayName = useProfile((p) => p.displayName); const username = useProfile((p) => p.username);
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: c.background, flexDirection: layout.rail ? 'row' : 'column' }]} edges={layout.rail ? [] : ['top']}>
+      {layout.rail ? <TabRail active={active} /> : null}
+      <View style={[styles.main, { paddingTop: layout.rail ? insetTop : 0 }]}>
       {/* artwork that bleeds across the whole screen, behind the header and the tab bar */}
       {bleed ? <View pointerEvents="none" style={StyleSheet.absoluteFill}>{bleed}</View> : null}
+      <View style={[styles.column, { maxWidth: layout.maxContent }]}>
       {back ? (
         <>
           <View style={styles.topBar}>
@@ -86,7 +113,9 @@ export function AppShell({ active, title, children, logo = false, right, back = 
       )}
       {/* The same gentle rise on every tab, so moving around the app always feels the same. */}
       <Animated.View key={active} entering={FadeIn.duration(260).easing(Easing.out(Easing.cubic))} style={styles.body}>{children}</Animated.View>
-      <TabBar active={active} />
+      </View>
+      {layout.rail ? null : <TabBar active={active} />}
+      </View>
     </SafeAreaView>
   );
 }
@@ -100,6 +129,12 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 34, letterSpacing: -1 },
   headerRight: { minWidth: 38, alignItems: 'flex-end' },
   body: { flex: 1 },
+  main: { flex: 1 },
+  column: { flex: 1, width: '100%', alignSelf: 'center' },
+  rail: { width: RAIL_WIDTH, borderRightWidth: StyleSheet.hairlineWidth, alignItems: 'center', gap: 6 },
+  railMark: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  railTab: { width: RAIL_WIDTH, alignItems: 'center', gap: 4, paddingVertical: 8 },
+  railPill: { width: 56, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
   barWrap: { paddingHorizontal: BAR_MARGIN, paddingTop: 6 },
   bar: { height: BAR_HEIGHT, borderRadius: BAR_HEIGHT / 2, borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', paddingHorizontal: BAR_PAD, shadowOpacity: 0.55, shadowRadius: 22, shadowOffset: { width: 0, height: 10 }, elevation: 16 },
   highlight: { position: 'absolute', left: BAR_PAD, top: 6, bottom: 6, borderRadius: (BAR_HEIGHT - 12) / 2 },

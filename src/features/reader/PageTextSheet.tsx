@@ -46,7 +46,7 @@ export function PageTextSheet({ value, onClose }: { value: PageText; onClose: ()
 
 const styles = StyleSheet.create({
   backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#00000066' },
-  sheet: { maxHeight: '75%', backgroundColor: color.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: space.lg, gap: space.md },
+  sheet: { width: '100%', maxWidth: 560, alignSelf: 'center', maxHeight: '75%', backgroundColor: color.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: space.lg, gap: space.md },
   handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: color.border },
   heading: { color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle },
   box: { maxHeight: 280, backgroundColor: color.surface2, borderRadius: radius.md, padding: space.md },

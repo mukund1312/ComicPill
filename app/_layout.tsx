@@ -6,7 +6,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Dimensions } from 'react-native';
 import {
   useFonts,
   Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, Inter_800ExtraBold,
@@ -50,7 +50,12 @@ export default function RootLayout() {
   });
 
   // The app is portrait-only; app.json allows rotation so the reader can unlock it for two-page landscape.
-  useEffect(() => { ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => undefined); }, []);
+  // Phones stay portrait (the reader unlocks it for two-page landscape); tablets rotate freely.
+  useEffect(() => {
+    const { width, height } = Dimensions.get('window');
+    const tablet = Math.min(width, height) >= 600;
+    (tablet ? ScreenOrientation.unlockAsync() : ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP)).catch(() => undefined);
+  }, []);
 
   if (!fontsLoaded || !dbReady) return null; // the native splash is still showing
 

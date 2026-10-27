@@ -9,8 +9,9 @@ import { useAppearance } from './theme';
 export type FlowItem = { title: string; workId?: string };
 
 export function CoverFlow({ items, height = 360 }: { items: FlowItem[]; height?: number }) {
-  const { width } = useWindowDimensions(); const { theme } = useAppearance();
-  const cardW = Math.min(180, width * 0.44); const gap = 14; const step = cardW + gap;
+  const { width, height: screenH } = useWindowDimensions(); const { theme } = useAppearance();
+  const big = Math.min(width, screenH) >= 600; // tablets get bigger covers
+  const cardW = Math.min(big ? 280 : 180, width * 0.44); const gap = 14; const step = cardW + gap;
   const row = useMemo(() => (items.length ? [...items, ...items, ...items] : []), [items]);
   const x = useSharedValue(0);
   useEffect(() => {

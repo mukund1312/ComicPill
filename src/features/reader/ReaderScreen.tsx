@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, AppState, FlatList, Modal, Pressable, StyleSheet, Text, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent, type ViewToken } from 'react-native';
+import { ActivityIndicator, Alert, AppState, Dimensions, FlatList, Modal, Pressable, StyleSheet, Text, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent, type ViewToken } from 'react-native';
 import { Image } from 'expo-image';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as Sharing from 'expo-sharing';
@@ -81,7 +81,8 @@ export default function ReaderScreen() {
   // The app is portrait-only elsewhere; the reader may rotate so landscape can show two pages.
   useEffect(() => {
     ScreenOrientation.unlockAsync().catch(() => undefined);
-    return () => { ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => undefined); };
+    // Back on a phone the rest of the app is portrait again; a tablet keeps rotating.
+    return () => { const { width: w, height: h } = Dimensions.get('window'); if (Math.min(w, h) < 600) ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => undefined); };
   }, []);
 
   useEffect(() => {

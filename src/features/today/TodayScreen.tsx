@@ -18,6 +18,7 @@ import { Icon } from '../../ui/Icon';
 import { PressableScale } from '../../ui/PressableScale';
 import { radius, space } from '../../ui/tokens';
 import { useAppearance } from '../../ui/theme';
+import { useLayout } from '../../ui/layout';
 
 // id must match a key in score.ts's MOOD_GENRES (lowercase) — this was
 // previously passing the capitalized label straight through as the mood id,
@@ -38,10 +39,12 @@ const moods: { id: string; label: string }[] = [
 ];
 
 const HERO_H = 566;
+const HERO_H_TABLET = 640;
 
 /** The cover itself, whole and sharp, glowing over the backdrop; it settles into a smaller card as you scroll. */
 function HeroArt({ source, title, scrollY, width, onPress }: { source: ReturnType<typeof coverSourceFor>; title: string; scrollY: SharedValue<number>; width: number; onPress: () => void }) {
-  const cardW = Math.min(width * 0.56, 232);
+  const layout = useLayout();
+  const cardW = Math.min(width * 0.56, layout.isTablet ? 300 : 232);
   const frame = useAnimatedStyle(() => {
     const t = Math.min(1, Math.max(0, scrollY.value / (HERO_H * 0.5)));
     const w = interpolate(t, [0, 1], [cardW, 150]);
@@ -149,13 +152,13 @@ export default function TodayScreen() {
   const others = [engineLead, today.continueCard, today.switchCard, today.exploreCard].filter((card, i, all): card is NonNullable<typeof card> => !!card && card.workId !== lead?.workId && all.findIndex((x) => x?.workId === card.workId) === i).slice(0, 3);
   const backdrop = coverSourceFor(lead?.workId);
   const travel = today.formatFilter === 'digital';
-  const { width } = useWindowDimensions();
+  const layout = useLayout(); const width = layout.maxContent;
   const scrollY = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler((e) => { scrollY.value = e.contentOffset.y; });
   return <AppShell active="today" logo scrollY={scrollY} bleed={<CollageBackdrop workId={lead?.workId} scrollY={scrollY} />}><MaskedView style={{ flex: 1 }} maskElement={<View style={{ flex: 1 }}><LinearGradient colors={['#0000', '#000F']} style={{ height: 44 }} /><View style={{ flex: 1, backgroundColor: '#000F' }} /><LinearGradient colors={['#000F', '#0000']} style={{ height: 60 }} /></View>}><Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
     <Animated.View entering={FadeInDown.duration(420)}>
     {lead ? (
-      <View style={[styles.heroWrap, { height: HERO_H }]}>
+      <View style={[styles.heroWrap, { height: layout.isTablet ? HERO_H_TABLET : HERO_H }]}>
         <HeroArt source={backdrop} title={lead.title} scrollY={scrollY} width={width} onPress={() => router.push(isResume && recent ? `/reader/${recent.id}` : `/comic/${lead.workId}`)} />
         <View pointerEvents="box-none" style={styles.heroText}>
           <Text style={[styles.eyebrow, { color: c.textSecondary, fontFamily: typography.bodySemibold }]}>{isResume ? 'CONTINUE READING' : `TONIGHT’S PICK${today.mood ? ` · ${today.mood.toUpperCase()}` : ` · ${lead.bucket.replaceAll('_', ' ').toUpperCase()}`}`}</Text>

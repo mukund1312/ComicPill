@@ -127,7 +127,7 @@ export default function AuthScreen({ kind }: { kind: Kind }) {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   flex: { flex: 1 },
-  content: { padding: space.lg, paddingTop: space.xl, gap: space.md },
+  content: { padding: space.lg, paddingTop: space.xl, gap: space.md, width: '100%', maxWidth: 520, alignSelf: 'center' },
   title: { fontSize: 34, lineHeight: 40, marginTop: space.lg },
   sub: { fontSize: 15, lineHeight: 22 },
   form: { gap: space.md, marginTop: space.lg },

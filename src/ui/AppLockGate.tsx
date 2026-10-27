@@ -38,7 +38,7 @@ export function AppLockGate() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, paddingHorizontal: space.lg },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, width: '100%', maxWidth: 420, alignSelf: 'center' },
   badge: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
   copy: { fontSize: 15, textAlign: 'center' },
   input: { alignSelf: 'stretch', height: 54, borderRadius: 16, paddingHorizontal: 16, fontSize: 18, textAlign: 'center', marginTop: 6 },

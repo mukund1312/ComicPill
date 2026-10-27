@@ -1,6 +1,7 @@
 import { SwipeDeck } from './SwipeDeck';
 import { HeaderActions, HeaderButton } from '../../ui/Icon';
 import { useAppearance } from '../../ui/theme';
+import { useLayout } from '../../ui/layout';
 import { useMemo, useState } from 'react';
 import { Image } from 'expo-image';
 import { sqlite } from '../../lib/db/client';
@@ -22,17 +23,19 @@ import { EMPTY_COMIC_FILTERS, type PublisherFilter } from '../../lib/util/comicF
 const PUBLISHERS: PublisherFilter[] = ['Marvel', 'DC', 'Indie', 'Manga'];
 
 export default function DiscoverScreen() {
+  const layout = useLayout(); const cols = layout.columns(170);
   const discover = useDiscover(); const [rating, setRating] = useState(false); const [filtersOpen, setFiltersOpen] = useState(false); const query = '';
   const catalog = useMemo(() => discover.catalog.filter((work) => work.title.toLowerCase().includes(query.trim().toLowerCase())).sort((a, b) => Number(b.workId.startsWith('file-')) - Number(a.workId.startsWith('file-'))), [discover.catalog, query]);
   return <AppShell active="discover" title="Discover" right={<HeaderActions><HeaderButton icon="heart-outline" label="Wishlist" onPress={() => router.push('/collection')} /><HeaderButton icon="search" label="Search" onPress={() => router.push('/search')} /><HeaderButton icon="options-outline" label="Filter" active={discover.filtersActive} onPress={() => setFiltersOpen(true)} /></HeaderActions>}>
-    <FlashList data={catalog} numColumns={2} keyExtractor={(item) => item.workId} getItemType={() => 'discover-cover-grid'} renderItem={({ item }) => <CatalogCell item={item} />} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} ListHeaderComponent={<DiscoverHeader discover={discover} catalogCount={catalog.length} openRating={() => setRating(true)} />} ListEmptyComponent={<EmptyState mark="⌕" title="No catalog matches" copy="Try another title or clear a filter." action="Clear filters" onAction={() => { discover.setFilters(EMPTY_COMIC_FILTERS); }} />} />
+    <FlashList key={`grid-${cols}`} data={catalog} numColumns={cols} keyExtractor={(item) => item.workId} getItemType={() => 'discover-cover-grid'} renderItem={({ item }) => <CatalogCell item={item} />} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} ListHeaderComponent={<DiscoverHeader discover={discover} catalogCount={catalog.length} openRating={() => setRating(true)} />} ListEmptyComponent={<EmptyState mark="⌕" title="No catalog matches" copy="Try another title or clear a filter." action="Clear filters" onAction={() => { discover.setFilters(EMPTY_COMIC_FILTERS); }} />} />
     {rating ? <View style={styles.overlay}><Sheet title="Quick rate" onClose={() => setRating(false)}><Text style={styles.rateCopy}>A small signal goes a long way.</Text><View style={styles.rateButtons}><Button kind="secondary" onPress={() => { discover.rate(1); setRating(false); }}>Meh</Button><Button kind="secondary" onPress={() => { discover.rate(2); setRating(false); }}>Good</Button><Button onPress={() => { discover.rate(3); setRating(false); }}>Loved</Button></View></Sheet></View> : null}
     {filtersOpen ? <View style={styles.overlay}><Sheet title="Filter discover" onClose={() => setFiltersOpen(false)}><Text style={styles.filterHeading}>Publisher</Text><View style={styles.sheetPills}><Pill label="All" active={discover.filters.publisher === null} onPress={() => discover.setFilters({ ...discover.filters, publisher: null })} />{PUBLISHERS.map((publisher) => <Pill key={publisher} label={publisher!} active={discover.filters.publisher === publisher} onPress={() => discover.setFilters({ ...discover.filters, publisher: discover.filters.publisher === publisher ? null : publisher })} />)}</View><Text style={styles.filterHeading}>Writer or artist</Text><Input placeholder="e.g. Alan Moore" value={discover.filters.creator} onChangeText={(creator) => discover.setFilters({ ...discover.filters, creator })} /><Text style={[styles.filterHeading, { marginTop: 14 }]}>Character</Text><Input placeholder="e.g. Batman, Iron Man" value={discover.filters.character} onChangeText={(character) => discover.setFilters({ ...discover.filters, character })} /><Pressable onPress={() => discover.setFilters(EMPTY_COMIC_FILTERS)} style={styles.clearFilters}><Text style={styles.clearFiltersText}>Clear filters</Text></Pressable><Pressable onPress={() => setFiltersOpen(false)} style={styles.apply}><Text style={styles.applyText}>Apply filters</Text></Pressable></Sheet></View> : null}
   </AppShell>;
 }
 
 function Featured({ discover }: { discover: ReturnType<typeof useDiscover> }) {
-  const { width } = useWindowDimensions(); const { theme, typography } = useAppearance(); const c = theme.colors;
+  const layout = useLayout(); const { theme, typography } = useAppearance(); const c = theme.colors;
+  const width = layout.maxContent;
   const [page, setPage] = useState(0);
   const picks = discover.essentials;
   const pageW = width - space.lg * 2;
@@ -49,7 +52,7 @@ function Featured({ discover }: { discover: ReturnType<typeof useDiscover> }) {
             <PressableScale key={pick.work.id} to={0.98} style={[styles.featured, { width: pageW, backgroundColor: c.surface }]} onPress={() => router.push(`/comic/${pick.work.id}`)}>
               {backdrop ? <Image source={backdrop} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={42} /> : null}
               <LinearGradient pointerEvents="none" colors={['#0A0A0D55', '#0A0A0DEE']} style={StyleSheet.absoluteFill} />
-              <View style={{ alignItems: 'center' }}><CoverStack width={118} items={[{ title: pick.work.title, workId: pick.work.id }, ...fan.map((f) => ({ title: f.work.title, workId: f.work.id }))]} /></View>
+              <View style={{ alignItems: 'center' }}><CoverStack width={layout.isTablet ? 176 : 118} items={[{ title: pick.work.title, workId: pick.work.id }, ...fan.map((f) => ({ title: f.work.title, workId: f.work.id }))]} /></View>
               <Text style={[styles.featuredGenre, { color: c.textSecondary, fontFamily: typography.bodySemibold }]}>{genre}</Text>
               <Text numberOfLines={2} style={[styles.featuredTitle, { color: c.textPrimary, fontFamily: typography.display }]}>{pick.work.title}</Text>
               <Text style={[styles.featuredSub, { color: c.textSecondary, fontFamily: typography.body }]}>{fan.length + 1} picks for you</Text>

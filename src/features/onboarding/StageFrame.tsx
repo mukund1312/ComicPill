@@ -57,15 +57,15 @@ export function StageFrame({ title, subtitle, progress, onBack, primaryLabel, on
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   flex: { flex: 1 },
-  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space.lg, minHeight: 44 },
+  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space.lg, minHeight: 44, width: '100%', maxWidth: 640, alignSelf: 'center' },
   back: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   backText: { fontSize: 32, lineHeight: 34 },
   dots: { flexDirection: 'row', gap: 6, alignItems: 'center' },
   dot: { height: 6, borderRadius: 3 },
-  content: { paddingHorizontal: space.lg, paddingBottom: space.xl },
+  content: { paddingHorizontal: space.lg, paddingBottom: space.xl, width: '100%', maxWidth: 640, alignSelf: 'center' },
   title: { fontSize: 30, lineHeight: 36, marginTop: 4 },
   subtitle: { fontSize: 15, lineHeight: 22, marginTop: 6 },
   body: { marginTop: space.lg },
-  footer: { paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: space.sm, borderTopWidth: StyleSheet.hairlineWidth, gap: 4 },
+  footer: { width: '100%', maxWidth: 640, alignSelf: 'center', paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: space.sm, borderTopWidth: StyleSheet.hairlineWidth, gap: 4 },
   hint: { fontSize: 12, textAlign: 'center', marginBottom: 4 },
 });

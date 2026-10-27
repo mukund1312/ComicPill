@@ -8,6 +8,7 @@ import { ComicCover } from '../../ui/comic';
 import { EmptyState, Input, Pill, Sheet } from '../../ui/primitives';
 import { HeaderActions, HeaderButton } from '../../ui/Icon';
 import { useAppearance } from '../../ui/theme';
+import { useLayout } from '../../ui/layout';
 import { ActionSheet } from '../reader/dialogs';
 import { color, font, radius, space, type } from '../../ui/tokens';
 import { isAccessible, isFormatOwned } from '../../lib/util/own';
@@ -19,6 +20,7 @@ const filters: Array<[Filter, string]> = [['all', 'All'], ['owned', 'Owned'], ['
 const PUBLISHERS: PublisherFilter[] = ['Marvel', 'DC', 'Indie', 'Manga'];
 
 export default function LibraryScreen() {
+  const layout = useLayout(); const cols = layout.columns(170);
   const library = useLibrary(); const [filter, setFilter] = useState<Filter>('all'); const [query, setQuery] = useState(''); const [filtersOpen, setFiltersOpen] = useState(false); const [moreOpen, setMoreOpen] = useState(false); const c0 = useAppearance().theme.colors;
   const [comicFilters, setComicFilters] = useState<ComicFilters>(EMPTY_COMIC_FILTERS);
   const digitalOnly = useTravelMode((s) => s.digitalOnly);
@@ -44,7 +46,7 @@ export default function LibraryScreen() {
   const ownedCount = useMemo(() => inLibrary.filter((item) => isAccessible(item.own)).length, [inLibrary]);
   const filtersActive = hasActiveFilters(comicFilters);
   return <AppShell active="library" back title="My Collection" right={<HeaderActions><HeaderButton icon="search" label="Search" active={!!query} onPress={() => setQuery(query ? '' : 'a')} /><HeaderButton icon="scan-outline" label="Scan or add comics" onPress={() => router.push('/scan')} /><HeaderButton icon="options-outline" label="Filter" active={filtersActive} onPress={() => setFiltersOpen(true)} /><HeaderButton icon="ellipsis-horizontal" label="More" onPress={() => setMoreOpen(true)} /></HeaderActions>}>
-    <FlashList data={items} numColumns={2} keyExtractor={(item) => item.workId} getItemType={() => 'cover-grid'} renderItem={({ item }) => <LibraryCell item={item} />} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} ListHeaderComponent={<><View style={styles.header}>{query ? <Input placeholder="Search titles, creators, characters" value={query} onChangeText={setQuery} /> : null}<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pills}>{filters.map(([id, label]) => <Pill key={id} label={label} active={filter === id} onPress={() => setFilter(id)} />)}</ScrollView><View style={styles.subrow}><Text style={[styles.count, { color: c0.textMuted }]}>{ownedCount} {ownedCount === 1 ? 'comic' : 'comics'}</Text></View></View></>} ListEmptyComponent={<EmptyState title="Nothing here yet" copy={query ? 'Try a title, creator, or character.' : 'Your collection is ready for its first great comic.'} action={!query ? 'Browse catalog' : undefined} onAction={!query ? () => router.push('/discover') : undefined} />}/>
+    <FlashList key={`grid-${cols}`} data={items} numColumns={cols} keyExtractor={(item) => item.workId} getItemType={() => 'cover-grid'} renderItem={({ item }) => <LibraryCell item={item} />} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} ListHeaderComponent={<><View style={styles.header}>{query ? <Input placeholder="Search titles, creators, characters" value={query} onChangeText={setQuery} /> : null}<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pills}>{filters.map(([id, label]) => <Pill key={id} label={label} active={filter === id} onPress={() => setFilter(id)} />)}</ScrollView><View style={styles.subrow}><Text style={[styles.count, { color: c0.textMuted }]}>{ownedCount} {ownedCount === 1 ? 'comic' : 'comics'}</Text></View></View></>} ListEmptyComponent={<EmptyState title="Nothing here yet" copy={query ? 'Try a title, creator, or character.' : 'Your collection is ready for its first great comic.'} action={!query ? 'Browse catalog' : undefined} onAction={!query ? () => router.push('/discover') : undefined} />}/>
     <ActionSheet visible={moreOpen} title="Library" onClose={() => setMoreOpen(false)} options={[{ label: 'Playlists', onPress: () => router.push('/playlists') }, { label: 'Compare comics', onPress: () => router.push('/compare') }, { label: 'Mind Space', onPress: () => router.push('/mind') }, { label: 'Comic Wallet', onPress: () => router.push('/wallet') }]} />
     {filtersOpen ? <View style={styles.overlay}><Sheet title="Filter library" onClose={() => setFiltersOpen(false)}>
       <Text style={styles.filterHeading}>Publisher</Text>

@@ -7,6 +7,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { ActionSheet, PromptModal, type SheetOption } from './dialogs';
 import { AppShell } from '../../ui/AppShell';
 import { HeaderActions, HeaderButton } from '../../ui/Icon';
+import { useLayout } from '../../ui/layout';
 import { PressableScale } from '../../ui/PressableScale';
 import { EmptyState, Input, Pill, Progress } from '../../ui/primitives';
 import { useAppearance, type TypographyPreset } from '../../ui/theme';
@@ -40,7 +41,7 @@ type Sheet = { title?: string; options: SheetOption[] } | null;
 type Prompt = { title: string; initial?: string; submitLabel?: string; secure?: boolean; onSubmit: (v: string) => void } | null;
 
 export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' | 'collections' }) {
-  const { width } = useWindowDimensions();
+  const layout = useLayout(); const width = layout.maxContent;
   const { theme, typography } = useAppearance();
   const c = theme.colors;
   const styles = useMemo(() => makeStyles(c, typography), [c, typography]);
