@@ -11,7 +11,9 @@ describe('layout', () => {
   it('treats a tablet as a tablet, with a rail only when wide', () => {
     const portrait = layoutFor(800, 1280); const landscape = layoutFor(1280, 800);
     expect(portrait.isTablet).toBe(true); expect(portrait.rail).toBe(false); expect(portrait.maxContent).toBe(720);
-    expect(landscape.rail).toBe(true); expect(landscape.contentWidth).toBe(1280 - RAIL_WIDTH); expect(landscape.maxContent).toBe(Math.min(1280 - RAIL_WIDTH, 1040));
+    expect(landscape.rail).toBe(true); expect(landscape.contentWidth).toBe(1280 - RAIL_WIDTH - 28); expect(landscape.maxContent).toBe(1280 - RAIL_WIDTH - 28);
+    const hidden = layoutFor(1280, 800, false);
+    expect(hidden.rail).toBe(false); expect(hidden.railCapable).toBe(true); expect(hidden.contentWidth).toBe(1280);
   });
   it('fits more covers on bigger screens', () => {
     expect(layoutFor(393, 851).columns(160)).toBe(2);

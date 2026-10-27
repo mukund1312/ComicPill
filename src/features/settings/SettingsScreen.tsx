@@ -6,6 +6,8 @@ import { Share } from 'react-native';
 import { router } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { SettingsPage } from '../../ui/SettingsPage';
+import { useLayout } from '../../ui/layout';
+import { useSidebar } from '../../lib/state/sidebar';
 import { ActionRow, ChoiceSheet, InfoRow, LinkRow, SettingsSection, ToggleRow, type Choice } from '../../ui/settingsUi';
 import { confirm, notice } from '../../ui/dialogs';
 import { useAppearance } from '../../ui/theme';
@@ -101,6 +103,7 @@ export default function SettingsScreen() {
     feedback.success();
   };
 
+  const layout = useLayout(); const menuSide = useSidebar((st) => st.side); const setMenuSide = useSidebar((st) => st.setSide); const menuOpen = useSidebar((st) => st.open); const setMenuOpen = useSidebar((st) => st.setOpen);
   const depthLabel = DEPTHS.find((d) => d.id === s.defaultJourneyDepth)?.label ?? 'Recommended';
   const depthChoices: Choice<ArcDepth>[] = DEPTHS.map((d) => ({ id: d.id, label: d.label, detail: d.blurb }));
   const permissionValue = (k: PermissionKey) => (perms.states ? STATE_LABEL[perms.states[k]] : '…');
@@ -116,6 +119,13 @@ export default function SettingsScreen() {
         <LinkRow label="Default journey depth" detail="How many books a new journey starts with." value={depthLabel} onPress={() => setSheet('depth')} />
         <ToggleRow label="Travel mode" detail="Only pick books you can open digitally." value={digitalOnly} onChange={setDigitalOnly} last />
       </SettingsSection>
+
+      {layout.isTablet ? (
+        <SettingsSection title="Tablet" footer="The menu sits on the right so it's under your thumb. The menu button in the corner hides and shows it.">
+          <ToggleRow label="Menu on the right" detail="Turn off to keep the menu on the left." value={menuSide === 'right'} onChange={(on) => setMenuSide(on ? 'right' : 'left')} />
+          <ToggleRow label="Show the menu" detail="Hide it for more room to read." value={menuOpen} onChange={setMenuOpen} last />
+        </SettingsSection>
+      ) : null}
 
       <SettingsSection title="AI assistant" footer="Optional. Add your own key to understand natural-language requests and scan shelves. Everything else works without one.">
         <LinkRow label="AI assistant" value={ai.key ? `${PROVIDER_LABEL[ai.provider]} · key saved` : 'Off'} onPress={() => router.push('/ai-settings')} last />

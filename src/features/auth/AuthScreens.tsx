@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Redirect, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { CenteredCard } from '../../ui/CenteredCard';
+import { useLayout } from '../../ui/layout';
 import { Button, Wordmark } from '../../ui/primitives';
 import { TextField } from '../../ui/settingsUi';
 import { confirm } from '../../ui/dialogs';
@@ -85,12 +87,14 @@ export default function AuthScreen({ kind }: { kind: Kind }) {
     router.replace('/sign-up');
   };
 
+  const { isTablet } = useLayout();
   // Already in? These screens are never a place to be — go on to the app.
   if (signedIn && !busy) return <Redirect href="/" />;
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <CenteredCard maxWidth={560}>
+      <KeyboardAvoidingView style={[styles.flex, isTablet && { flex: 0 }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <Wordmark />
           <Text accessibilityRole="header" style={[styles.title, { color: c.textPrimary, fontFamily: typography.display }]}>{COPY[kind].title}</Text>
@@ -120,6 +124,7 @@ export default function AuthScreen({ kind }: { kind: Kind }) {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+      </CenteredCard>
     </SafeAreaView>
   );
 }
@@ -127,7 +132,7 @@ export default function AuthScreen({ kind }: { kind: Kind }) {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   flex: { flex: 1 },
-  content: { padding: space.lg, paddingTop: space.xl, gap: space.md, width: '100%', maxWidth: 520, alignSelf: 'center' },
+  content: { padding: space.xl, paddingTop: space.xl, gap: space.md, width: '100%', alignSelf: 'center' },
   title: { fontSize: 34, lineHeight: 40, marginTop: space.lg },
   sub: { fontSize: 15, lineHeight: 22 },
   form: { gap: space.md, marginTop: space.lg },

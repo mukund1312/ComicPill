@@ -5,6 +5,7 @@ import type { PropsWithChildren, ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../ui/primitives';
+import { CenteredCard } from '../../ui/CenteredCard';
 import { space } from '../../ui/tokens';
 import { useAppearance } from '../../ui/theme';
 
@@ -28,6 +29,7 @@ export function StageFrame({ title, subtitle, progress, onBack, primaryLabel, on
   const c = theme.colors;
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top', 'bottom']}>
+      <CenteredCard fill maxWidth={720}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.top}>
           {onBack ? (
@@ -50,6 +52,7 @@ export function StageFrame({ title, subtitle, progress, onBack, primaryLabel, on
           </View>
         ) : null}
       </KeyboardAvoidingView>
+      </CenteredCard>
     </SafeAreaView>
   );
 }
@@ -57,15 +60,15 @@ export function StageFrame({ title, subtitle, progress, onBack, primaryLabel, on
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   flex: { flex: 1 },
-  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space.lg, minHeight: 44, width: '100%', maxWidth: 640, alignSelf: 'center' },
+  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space.lg, minHeight: 44 },
   back: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   backText: { fontSize: 32, lineHeight: 34 },
   dots: { flexDirection: 'row', gap: 6, alignItems: 'center' },
   dot: { height: 6, borderRadius: 3 },
-  content: { paddingHorizontal: space.lg, paddingBottom: space.xl, width: '100%', maxWidth: 640, alignSelf: 'center' },
+  content: { paddingHorizontal: space.lg, paddingBottom: space.xl },
   title: { fontSize: 30, lineHeight: 36, marginTop: 4 },
   subtitle: { fontSize: 15, lineHeight: 22, marginTop: 6 },
   body: { marginTop: space.lg },
-  footer: { width: '100%', maxWidth: 640, alignSelf: 'center', paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: space.sm, borderTopWidth: StyleSheet.hairlineWidth, gap: 4 },
+  footer: { paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: space.sm, borderTopWidth: StyleSheet.hairlineWidth, gap: 4 },
   hint: { fontSize: 12, textAlign: 'center', marginBottom: 4 },
 });

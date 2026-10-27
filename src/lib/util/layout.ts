@@ -10,7 +10,9 @@ const RAIL_MIN = 960;
 export type Layout = {
   width: number; height: number;
   isTablet: boolean; isLandscape: boolean;
-  /** Tabs live in a side rail instead of the floating bar. */
+  /** The screen is wide enough for a side menu at all. */
+  railCapable: boolean;
+  /** The side menu is showing right now. */
   rail: boolean;
   /** Width left for content once the rail is taken off. */
   contentWidth: number;
@@ -20,13 +22,14 @@ export type Layout = {
   columns: (min: number, gutter?: number, floor?: number) => number;
 };
 
-export function layoutFor(width: number, height: number): Layout {
+export function layoutFor(width: number, height: number, railOpen = true): Layout {
   const isTablet = Math.min(width, height) >= TABLET_MIN;
-  const rail = isTablet && width >= RAIL_MIN;
-  const contentWidth = rail ? width - RAIL_WIDTH : width;
-  const maxContent = isTablet ? Math.min(contentWidth, rail ? 1040 : 720) : contentWidth;
+  const railCapable = isTablet && width >= RAIL_MIN;
+  const rail = railCapable && railOpen;
+  const contentWidth = rail ? width - RAIL_WIDTH - 28 : width;
+  const maxContent = isTablet ? Math.min(contentWidth, railCapable ? 1040 : 720) : contentWidth;
   return {
-    width, height, isTablet, isLandscape: width > height, rail, contentWidth, maxContent,
+    width, height, isTablet, isLandscape: width > height, railCapable, rail, contentWidth, maxContent,
     columns: (min, gutter = 16, floor = 2) => Math.max(floor, Math.floor((maxContent - 32 + gutter) / (min + gutter))),
   };
 }

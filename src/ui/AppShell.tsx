@@ -13,6 +13,7 @@ import { feedback } from '../lib/platform/feedback';
 import { useProfile } from '../lib/state/settings';
 import { initialOf } from '../lib/settings/profileModel';
 import { RAIL_WIDTH, useLayout } from './layout';
+import { useSidebar } from '../lib/state/sidebar';
 
 type Tab = 'today' | 'reading' | 'library' | 'discover' | 'search' | 'none';
 const tabs: Array<{ id: Exclude<Tab, 'none'>; icon: IconName; iconActive: IconName; label: string; href: string }> = [
@@ -81,11 +82,11 @@ const SIDE_IMPORT: SideRow[] = [
 ];
 
 /** The iPad-style sidebar: the main places up top, then your libraries and the ways to bring comics in. */
-function Sidebar({ active }: { active: Tab }) {
+function Sidebar({ active, side }: { active: Tab; side: 'left' | 'right' }) {
   const { theme, typography } = useAppearance(); const c = theme.colors;
   const top = useSafeAreaInsets().top; const bottom = useSafeAreaInsets().bottom;
   const avatar = useProfile((p) => p.avatar); const displayName = useProfile((p) => p.displayName); const username = useProfile((p) => p.username);
-  const path = usePathname();
+  const path = usePathname(); const closeMenu = useSidebar((st) => st.toggle);
   const row = (r: SideRow, i: number, last: boolean) => {
     // Highlight by where you actually are, so a library inside the Library tab lights up on its own row.
     const on = r.label === 'Import from Files' || r.label === 'Connect a Server' || r.label === 'Scan a Comic' ? false : path === r.href;
@@ -104,10 +105,13 @@ function Sidebar({ active }: { active: Tab }) {
     </View>
   );
   return (
-    <View style={[styles.side, { backgroundColor: c.surface, borderRightColor: c.border, paddingTop: top + 14, paddingBottom: bottom + 14 }]}>
+    <View style={[styles.side, { backgroundColor: c.surface, borderColor: c.border, marginTop: top + 10, marginBottom: bottom + 10, marginLeft: side === 'left' ? 10 : 0, marginRight: side === 'right' ? 10 : 0 }]}>
       <View style={styles.sideTop}>
         <Pressable accessibilityRole="button" accessibilityLabel="Open profile" onPress={() => router.push('/profile')}><Avatar uri={avatar} initial={initialOf({ displayName, username })} size={40} /></Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel="Settings" hitSlop={8} onPress={() => router.push('/settings')} style={[styles.sideBtn, { backgroundColor: c.surfaceRaised }]}><Icon name="settings-outline" size={20} color={c.textPrimary} /></Pressable>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Settings" hitSlop={8} onPress={() => router.push('/settings')} style={[styles.sideBtn, { backgroundColor: c.surfaceRaised }]}><Icon name="settings-outline" size={20} color={c.textPrimary} /></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Hide menu" hitSlop={8} onPress={closeMenu} style={[styles.sideBtn, { backgroundColor: c.surfaceRaised }]}><Icon name={side === 'right' ? 'chevron-forward' : 'chevron-back'} size={20} color={c.textPrimary} /></Pressable>
+        </View>
       </View>
       <Text style={[styles.sideTitle, { color: c.textPrimary, fontFamily: typography.display }]}>Menu</Text>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -122,14 +126,14 @@ function Sidebar({ active }: { active: Tab }) {
 
 export function AppShell({ active, title, children, logo = false, right, back = false, bleed, scrollY }: PropsWithChildren<{ active: Tab; title?: string; logo?: boolean; right?: ReactNode; back?: boolean; bleed?: ReactNode; scrollY?: SharedValue<number> }>) {
   const { theme, typography } = useAppearance(); const c = theme.colors;
-  const layout = useLayout(); const insetTop = useSafeAreaInsets().top;
+  const layout = useLayout(); const insetTop = useSafeAreaInsets().top; const side = useSidebar((st) => st.side); const toggleMenu = useSidebar((st) => st.toggle);
   // As the page scrolls the wordmark rises a little and shrinks, and the avatar follows.
   const fallback = useSharedValue(0); const sy = scrollY ?? fallback;
   const logoStyle = useAnimatedStyle(() => ({ transform: [{ translateY: interpolate(sy.value, [0, 140], [0, -7], 'clamp') }, { scale: interpolate(sy.value, [0, 140], [1, 0.8], 'clamp') }] }));
   const avatar = useProfile((p) => p.avatar); const displayName = useProfile((p) => p.displayName); const username = useProfile((p) => p.username);
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: c.background, flexDirection: layout.rail ? 'row' : 'column' }]} edges={layout.rail ? [] : ['top']}>
-      {layout.rail ? <Sidebar active={active} /> : null}
+    <SafeAreaView style={[styles.safe, { backgroundColor: c.background, flexDirection: layout.rail ? (side === 'right' ? 'row-reverse' : 'row') : 'column' }]} edges={layout.rail ? [] : ['top']}>
+      {layout.rail ? <Sidebar active={active} side={side} /> : null}
       <View style={[styles.main, { paddingTop: layout.rail ? insetTop : 0 }]}>
       {/* artwork that bleeds across the whole screen, behind the header and the tab bar */}
       {bleed ? <View pointerEvents="none" style={StyleSheet.absoluteFill}>{bleed}</View> : null}
@@ -138,20 +142,20 @@ export function AppShell({ active, title, children, logo = false, right, back = 
         <>
           <View style={styles.topBar}>
             <HeaderButton icon="chevron-back" label="Back" onPress={() => router.back()} />
-            <View style={styles.headerRight}>{right}</View>
+            <View style={styles.headerRight}>{layout.railCapable && !layout.rail ? <HeaderButton icon="menu" label="Show menu" onPress={toggleMenu} /> : null}{right}</View>
           </View>
           <Text accessibilityRole="header" numberOfLines={1} style={[styles.pageTitle, { color: c.textPrimary, fontFamily: typography.display }]}>{title}</Text>
         </>
       ) : (
         <View style={styles.header}>
           {logo ? <Animated.View style={[styles.logoLockup, logoStyle, { transformOrigin: 'left center' }]}><Wordmark small /><ThemeEmblem id={theme.id} size={26} /></Animated.View> : <Text accessibilityRole="header" style={[styles.headerTitle, { color: c.textPrimary, fontFamily: typography.display }]}>{title}</Text>}
-          <View style={styles.headerRight}>{right ?? (layout.rail ? null : <Pressable accessibilityRole="button" accessibilityLabel="Open profile" hitSlop={8} onPress={() => router.push('/profile')}><Avatar uri={avatar} initial={initialOf({ displayName, username })} size={38} /></Pressable>)}</View>
+          <View style={styles.headerRight}>{layout.railCapable && !layout.rail ? <HeaderButton icon="menu" label="Show menu" onPress={toggleMenu} /> : null}{right ?? (layout.rail ? null : <Pressable accessibilityRole="button" accessibilityLabel="Open profile" hitSlop={8} onPress={() => router.push('/profile')}><Avatar uri={avatar} initial={initialOf({ displayName, username })} size={38} /></Pressable>)}</View>
         </View>
       )}
       {/* The same gentle rise on every tab, so moving around the app always feels the same. */}
       <Animated.View key={active} entering={FadeIn.duration(260).easing(Easing.out(Easing.cubic))} style={styles.body}>{children}</Animated.View>
       </View>
-      {layout.rail ? null : <TabBar active={active} />}
+      {layout.railCapable ? null : <TabBar active={active} />}
       </View>
     </SafeAreaView>
   );
@@ -168,7 +172,7 @@ const styles = StyleSheet.create({
   body: { flex: 1 },
   main: { flex: 1 },
   column: { flex: 1, width: '100%', alignSelf: 'center' },
-  side: { width: RAIL_WIDTH, borderRightWidth: StyleSheet.hairlineWidth, paddingHorizontal: 14 },
+  side: { width: RAIL_WIDTH - 10, borderRadius: 32, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 14, paddingVertical: 16 },
   sideTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4 },
   sideBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   sideTitle: { fontSize: 34, letterSpacing: -1, marginTop: 14, paddingHorizontal: 6 },

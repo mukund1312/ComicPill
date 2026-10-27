@@ -7,7 +7,7 @@ import { feedback } from '../lib/platform/feedback';
 
 export type IconName = keyof typeof Ionicons.glyphMap;
 
-export function Icon({ name, size = 22, color }: { name: IconName; size?: number; color?: string }) {
+export function Icon({ name, size = 22, color }: { name: IconName; size?: number; color?: string; style?: unknown }) {
   const { theme } = useAppearance();
   return <Ionicons name={name} size={size} color={color ?? theme.colors.textPrimary} />;
 }
