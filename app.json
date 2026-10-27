@@ -115,7 +115,7 @@
         "android.permission.SYSTEM_ALERT_WINDOW",
         "android.permission.WRITE_EXTERNAL_STORAGE"
       ],
-      "versionCode": 24,
+      "versionCode": 25,
       "intentFilters": [
         {
           "action": "VIEW",
