@@ -16,6 +16,8 @@ type Native = {
   recognizeText?(path: string): Promise<string>;
   /** Keep access to a picked cloud file after the app closes. */
   persistUriPermission?(uri: string): boolean;
+  /** iOS: the Files picker opening files in place (no copy), so it returns at once. `bookmark` reopens the file later. Empty when cancelled. */
+  pickFilesInPlace?(): Promise<{ uri: string; name: string; size: number; bookmark: string | null }[]>;
   /** iOS: a base64 bookmark that reopens a picked cloud file later. */
   makeBookmark?(uri: string): string | null;
   /** iOS: copy a bookmarked file (or a file `relative`ly inside a bookmarked folder) to `dest`, downloading it from the cloud app if needed. */

@@ -140,15 +140,15 @@ export const toggleBookmark = (comicId: string, page: number): boolean => {
 };
 
 // ---- folders ----------------------------------------------------------------
-export type ReaderFolder = { id: string; name: string; presetId: string | null; parentId: string | null; count: number; subfolders: number; locked: boolean };
+export type ReaderFolder = { id: string; name: string; presetId: string | null; parentId: string | null; createdAt: number; count: number; subfolders: number; locked: boolean };
 
 export const listFolders = (): ReaderFolder[] =>
-  sqlite.getAllSync<{ id: string; name: string; preset_id: string | null; parent_id: string | null; n: number; sub: number; lock_hash: string | null }>(
-    `SELECT f.id, f.name, f.preset_id, f.parent_id, f.lock_hash,
+  sqlite.getAllSync<{ id: string; name: string; preset_id: string | null; parent_id: string | null; created_at: number; n: number; sub: number; lock_hash: string | null }>(
+    `SELECT f.id, f.name, f.preset_id, f.parent_id, f.created_at, f.lock_hash,
        (SELECT COUNT(*) FROM reader_comics c WHERE c.folder_id = f.id) AS n,
        (SELECT COUNT(*) FROM reader_folders s WHERE s.parent_id = f.id) AS sub
      FROM reader_folders f ORDER BY f.name COLLATE NOCASE`,
-  ).map((r) => ({ id: r.id, name: r.name, presetId: r.preset_id, parentId: r.parent_id, count: r.n, subfolders: r.sub, locked: !!r.lock_hash }));
+  ).map((r) => ({ id: r.id, name: r.name, presetId: r.preset_id, parentId: r.parent_id, createdAt: r.created_at, count: r.n, subfolders: r.sub, locked: !!r.lock_hash }));
 
 /** A new folder, at the top or inside `parentId`. A folder with that name in the same place is reused. */
 export const createFolder = (name: string, parentId: string | null = null): string => {

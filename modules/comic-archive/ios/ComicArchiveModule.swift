@@ -3,6 +3,7 @@ import Foundation
 import PDFKit
 import UIKit
 import Vision
+import UniformTypeIdentifiers
 import UnrarKit
 import SWCompression
 
@@ -83,6 +84,20 @@ public class ComicArchiveModule: Module {
       return ["width": w, "height": h, "data": Data(gray).base64EncodedString()]
     }
 
+    // The Files picker, opening files where they are. The stock picker copies every file you choose before it lets you back into the app,
+    // which for a 500 MB comic in Drive means staring at Files while it downloads. This hands back the names, sizes and bookmarks at once.
+    AsyncFunction("pickFilesInPlace") { (promise: Promise) in
+      DispatchQueue.main.async {
+        guard let presenter = self.appContext?.utilities?.currentViewController() else { promise.reject("PICKER", "Cannot show the file picker"); return }
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [UTType.item], asCopy: false)
+        picker.allowsMultipleSelection = true
+        let delegate = InPlacePickerDelegate(promise: promise) { Self.activePicker = nil }
+        Self.activePicker = delegate // the picker only holds its delegate weakly
+        picker.delegate = delegate
+        presenter.present(picker, animated: true)
+      }
+    }
+
     // A cloud file (Drive, Dropbox…) picked without copying: iOS only lets the app reopen it later through a bookmark.
     Function("makeBookmark") { (uri: String) -> String? in
       let url = Self.fileURL(uri)
@@ -131,6 +146,8 @@ public class ComicArchiveModule: Module {
 
   // MARK: helpers
 
+  static var activePicker: InPlacePickerDelegate?
+
   static func fileURL(_ path: String) -> URL { path.hasPrefix("file://") ? (URL(string: path) ?? URL(fileURLWithPath: path)) : URL(fileURLWithPath: path) }
 
   static func openRar(_ url: URL) throws -> URKArchive {
@@ -165,5 +182,31 @@ public class ComicArchiveModule: Module {
     guard let src = CGImageSourceCreateWithData(data as CFData, nil), let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any],
           let w = props[kCGImagePropertyPixelWidth] as? Int, let h = props[kCGImagePropertyPixelHeight] as? Int else { return [0, 0] }
     return [w, h]
+  }
+}
+
+
+/// Answers the in-place Files picker with `{ uri, name, size, bookmark }` for each file, without reading or copying any of them.
+final class InPlacePickerDelegate: NSObject, UIDocumentPickerDelegate {
+  private let promise: Promise
+  private let finished: () -> Void
+
+  init(promise: Promise, finished: @escaping () -> Void) { self.promise = promise; self.finished = finished }
+
+  func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+    let items: [[String: Any]] = urls.map { url in
+      let scoped = url.startAccessingSecurityScopedResource()
+      defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+      let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+      let bookmark = (try? url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil))?.base64EncodedString()
+      return ["uri": url.absoluteString, "name": url.lastPathComponent, "size": size, "bookmark": bookmark ?? NSNull()]
+    }
+    promise.resolve(items)
+    finished()
+  }
+
+  func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+    promise.resolve([[String: Any]]())
+    finished()
   }
 }

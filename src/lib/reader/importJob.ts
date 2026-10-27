@@ -50,8 +50,9 @@ export async function runJob(label: string, work: (progress: ImportProgress) => 
   set({ ...idle, running: true, label });
   void activateKeepAwakeAsync('comicpill-import').catch(() => undefined);
   try {
-    const { verb, result } = await work({ cancel, onProgress: (p) => set({ done: p.done, total: p.total, name: p.name }) });
-    set({ summary: summarize(verb, result, cancel.cancelled) });
+    const { verb, result } = await work({ cancel, onProgress: (p) => set({ done: p.done, total: p.total, name: p.name, ...(p.phase ? { label: p.phase } : {}) }) });
+    // Backing out of the picker leaves nothing to report.
+    if (result.imported.length || result.skipped.length || result.failed.length) set({ summary: summarize(verb, result, cancel.cancelled) });
   } catch (e) {
     set({ summary: { text: 'The import stopped unexpectedly', problems: [e instanceof Error ? e.message : String(e)] } });
   } finally {

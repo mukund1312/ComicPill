@@ -31,7 +31,7 @@ import { Icon } from '../../ui/Icon';
 import { checkPassword, isUnlocked, makeLock, markUnlocked, passwordProblem } from '../../lib/reader/lock';
 import { newSalt, sha256 } from '../../lib/reader/lockCrypto';
 import { listPresets } from '../../lib/reader/readerSettings';
-import { isFinished, matchesQuery, progressFraction, readingNow, SORT_LABEL, sortComics, type SortKey } from '../../lib/reader/shelf';
+import { isFinished, matchesQuery, isSortKey, progressFraction, readingNow, SORT_KEYS, SORT_LABEL, sortComics, sortFolders, type SortKey } from '../../lib/reader/shelf';
 
 type Segment = 'library' | 'collections';
 type View_ = 'grid' | 'list';
@@ -40,9 +40,9 @@ type Cell =
   | { kind: 'folder'; key: string; folder: ReaderFolder }
   | { kind: 'collection'; key: string; collection: ReaderCollection };
 
-const SORTS: SortKey[] = ['recent', 'title', 'added'];
 const MIN_CELL = 168; const TABLET_CELL = 224;
 const VIEW_KEY = 'reader_view';
+const SORT_KEY = 'reader_sort';
 const sizeLabel = (bytes: number | null) => (bytes == null ? null : bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);
 
 type Sheet = { title?: string; options: SheetOption[] } | null;
@@ -63,7 +63,8 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   const segment: Segment = mode === 'collections' ? 'collections' : 'library';
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<SortKey>('recent');
+  const [sort, setSortState] = useState<SortKey>(() => { const saved = getMeta(SORT_KEY); return isSortKey(saved) ? saved : 'recent'; });
+  const setSort = (k: SortKey) => { setSortState(k); setMeta(SORT_KEY, k); }; // remembered for next time, and the same inside every folder
   const [openFolderRaw, setOpenFolder] = useState<string | null>(null);
   const [openCollection, setOpenCollection] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -150,7 +151,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
     else if (searching) pool = visible; // search looks everywhere, folders included
     else pool = visible.filter((comic) => comic.folderId === openFolder);
     const sorted = sortComics(pool.filter((comic) => matchesQuery(comic, query)), sort);
-    const folderCells: Cell[] = segment === 'library' && !searching ? folders.filter((f) => f.parentId === openFolder).map((folder) => ({ kind: 'folder', key: `f-${folder.id}`, folder })) : [];
+    const folderCells: Cell[] = segment === 'library' && !searching ? sortFolders(folders.filter((f) => f.parentId === openFolder), sort).map((folder) => ({ kind: 'folder', key: `f-${folder.id}`, folder })) : [];
     return [...folderCells, ...sorted.map((comic): Cell => ({ kind: 'comic', key: comic.id, comic }))];
   }, [segment, comics, folders, collections, lockedFolders, query, sort, openFolder, openCollection]);
 
@@ -255,7 +256,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
     options: [
       { label: 'Grid', checked: view === 'grid', onPress: () => setView('grid') },
       { label: 'List', checked: view === 'list', onPress: () => setView('list') },
-      ...SORTS.map((k) => ({ label: `Sort: ${SORT_LABEL[k]}`, checked: sort === k, onPress: () => setSort(k) })),
+      ...SORT_KEYS.map((k) => ({ label: `Sort: ${SORT_LABEL[k]}`, checked: sort === k, onPress: () => setSort(k) })),
     ],
   });
 

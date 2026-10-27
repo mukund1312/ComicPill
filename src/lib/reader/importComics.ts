@@ -18,14 +18,14 @@ const titleOf = (name: string) => name.replace(/\.[^.]+$/, '').replace(/[_]+/g, 
 const comicsRoot = () => new Directory(Paths.document, 'comics');
 
 /** Lets a screen show "3 of 12" and stop a long import: set `cancel.cancelled` and the import ends after the file it is on. */
-export type ImportProgress = { onProgress?: (p: { done: number; total: number; name: string }) => void; cancel?: { cancelled: boolean } };
+export type ImportProgress = { onProgress?: (p: { done: number; total: number; name: string; phase?: string }) => void; cancel?: { cancelled: boolean } };
 
 export type ImportOptions = {
   folderId?: string;
   /** Keep the file where it is (Drive, Dropbox…) and only remember the link. */
   sourceUri?: string;
-  /** The file is a temporary copy nobody else needs (the picker's cache copy): move it instead of copying it a second time. */
-  moveSource?: boolean;
+  /** Where to copy the file from when `uri` isn't readable by itself: a bookmark on iOS, a content address on Android. */
+  fetchFrom?: string;
   /** Size of the original file in bytes. With the name it tells whether this file is already in the library. */
   size?: number;
   /** `uri` is a comic just taken out of a linked zip bundle: keep it as a cached link, don't fetch anything. */
@@ -33,13 +33,13 @@ export type ImportOptions = {
 };
 
 /** Runs `one` for each item, reporting progress, and stops early when asked. */
-async function eachWithProgress<T>(items: T[], progress: ImportProgress, nameOf: (item: T) => string, one: (item: T) => Promise<void>): Promise<void> {
+async function eachWithProgress<T>(items: T[], progress: ImportProgress, nameOf: (item: T) => string, one: (item: T) => Promise<void>, phase?: string): Promise<void> {
   for (let i = 0; i < items.length; i++) {
     if (progress.cancel?.cancelled) return;
-    progress.onProgress?.({ done: i, total: items.length, name: nameOf(items[i]) });
+    progress.onProgress?.({ done: i, total: items.length, name: nameOf(items[i]), phase });
     await one(items[i]);
   }
-  progress.onProgress?.({ done: items.length, total: items.length, name: '' });
+  progress.onProgress?.({ done: items.length, total: items.length, name: '', phase });
 }
 
 async function importFile(uri: string, name: string, result: ImportResult, opts: ImportOptions = {}, depth = 0): Promise<void> {
@@ -52,9 +52,10 @@ async function importFile(uri: string, name: string, result: ImportResult, opts:
     const bookDir = opts.sourceUri ? cacheDirFor(id) : dir;
     if (opts.sourceUri) bookDir.create({ intermediates: true });
     const stored = new File(bookDir, 'book');
-    if (opts.sourceUri && !opts.nested) await copyFromSource(opts.sourceUri, stored.uri);
-    else if (opts.moveSource || opts.nested) {
-      // A rename, not a second multi-gigabyte copy; if the move isn't possible it falls back to copying.
+    const fetchFrom = opts.sourceUri && !opts.nested ? opts.sourceUri : opts.fetchFrom;
+    if (fetchFrom) await copyFromSource(fetchFrom, stored.uri);
+    else if (opts.nested) {
+      // A rename, not a second copy; if the move isn't possible it falls back to copying.
       try { await new File(uri).move(stored); } catch { await new File(uri).copy(stored); }
     } else await new File(uri).copy(stored); // async in SDK 57: opening before it resolves reads a partial file
     let source;
@@ -97,48 +98,76 @@ async function importFile(uri: string, name: string, result: ImportResult, opts:
   }
 }
 
-/** Pick one or more files and copy them into app storage (so there are no URI permissions to keep). With `folderId`, they land in that folder. */
-export async function pickAndImportComics(opts: ImportOptions & ImportProgress = {}): Promise<ImportResult> {
-  const picked = await DocumentPicker.getDocumentAsync({ type: '*/*', multiple: true, copyToCacheDirectory: true });
-  const result = emptyResult();
-  if (picked.canceled) return result;
+type Picked = { uri: string; name: string; size?: number; /** How to reopen it later: a bookmark on iOS, its own address on Android. */ source: string };
 
-  const root = comicsRoot();
-  if (!root.exists) root.create({ intermediates: true });
-
-  await eachWithProgress(picked.assets, opts, (a) => a.name, async (asset) => {
-    try { await importFile(asset.uri, asset.name, result, { folderId: opts.folderId, moveSource: true, size: asset.size }); }
-    finally { try { const tmp = new File(asset.uri); if (tmp.exists) tmp.delete(); } catch { /* cache copy */ } }
-  });
-  // Files the picker copied but we stopped before reaching.
-  if (opts.cancel?.cancelled) for (const asset of picked.assets) { try { const tmp = new File(asset.uri); if (tmp.exists) tmp.delete(); } catch { /* cache copy */ } }
-  return result;
-}
-
-/** Pick comics from Drive, Dropbox or any cloud app and keep them THERE: only a link, the cover and the page count stay on the phone. */
-export async function pickAndLinkComics(opts: Pick<ImportOptions, 'folderId'> & ImportProgress = {}): Promise<ImportResult> {
+/**
+ * Let the reader choose files and come straight back to the app. Nothing is copied or downloaded here, so a 500 MB file in Drive
+ * doesn't keep you waiting inside Files. (The stock iOS picker copies each file first; this one opens them where they are.)
+ */
+async function pickInPlace(keepAccess: boolean): Promise<Picked[]> {
+  const native = optionalNative();
+  if (Platform.OS === 'ios' && native?.pickFilesInPlace) {
+    const items = await native.pickFilesInPlace();
+    return items.filter((i) => i.bookmark).map((i) => ({ uri: i.uri, name: i.name, size: i.size || undefined, source: BOOKMARK_PREFIX + i.bookmark }));
+  }
   const picked = await DocumentPicker.getDocumentAsync({ type: '*/*', multiple: true, copyToCacheDirectory: false });
+  if (picked.canceled) return [];
+  return picked.assets.map((a) => {
+    // Without this Android forgets the file the moment the app closes.
+    if (keepAccess) { try { native?.persistUriPermission?.(a.uri); } catch { /* some providers don't offer it; the link then lasts for this session */ } }
+    return { uri: a.uri, name: a.name, size: a.size ?? undefined, source: a.uri };
+  });
+}
+
+/** Add one linked comic to the shelf from its name and size alone: nothing is fetched. Returns its id, or null if it is already in the library. */
+function linkWithoutDownloading(file: { name: string; size?: number; source: string; folderId?: string }, result: ImportResult): string | null {
+  if (file.size && isDuplicateSource(file.name, file.size, titleOf(file.name))) { result.skipped.push(file.name); return null; }
+  const id = randomUUID(); const title = titleOf(file.name);
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+  insertReaderComic({
+    id, title, path: cachedFileFor(id).uri, format: FORMAT_OF[ext] ?? 'cbz', pageCount: 0, coverPath: null,
+    folderId: file.folderId ?? null, sizeBytes: file.size ?? null, sourceUri: file.source, sourceKey: file.size ? sourceKeyOf(file.name, file.size) : null,
+  });
+  try { linkReaderComic({ id, title, series: null, writer: null, coverPath: null, workId: null }); } catch { /* readable without the library link */ }
+  result.imported.push(file.name);
+  return id;
+}
+
+/** Pick one or more files and copy them into app storage. You are back in the app at once; the copying shows as progress. With `folderId`, they land in that folder. */
+export async function pickAndImportComics(opts: Pick<ImportOptions, 'folderId'> & ImportProgress = {}): Promise<ImportResult> {
+  const picked = await pickInPlace(false);
   const result = emptyResult();
-  if (picked.canceled) return result;
+  if (!picked.length) return result;
   const root = comicsRoot();
   if (!root.exists) root.create({ intermediates: true });
-  await eachWithProgress(picked.assets, opts, (a) => a.name, async (asset) => {
-    // Without this the app forgets the file the moment it closes: Android keeps the permission, iOS keeps a bookmark.
-    let sourceUri = asset.uri;
-    try {
-      const native = optionalNative();
-      if (Platform.OS === 'ios') {
-        const bookmark = native?.makeBookmark?.(asset.uri);
-        if (!bookmark) { result.failed.push({ name: asset.name, reason: 'This cloud app doesn’t let ComicPill keep a link. Use “Import from Files” instead.' }); return; }
-        sourceUri = BOOKMARK_PREFIX + bookmark;
-      } else native?.persistUriPermission?.(asset.uri);
-    } catch { /* some providers don't offer it; the link then lasts for this session */ }
-    await importFile(asset.uri, asset.name, result, { folderId: opts.folderId, sourceUri, size: asset.size });
-  });
+  await eachWithProgress(picked, opts, (f) => f.name, (f) => importFile(f.uri, f.name, result, { folderId: opts.folderId, fetchFrom: f.source, size: f.size }), 'Importing');
   return result;
 }
 
-/** Delete several comics from the device at once. */
+/**
+ * Pick comics from Drive, Dropbox or any cloud app and keep them THERE. They appear on the shelf immediately; their covers and page counts
+ * are then read in the background, one at a time, while you carry on using the app.
+ */
+export async function pickAndLinkComics(opts: Pick<ImportOptions, 'folderId'> & ImportProgress = {}): Promise<ImportResult> {
+  const picked = await pickInPlace(true);
+  const result = emptyResult();
+  if (!picked.length) return result;
+  const root = comicsRoot();
+  if (!root.exists) root.create({ intermediates: true });
+  const added: string[] = [];
+  await eachWithProgress(picked, opts, (f) => f.name, async (f) => {
+    try { const id = linkWithoutDownloading({ ...f, folderId: opts.folderId }, result); if (id) added.push(id); }
+    catch { result.failed.push({ name: f.name, reason: 'Could not link this file.' }); }
+  }, 'Linking');
+  // Now the slow part, in the background: fetch each one, read its cover and page count, and let the fetched copy go.
+  if (added.length && !opts.cancel?.cancelled) {
+    const prepared = await prepareLinkedComics({ ...opts, ids: added });
+    result.failed.push(...prepared.failed);
+    result.skipped.push(...prepared.skipped);
+  }
+  return result;
+}
+
 export function removeComics(ids: string[]): void { for (const id of ids) removeComic(id); }
 
 /** A zip with no pages of its own may be a bundle of comics: import each one inside. A linked bundle's comics stay links. Returns how many it held. */
@@ -283,25 +312,20 @@ export async function pickAndLinkFolder(opts: { parentId?: string } & ImportProg
     try {
       const size = sizeOf(file);
       if (size && isDuplicateSource(file.name, size, titleOf(file.name))) { result.skipped.push(file.name); return; }
-      const sourceUri = bookmark ? `${BOOKMARK_PREFIX}${bookmark}|${path.join('/')}` : file.uri;
-      const id = randomUUID(); const title = titleOf(file.name);
-      insertReaderComic({
-        id, title, path: cachedFileFor(id).uri, format: FORMAT_OF[file.extension.replace('.', '').toLowerCase()] ?? 'cbz', pageCount: 0, coverPath: null,
-        folderId: folderFor(path.slice(0, -1)), sizeBytes: size ?? null, sourceUri, sourceKey: size ? sourceKeyOf(file.name, size) : null,
-      });
-      try { linkReaderComic({ id, title, series: null, writer: null, coverPath: null, workId: null }); } catch { /* readable without the library link */ }
-      result.imported.push(file.name);
+      const source = bookmark ? `${BOOKMARK_PREFIX}${bookmark}|${path.join('/')}` : file.uri;
+      if (size && isDuplicateSource(file.name, size, titleOf(file.name))) { result.skipped.push(file.name); return; }
+      linkWithoutDownloading({ name: file.name, size, source, folderId: folderFor(path.slice(0, -1)) }, result);
     } catch { result.failed.push({ name: file.name, reason: 'Could not link this file.' }); }
   });
   return result;
 }
 
 /** Read the cover, page count and details of linked comics that haven't been looked at yet, one at a time. Each file is fetched, read, then released. */
-export async function prepareLinkedComics(opts: ImportProgress = {}): Promise<ImportResult> {
+export async function prepareLinkedComics(opts: ImportProgress & { /** Only these; by default every linked comic that is still waiting. */ ids?: string[] } = {}): Promise<ImportResult> {
   const result = emptyResult();
   const root = comicsRoot();
   if (!root.exists) root.create({ intermediates: true });
-  await eachWithProgress(unpreparedLinkIds(), opts, (id) => getReaderComic(id)?.title ?? '', async (id) => {
+  await eachWithProgress(opts.ids ?? unpreparedLinkIds(), opts, (id) => getReaderComic(id)?.title ?? '', async (id) => {
     const comic = getReaderComic(id);
     if (!comic?.sourceUri) return;
     const wasCached = isCached(id);
@@ -336,6 +360,6 @@ export async function prepareLinkedComics(opts: ImportProgress = {}): Promise<Im
     } finally {
       if (!wasCached) freeSpaceFor(id); // a bulk pass must not fill the cache with files nobody asked to read
     }
-  });
+  }, 'Loading covers');
   return result;
 }

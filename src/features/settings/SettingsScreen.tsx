@@ -162,6 +162,7 @@ export default function SettingsScreen() {
         <LinkRow label="Help & feedback" onPress={() => router.push('/feedback')} />
         <LinkRow label="Sources & metadata" onPress={() => router.push('/sources')} />
         <LinkRow label="Edit my taste picks" detail="Characters, art, genres and story feel." onPress={() => router.push('/onboarding?mode=edit')} />
+        <LinkRow label="Storage" detail="See what ComicPill keeps on this device and clear space." onPress={() => router.push('/storage')} />
         <LinkRow label="About ComicPill" onPress={() => router.push('/about')} last />
       </SettingsSection>
 
