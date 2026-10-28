@@ -31,6 +31,8 @@ import { canMoveFolders, pathTo, shutFolders } from '../../lib/reader/folderTree
 import { freeSpaceFor, isCached, readyComics } from '../../lib/reader/cloudCache';
 import { KEEP_CHOICES, keepLimit, setKeepLimit } from '../../lib/reader/cloudBudget';
 import { Icon } from '../../ui/Icon';
+import { usePerRow } from '../../ui/gridColumns';
+import { PerRowSheet } from './PerRowSheet';
 import { checkPassword, isUnlocked, makeLock, markUnlocked, passwordProblem } from '../../lib/reader/lock';
 import { newSalt, sha256 } from '../../lib/reader/lockCrypto';
 import { listPresets } from '../../lib/reader/readerSettings';
@@ -59,7 +61,8 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   const styles = useMemo(() => makeStyles(c, typography), [c, typography]);
 
   const [view, setViewState] = useState<View_>(() => (getMeta(VIEW_KEY) === 'list' ? 'list' : 'grid'));
-  const columns = view === 'list' ? 1 : Math.max(2, Math.floor((width - space.lg * 2) / (layout.isTablet ? TABLET_CELL : MIN_CELL))); // two generous columns on phones, more on tablets
+  const perRow = usePerRow(); const [perRowOpen, setPerRowOpen] = useState(false);
+  const columns = view === 'list' ? 1 : perRow || Math.max(2, Math.floor((width - space.lg * 2) / (layout.isTablet ? TABLET_CELL : MIN_CELL))); // two generous columns on phones, more on tablets
   const cellWidth = (width - space.lg * 2 - space.md * (columns - 1)) / columns;
   const [comics, setComics] = useState<ReaderComic[]>([]);
   const [folders, setFolders] = useState<ReaderFolder[]>([]);
@@ -284,6 +287,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
     options: [
       { label: 'Grid', checked: view === 'grid', onPress: () => setView('grid') },
       { label: 'List', checked: view === 'list', onPress: () => setView('list') },
+      { label: 'Comics per row…', onPress: () => setPerRowOpen(true) },
       { label: 'Only comics that are ready on this device', checked: readyOnly, onPress: () => setReadyOnly((v) => !v) },
       ...SORT_KEYS.map((k) => ({ label: `Sort: ${SORT_LABEL[k]}`, checked: sort === k, onPress: () => setSort(k) })),
     ],
@@ -542,6 +546,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
       ) : null}
       </View>
       </GestureHandlerRootView>
+      <PerRowSheet visible={perRowOpen} onClose={() => setPerRowOpen(false)} />
       <ActionSheet visible={!!sheet} title={sheet?.title} options={sheet?.options ?? []} onClose={() => setSheet(null)} />
       <PromptModal visible={!!prompt} title={prompt?.title ?? ''} initial={prompt?.initial} submitLabel={prompt?.submitLabel} secure={prompt?.secure} onSubmit={(v) => prompt?.onSubmit(v)} onClose={() => setPrompt(null)} />
     </AppShell>

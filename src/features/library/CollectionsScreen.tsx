@@ -11,6 +11,8 @@ import { useAppearance } from '../../ui/theme';
 import { useLayout } from '../../ui/layout';
 import { space } from '../../ui/tokens';
 import { ActionSheet, PromptModal } from '../reader/dialogs';
+import { PerRowSheet } from '../reader/PerRowSheet';
+import { useGridColumns } from '../../ui/gridColumns';
 import { useLibrary, type LibraryItem } from './useLibrary';
 import {
   addWorksToCollection, collectionWorkIds, createCollection, deleteCollection, listCollections, removeWorksFromCollection, renameCollection, type ReaderCollection,
@@ -23,7 +25,7 @@ type Prompt = { title: string; initial?: string; submitLabel: string; onSubmit: 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 export default function CollectionsScreen() {
-  const layout = useLayout(); const cols = layout.columns(layout.isTablet ? 200 : 150);
+  const layout = useLayout(); const cols = useGridColumns(layout.isTablet ? 200 : 150); const [perRowOpen, setPerRowOpen] = useState(false);
   const { theme, typography } = useAppearance(); const c = theme.colors;
   const library = useLibrary();
   const [tick, setTick] = useState(0); const refresh = () => setTick((t) => t + 1);
@@ -71,7 +73,7 @@ export default function CollectionsScreen() {
   const parentName = here?.parentId ? all.find((x) => x.id === here.parentId)?.name : undefined;
 
   return (
-    <AppShell active="library" back title="Collections" right={<HeaderActions><HeaderButton icon="add" label="Add" onPress={addMenu} /></HeaderActions>}>
+    <AppShell active="library" back title="Collections" right={<HeaderActions><HeaderButton icon="grid-outline" label="Comics per row" onPress={() => setPerRowOpen(true)} /><HeaderButton icon="add" label="Add" onPress={addMenu} /></HeaderActions>}>
       {here ? (
         <View style={styles.crumbs}>
           <Pressable accessibilityRole="button" hitSlop={8} onPress={() => setOpenId(here.parentId)}><Text style={[styles.back, { color: c.primary, fontFamily: typography.bodySemibold }]}>‹ {parentName ?? 'Collections'}</Text></Pressable>
@@ -108,6 +110,7 @@ export default function CollectionsScreen() {
           : <EmptyState title="No collections yet" copy="Group your comics your own way, like “Batman”, “Reading next” or “Lent out”." action="New collection" onAction={newCollection} />}
       />
       {picking && openId ? <Picker items={library.items} collectionId={openId} onClose={() => setPicking(false)} onAdded={refresh} /> : null}
+      <PerRowSheet visible={perRowOpen} onClose={() => setPerRowOpen(false)} />
       <ActionSheet visible={!!sheet} title={sheet?.title} options={sheet?.options ?? []} onClose={() => setSheet(null)} />
       <PromptModal visible={!!prompt} title={prompt?.title ?? ''} initial={prompt?.initial} submitLabel={prompt?.submitLabel} onSubmit={(v) => prompt?.onSubmit(v)} onClose={() => setPrompt(null)} />
     </AppShell>
@@ -117,7 +120,7 @@ export default function CollectionsScreen() {
 /** Every comic in My Collection, to tick and add to this collection. Ones already in it are shown as added. */
 function Picker({ items, collectionId, onClose, onAdded }: { items: LibraryItem[]; collectionId: string; onClose: () => void; onAdded: () => void }) {
   const { theme, typography } = useAppearance(); const c = theme.colors;
-  const layout = useLayout(); const cols = layout.columns(layout.isTablet ? 150 : 110);
+  const layout = useLayout(); const cols = useGridColumns(layout.isTablet ? 150 : 110);
   const [query, setQuery] = useState('');
   const [chosen, setChosen] = useState<Set<string>>(new Set());
   const already = useMemo(() => new Set(collectionWorkIds(collectionId)), [collectionId]);

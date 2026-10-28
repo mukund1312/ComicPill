@@ -15,6 +15,8 @@ import { isAccessible, isFormatOwned } from '../../lib/util/own';
 import { useTravelMode } from '../../lib/state/travelMode';
 import { linkWithCovers, pickAndLinkComics, pickAndLinkFolder } from '../../lib/reader/importComics';
 import { runJob, subscribeJob, getJob } from '../../lib/reader/importJob';
+import { PerRowSheet } from '../reader/PerRowSheet';
+import { useGridColumns } from '../../ui/gridColumns';
 import { EMPTY_COMIC_FILTERS, hasActiveFilters, matchesFilters, type ComicFilters, type PublisherFilter } from '../../lib/util/comicFilters';
 
 type Filter = 'all' | 'owned' | 'reading' | 'read' | 'wishlist';
@@ -22,7 +24,7 @@ const filters: Array<[Filter, string]> = [['all', 'All'], ['owned', 'Owned'], ['
 const PUBLISHERS: PublisherFilter[] = ['Marvel', 'DC', 'Indie', 'Manga'];
 
 export default function LibraryScreen() {
-  const layout = useLayout(); const cols = layout.columns(layout.isTablet ? 220 : 170);
+  const layout = useLayout(); const cols = useGridColumns(layout.isTablet ? 220 : 170); const [perRowOpen, setPerRowOpen] = useState(false);
   const library = useLibrary(); const [filter, setFilter] = useState<Filter>('all'); const [query, setQuery] = useState(''); const [filtersOpen, setFiltersOpen] = useState(false); const [moreOpen, setMoreOpen] = useState(false); const c0 = useAppearance().theme.colors;
   const [comicFilters, setComicFilters] = useState<ComicFilters>(EMPTY_COMIC_FILTERS);
   // Linking runs as the app's one background job (the bar at the bottom shows it); comics appear here as they are added.
@@ -56,8 +58,9 @@ export default function LibraryScreen() {
     && item.title.toLowerCase().includes(query.toLowerCase())), [inLibrary, filter, query, digitalOnly, comicFilters]);
   const ownedCount = useMemo(() => inLibrary.filter((item) => isAccessible(item.own)).length, [inLibrary]);
   const filtersActive = hasActiveFilters(comicFilters);
-  return <AppShell active="library" back title="My Collection" right={<HeaderActions><HeaderButton icon="search" label="Search" active={!!query} onPress={() => setQuery(query ? '' : 'a')} /><HeaderButton icon="add" label="Add comics" onPress={() => setAddOpen(true)} /><HeaderButton icon="scan-outline" label="Scan Shelf" onPress={() => router.push('/scan')} /><HeaderButton icon="options-outline" label="Filter" active={filtersActive} onPress={() => setFiltersOpen(true)} /><HeaderButton icon="ellipsis-horizontal" label="More" onPress={() => setMoreOpen(true)} /></HeaderActions>}>
+  return <AppShell active="library" back title="My Collection" right={<HeaderActions><HeaderButton icon="search" label="Search" active={!!query} onPress={() => setQuery(query ? '' : 'a')} /><HeaderButton icon="grid-outline" label="Comics per row" onPress={() => setPerRowOpen(true)} /><HeaderButton icon="add" label="Add comics" onPress={() => setAddOpen(true)} /><HeaderButton icon="scan-outline" label="Scan Shelf" onPress={() => router.push('/scan')} /><HeaderButton icon="options-outline" label="Filter" active={filtersActive} onPress={() => setFiltersOpen(true)} /><HeaderButton icon="ellipsis-horizontal" label="More" onPress={() => setMoreOpen(true)} /></HeaderActions>}>
     <FlashList key={`grid-${cols}`} data={items} numColumns={cols} keyExtractor={(item) => item.workId} getItemType={() => 'cover-grid'} renderItem={({ item }) => <LibraryCell item={item} />} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} ListHeaderComponent={<><View style={styles.header}>{query ? <Input placeholder="Search titles, creators, characters" value={query} onChangeText={setQuery} /> : null}<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pills}>{filters.map(([id, label]) => <Pill key={id} label={label} active={filter === id} onPress={() => setFilter(id)} />)}</ScrollView><View style={styles.subrow}><Text style={[styles.count, { color: c0.textMuted }]}>{ownedCount} {ownedCount === 1 ? 'comic' : 'comics'}</Text></View></View></>} ListEmptyComponent={<EmptyState title="Nothing here yet" copy={query ? 'Try a title, creator, or character.' : 'Your collection is ready for its first great comic.'} action={!query ? 'Browse catalog' : undefined} onAction={!query ? () => router.push('/discover') : undefined} />}/>
+    <PerRowSheet visible={perRowOpen} onClose={() => setPerRowOpen(false)} />
     <ActionSheet visible={addOpen} title="Add to My Collection" onClose={() => setAddOpen(false)} options={[
       { label: 'Add a whole folder (Drive, iCloud, Files)…', onPress: () => { void link('Adding folder', (p) => linkWithCovers(() => pickAndLinkFolder(p), p)); } },
       { label: 'Add individual comic files…', onPress: () => { void link('Adding comics', (p) => linkWithCovers(() => pickAndLinkComics(p), p)); } },

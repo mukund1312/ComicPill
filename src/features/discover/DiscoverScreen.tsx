@@ -18,18 +18,21 @@ import { ComicCover, coverSourceFor } from '../../ui/comic';
 import { Button, EmptyState, Input, Pill, Sheet } from '../../ui/primitives';
 import { color, font, radius, space, type } from '../../ui/tokens';
 import { isAccessible } from '../../lib/util/own';
+import { PerRowSheet } from '../reader/PerRowSheet';
+import { useGridColumns } from '../../ui/gridColumns';
 import { EMPTY_COMIC_FILTERS, type PublisherFilter } from '../../lib/util/comicFilters';
 
 const PUBLISHERS: PublisherFilter[] = ['Marvel', 'DC', 'Indie', 'Manga'];
 
 export default function DiscoverScreen() {
-  const layout = useLayout(); const cols = layout.columns(layout.isTablet ? 220 : 170);
+  const layout = useLayout(); const cols = useGridColumns(layout.isTablet ? 220 : 170); const [perRowOpen, setPerRowOpen] = useState(false);
   const discover = useDiscover(); const [rating, setRating] = useState(false); const [filtersOpen, setFiltersOpen] = useState(false); const query = '';
   const catalog = useMemo(() => discover.catalog.filter((work) => work.title.toLowerCase().includes(query.trim().toLowerCase())).sort((a, b) => Number(b.workId.startsWith('file-')) - Number(a.workId.startsWith('file-'))), [discover.catalog, query]);
-  return <AppShell active="discover" title="Discover" right={<HeaderActions><HeaderButton icon="heart-outline" label="Wishlist" onPress={() => router.push('/collection')} /><HeaderButton icon="search" label="Search" onPress={() => router.push('/search')} /><HeaderButton icon="options-outline" label="Filter" active={discover.filtersActive} onPress={() => setFiltersOpen(true)} /></HeaderActions>}>
+  return <AppShell active="discover" title="Discover" right={<HeaderActions><HeaderButton icon="heart-outline" label="Wishlist" onPress={() => router.push('/collection')} /><HeaderButton icon="grid-outline" label="Comics per row" onPress={() => setPerRowOpen(true)} /><HeaderButton icon="search" label="Search" onPress={() => router.push('/search')} /><HeaderButton icon="options-outline" label="Filter" active={discover.filtersActive} onPress={() => setFiltersOpen(true)} /></HeaderActions>}>
     <FlashList key={`grid-${cols}`} data={catalog} numColumns={cols} keyExtractor={(item) => item.workId} getItemType={() => 'discover-cover-grid'} renderItem={({ item }) => <CatalogCell item={item} />} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} ListHeaderComponent={<DiscoverHeader discover={discover} catalogCount={catalog.length} openRating={() => setRating(true)} />} ListEmptyComponent={<EmptyState mark="⌕" title="No catalog matches" copy="Try another title or clear a filter." action="Clear filters" onAction={() => { discover.setFilters(EMPTY_COMIC_FILTERS); }} />} />
     {rating ? <View style={styles.overlay}><Sheet title="Quick rate" onClose={() => setRating(false)}><Text style={styles.rateCopy}>A small signal goes a long way.</Text><View style={styles.rateButtons}><Button kind="secondary" onPress={() => { discover.rate(1); setRating(false); }}>Meh</Button><Button kind="secondary" onPress={() => { discover.rate(2); setRating(false); }}>Good</Button><Button onPress={() => { discover.rate(3); setRating(false); }}>Loved</Button></View></Sheet></View> : null}
     {filtersOpen ? <View style={styles.overlay}><Sheet title="Filter discover" onClose={() => setFiltersOpen(false)}><Text style={styles.filterHeading}>Publisher</Text><View style={styles.sheetPills}><Pill label="All" active={discover.filters.publisher === null} onPress={() => discover.setFilters({ ...discover.filters, publisher: null })} />{PUBLISHERS.map((publisher) => <Pill key={publisher} label={publisher!} active={discover.filters.publisher === publisher} onPress={() => discover.setFilters({ ...discover.filters, publisher: discover.filters.publisher === publisher ? null : publisher })} />)}</View><Text style={styles.filterHeading}>Writer or artist</Text><Input placeholder="e.g. Alan Moore" value={discover.filters.creator} onChangeText={(creator) => discover.setFilters({ ...discover.filters, creator })} /><Text style={[styles.filterHeading, { marginTop: 14 }]}>Character</Text><Input placeholder="e.g. Batman, Iron Man" value={discover.filters.character} onChangeText={(character) => discover.setFilters({ ...discover.filters, character })} /><Pressable onPress={() => discover.setFilters(EMPTY_COMIC_FILTERS)} style={styles.clearFilters}><Text style={styles.clearFiltersText}>Clear filters</Text></Pressable><Pressable onPress={() => setFiltersOpen(false)} style={styles.apply}><Text style={styles.applyText}>Apply filters</Text></Pressable></Sheet></View> : null}
+    <PerRowSheet visible={perRowOpen} onClose={() => setPerRowOpen(false)} />
   </AppShell>;
 }
 

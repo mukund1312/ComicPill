@@ -290,7 +290,11 @@ export async function pickAndLinkFolder(opts: { parentId?: string } & ImportProg
     } catch (e) { result.failed.push({ name: folderName, reason: reasonOf(e, 'Could not read this folder') }); return result; }
   } else {
     let dir: Directory;
-    try { dir = await Directory.pickDirectoryAsync(); } catch { return result; } // cancelled
+    try { dir = await Directory.pickDirectoryAsync(); } catch {
+      // Cancelled, or on iOS this build still has the old folder picker, which treats some cloud folders as cancelled too. Say so, rather than seeming to do nothing.
+      if (Platform.OS === 'ios') result.failed.push({ name: 'Folder', reason: 'Nothing was chosen. If you did press Open, this build of the app has the old folder picker: rebuild it in Xcode (Release) and try again.' });
+      return result;
+    }
     folderName = dir.name || folderName;
     try {
       if (Platform.OS === 'ios') bookmark = native?.makeBookmark?.(dir.uri) ?? null;
