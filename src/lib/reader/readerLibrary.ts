@@ -184,39 +184,71 @@ export const moveItems = (comicIds: string[], folderIds: string[], targetId: str
 export const getFolder = (id: string): ReaderFolder | null => listFolders().find((f) => f.id === id) ?? null;
 
 // ---- collections ------------------------------------------------------------
-export type ReaderCollection = { id: string; name: string; count: number };
+// A collection holds works: any comic in My Collection, physical or digital, once. Collections can sit inside collections.
+export type ReaderCollection = { id: string; name: string; parentId: string | null; /** Comics directly inside. */ count: number; subcollections: number };
 
 export const listCollections = (): ReaderCollection[] =>
-  sqlite.getAllSync<{ id: string; name: string; n: number }>(
-    'SELECT c.id, c.name, (SELECT COUNT(*) FROM reader_collection_items i WHERE i.collection_id = c.id) AS n FROM reader_collections c ORDER BY c.name COLLATE NOCASE',
-  ).map((r) => ({ id: r.id, name: r.name, count: r.n }));
+  sqlite.getAllSync<{ id: string; name: string; parent_id: string | null; n: number; sub: number }>(
+    `SELECT c.id, c.name, c.parent_id,
+       (SELECT COUNT(*) FROM collection_works w WHERE w.collection_id = c.id) AS n,
+       (SELECT COUNT(*) FROM reader_collections s WHERE s.parent_id = c.id) AS sub
+     FROM reader_collections c ORDER BY c.name COLLATE NOCASE`,
+  ).map((r) => ({ id: r.id, name: r.name, parentId: r.parent_id, count: r.n, subcollections: r.sub }));
 
-export const createCollection = (name: string): string => {
-  const existing = sqlite.getFirstSync<{ id: string }>('SELECT id FROM reader_collections WHERE name = ? COLLATE NOCASE', name);
+/** A new collection, at the top or inside `parentId`. One with that name in the same place is reused. */
+export const createCollection = (name: string, parentId: string | null = null): string => {
+  const existing = sqlite.getFirstSync<{ id: string }>('SELECT id FROM reader_collections WHERE name = ? COLLATE NOCASE AND parent_id IS ?', name, parentId);
   if (existing) return existing.id;
   const id = uid();
-  sqlite.runSync('INSERT INTO reader_collections (id, name, created_at) VALUES (?, ?, ?)', id, name, Date.now());
+  sqlite.runSync('INSERT INTO reader_collections (id, name, created_at, parent_id) VALUES (?, ?, ?, ?)', id, name, Date.now(), parentId);
   return id;
 };
 
 export const renameCollection = (id: string, name: string): void => { sqlite.runSync('UPDATE reader_collections SET name = ? WHERE id = ?', name.trim(), id); };
 
+/** Deletes the collection and the collections inside it. The comics themselves are untouched. */
 export const deleteCollection = (id: string): void => {
-  sqlite.runSync('DELETE FROM reader_collection_items WHERE collection_id = ?', id);
-  sqlite.runSync('DELETE FROM reader_collections WHERE id = ?', id);
+  const all = [id];
+  for (let i = 0; i < all.length; i++) for (const r of sqlite.getAllSync<{ id: string }>('SELECT id FROM reader_collections WHERE parent_id = ?', all[i])) all.push(r.id);
+  sqlite.withTransactionSync(() => {
+    for (const cid of all) {
+      sqlite.runSync('DELETE FROM collection_works WHERE collection_id = ?', cid);
+      sqlite.runSync('DELETE FROM reader_collection_items WHERE collection_id = ?', cid);
+      sqlite.runSync('DELETE FROM reader_collections WHERE id = ?', cid);
+    }
+  });
 };
 
+/** The works directly inside a collection, oldest added first. */
+export const collectionWorkIds = (collectionId: string): string[] =>
+  sqlite.getAllSync<{ work_id: string }>('SELECT work_id FROM collection_works WHERE collection_id = ? ORDER BY added_at', collectionId).map((r) => r.work_id);
+
+export const addWorksToCollection = (collectionId: string, workIds: string[]): number => {
+  let added = 0;
+  sqlite.withTransactionSync(() => {
+    for (const workId of workIds) added += sqlite.runSync('INSERT OR IGNORE INTO collection_works (collection_id, work_id, added_at) VALUES (?, ?, ?)', collectionId, workId, Date.now()).changes;
+  });
+  return added;
+};
+
+export const removeWorksFromCollection = (collectionId: string, workIds: string[]): void => {
+  sqlite.withTransactionSync(() => { for (const workId of workIds) sqlite.runSync('DELETE FROM collection_works WHERE collection_id = ? AND work_id = ?', collectionId, workId); });
+};
+
+/** Files on the shelf whose comic is in the collection. */
 export const collectionComicIds = (collectionId: string): string[] =>
-  sqlite.getAllSync<{ comic_id: string }>('SELECT comic_id FROM reader_collection_items WHERE collection_id = ?', collectionId).map((r) => r.comic_id);
+  sqlite.getAllSync<{ id: string }>('SELECT c.id FROM reader_comics c JOIN collection_works w ON w.work_id = c.work_id WHERE w.collection_id = ?', collectionId).map((r) => r.id);
 
 export const collectionsForComic = (comicId: string): string[] =>
-  sqlite.getAllSync<{ collection_id: string }>('SELECT collection_id FROM reader_collection_items WHERE comic_id = ?', comicId).map((r) => r.collection_id);
+  sqlite.getAllSync<{ collection_id: string }>('SELECT w.collection_id FROM collection_works w JOIN reader_comics c ON c.work_id = w.work_id WHERE c.id = ?', comicId).map((r) => r.collection_id);
 
-/** Adds the comic if absent, removes it if present. Returns whether it is in the collection now. */
+/** Adds the comic's work if absent, removes it if present. Returns whether it is in the collection now. */
 export const toggleInCollection = (collectionId: string, comicId: string): boolean => {
-  const has = sqlite.getFirstSync('SELECT 1 FROM reader_collection_items WHERE collection_id = ? AND comic_id = ?', collectionId, comicId);
-  if (has) { sqlite.runSync('DELETE FROM reader_collection_items WHERE collection_id = ? AND comic_id = ?', collectionId, comicId); return false; }
-  sqlite.runSync('INSERT INTO reader_collection_items (collection_id, comic_id, added_at) VALUES (?, ?, ?)', collectionId, comicId, Date.now());
+  const workId = sqlite.getFirstSync<{ work_id: string | null }>('SELECT work_id FROM reader_comics WHERE id = ?', comicId)?.work_id;
+  if (!workId) return false;
+  const has = sqlite.getFirstSync('SELECT 1 FROM collection_works WHERE collection_id = ? AND work_id = ?', collectionId, workId);
+  if (has) { removeWorksFromCollection(collectionId, [workId]); return false; }
+  addWorksToCollection(collectionId, [workId]);
   return true;
 };
 

@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { router } from 'expo-router';
 import { useLibrary, type LibraryItem } from './useLibrary';
@@ -13,6 +13,8 @@ import { ActionSheet } from '../reader/dialogs';
 import { color, font, radius, space, type } from '../../ui/tokens';
 import { isAccessible, isFormatOwned } from '../../lib/util/own';
 import { useTravelMode } from '../../lib/state/travelMode';
+import { linkWithCovers, pickAndLinkComics, pickAndLinkFolder } from '../../lib/reader/importComics';
+import { runJob, subscribeJob, getJob } from '../../lib/reader/importJob';
 import { EMPTY_COMIC_FILTERS, hasActiveFilters, matchesFilters, type ComicFilters, type PublisherFilter } from '../../lib/util/comicFilters';
 
 type Filter = 'all' | 'owned' | 'reading' | 'read' | 'wishlist';
@@ -23,6 +25,15 @@ export default function LibraryScreen() {
   const layout = useLayout(); const cols = layout.columns(layout.isTablet ? 220 : 170);
   const library = useLibrary(); const [filter, setFilter] = useState<Filter>('all'); const [query, setQuery] = useState(''); const [filtersOpen, setFiltersOpen] = useState(false); const [moreOpen, setMoreOpen] = useState(false); const c0 = useAppearance().theme.colors;
   const [comicFilters, setComicFilters] = useState<ComicFilters>(EMPTY_COMIC_FILTERS);
+  // Linking runs as the app's one background job (the bar at the bottom shows it); comics appear here as they are added.
+  const refreshLibrary = library.refresh;
+  useEffect(() => subscribeJob(() => { const j = getJob(); if (!j.running || j.done % 5 === 0) refreshLibrary(); }), [refreshLibrary]);
+  const link = async (label: string, work: (p: Parameters<typeof pickAndLinkFolder>[0] & object) => Promise<Awaited<ReturnType<typeof pickAndLinkFolder>>>) => {
+    const started = await runJob(label, async (progress) => ({ verb: 'Added', result: await work(progress) }));
+    if (!started) Alert.alert('Another import is running', 'Wait for it to finish, or press Stop on the bar at the bottom.');
+    refreshLibrary();
+  };
+  const [addOpen, setAddOpen] = useState(false);
   const digitalOnly = useTravelMode((s) => s.digitalOnly);
   // Library is your collection, not the catalog — only books you've actually
   // added (own !== 'none') show up here at all. The full catalog, owned or
@@ -45,8 +56,13 @@ export default function LibraryScreen() {
     && item.title.toLowerCase().includes(query.toLowerCase())), [inLibrary, filter, query, digitalOnly, comicFilters]);
   const ownedCount = useMemo(() => inLibrary.filter((item) => isAccessible(item.own)).length, [inLibrary]);
   const filtersActive = hasActiveFilters(comicFilters);
-  return <AppShell active="library" back title="My Collection" right={<HeaderActions><HeaderButton icon="search" label="Search" active={!!query} onPress={() => setQuery(query ? '' : 'a')} /><HeaderButton icon="scan-outline" label="Scan Shelf" onPress={() => router.push('/scan')} /><HeaderButton icon="options-outline" label="Filter" active={filtersActive} onPress={() => setFiltersOpen(true)} /><HeaderButton icon="ellipsis-horizontal" label="More" onPress={() => setMoreOpen(true)} /></HeaderActions>}>
+  return <AppShell active="library" back title="My Collection" right={<HeaderActions><HeaderButton icon="search" label="Search" active={!!query} onPress={() => setQuery(query ? '' : 'a')} /><HeaderButton icon="add" label="Add comics" onPress={() => setAddOpen(true)} /><HeaderButton icon="scan-outline" label="Scan Shelf" onPress={() => router.push('/scan')} /><HeaderButton icon="options-outline" label="Filter" active={filtersActive} onPress={() => setFiltersOpen(true)} /><HeaderButton icon="ellipsis-horizontal" label="More" onPress={() => setMoreOpen(true)} /></HeaderActions>}>
     <FlashList key={`grid-${cols}`} data={items} numColumns={cols} keyExtractor={(item) => item.workId} getItemType={() => 'cover-grid'} renderItem={({ item }) => <LibraryCell item={item} />} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} ListHeaderComponent={<><View style={styles.header}>{query ? <Input placeholder="Search titles, creators, characters" value={query} onChangeText={setQuery} /> : null}<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pills}>{filters.map(([id, label]) => <Pill key={id} label={label} active={filter === id} onPress={() => setFilter(id)} />)}</ScrollView><View style={styles.subrow}><Text style={[styles.count, { color: c0.textMuted }]}>{ownedCount} {ownedCount === 1 ? 'comic' : 'comics'}</Text></View></View></>} ListEmptyComponent={<EmptyState title="Nothing here yet" copy={query ? 'Try a title, creator, or character.' : 'Your collection is ready for its first great comic.'} action={!query ? 'Browse catalog' : undefined} onAction={!query ? () => router.push('/discover') : undefined} />}/>
+    <ActionSheet visible={addOpen} title="Add to My Collection" onClose={() => setAddOpen(false)} options={[
+      { label: 'Add a folder from Drive, iCloud or Files…', onPress: () => { void link('Adding folder', (p) => linkWithCovers(() => pickAndLinkFolder(p), p)); } },
+      { label: 'Add comic files from Drive, iCloud or Files…', onPress: () => { void link('Adding comics', (p) => linkWithCovers(() => pickAndLinkComics(p), p)); } },
+      { label: 'Scan a shelf of physical comics', onPress: () => router.push('/scan') },
+    ]} />
     <ActionSheet visible={moreOpen} title="Library" onClose={() => setMoreOpen(false)} options={[{ label: 'Playlists', onPress: () => router.push('/playlists') }, { label: 'Compare comics', onPress: () => router.push('/compare') }, { label: 'Mind Space', onPress: () => router.push('/mind') }, { label: 'Comic Wallet', onPress: () => router.push('/wallet') }]} />
     {filtersOpen ? <View style={styles.overlay}><Sheet title="Filter library" onClose={() => setFiltersOpen(false)}>
       <Text style={styles.filterHeading}>Publisher</Text>

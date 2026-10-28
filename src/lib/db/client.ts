@@ -253,6 +253,12 @@ CREATE TABLE IF NOT EXISTS reader_collection_items (
   PRIMARY KEY (collection_id, comic_id)
 );
 
+-- A collection holds works (comics in My Collection, physical or digital), not files; collections can sit inside collections.
+CREATE TABLE IF NOT EXISTS collection_works (
+  collection_id TEXT NOT NULL, work_id TEXT NOT NULL, added_at INTEGER NOT NULL,
+  PRIMARY KEY (collection_id, work_id)
+);
+
 CREATE TABLE IF NOT EXISTS reader_presets (
   id TEXT PRIMARY KEY, name TEXT NOT NULL, mode TEXT NOT NULL, fit TEXT NOT NULL, background TEXT NOT NULL, created_at INTEGER NOT NULL
 );
@@ -292,6 +298,13 @@ export function ensureSchema(): void {
   sqlite.execSync("UPDATE works SET cover_path = NULL WHERE id LIKE 'scan-%' AND cover_path IS NOT NULL");
   const folderCols = sqlite.getAllSync<{ name: string }>('PRAGMA table_info(reader_folders)').map((c) => c.name);
   for (const name of ['lock_hash', 'lock_salt', 'parent_id']) if (!folderCols.includes(name)) sqlite.execSync(`ALTER TABLE reader_folders ADD COLUMN ${name} TEXT`);
+  const collectionCols = sqlite.getAllSync<{ name: string }>('PRAGMA table_info(reader_collections)').map((c) => c.name);
+  if (!collectionCols.includes('parent_id')) sqlite.execSync('ALTER TABLE reader_collections ADD COLUMN parent_id TEXT');
+  // Collections used to hold files; carry what they held over to the comics' works, once.
+  if (!sqlite.getFirstSync("SELECT 1 FROM app_meta WHERE key = 'collections_on_works'")) {
+    sqlite.execSync('INSERT OR IGNORE INTO collection_works (collection_id, work_id, added_at) SELECT i.collection_id, c.work_id, i.added_at FROM reader_collection_items i JOIN reader_comics c ON c.id = i.comic_id WHERE c.work_id IS NOT NULL');
+    sqlite.execSync("INSERT OR REPLACE INTO app_meta (key, value) VALUES ('collections_on_works', '1')");
+  }
   bootstrapped = true;
 }
 
