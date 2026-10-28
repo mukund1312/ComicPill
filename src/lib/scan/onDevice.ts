@@ -97,7 +97,7 @@ export async function scanShelfOnDevice(photoUri: string, draftId: string, index
       const rawText = closer.length ? `${book.rawText} | ${closer.join(' | ')}` : book.rawText;
       onStage?.('matching');
       const candidates = rankCandidates({ ...book, rawText }, index);
-      detected.push({ scanId, box: book.box, cropUri, extractedText: rawText.split(' | '), read: { title: book.title, volume: book.volume, creators: book.creators }, candidates, decision: decide(candidates, rawText) });
+      detected.push({ scanId, box: book.box, core: book.core, lean: book.lean, cropUri, extractedText: rawText.split(' | '), read: { title: book.title, volume: book.volume, creators: book.creators }, candidates, decision: decide(candidates, rawText) });
     }
     return { photoUri: photo.uri, photoWidth: work.width, photoHeight: work.height, detected };
   } finally { temps.forEach(drop); }

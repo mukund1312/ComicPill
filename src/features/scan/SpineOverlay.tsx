@@ -39,9 +39,12 @@ export function SpineOverlay({ uri, width, height, items, selectedId, onSelect, 
       <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" accessibilityLabel="Your shelf photo" />
       {items.map((item, i) => {
         const color = tone(item, c); const selected = selectedId === item.scanId;
+        // A leaning book is outlined along its own slant, around the spine itself rather than the loose rectangle that holds it.
+        const tilt = item.core && item.lean && Math.abs(item.lean) > 0.015 ? Math.atan(item.lean) : 0;
+        const shape = tilt && item.core ? item.core : item.box;
         return (
           <Pressable key={item.scanId} accessibilityRole="button" accessibilityLabel={`Book ${i + 1}`} disabled={drawing} onPress={() => onSelect(item.scanId)}
-            style={[styles.box, { left: `${item.box.x * 100}%`, top: `${item.box.y * 100}%`, width: `${item.box.w * 100}%`, height: `${item.box.h * 100}%`, borderColor: color, borderWidth: selected ? 3 : 1.5, backgroundColor: selected ? `${color}33` : 'transparent', opacity: item.status === 'excluded' ? 0.45 : 1 }]}>
+            style={[styles.box, { left: `${shape.x * 100}%`, top: `${shape.y * 100}%`, width: `${shape.w * 100}%`, height: `${shape.h * 100}%`, ...(tilt ? { transform: [{ rotate: `${-tilt}rad` }] } : null), borderColor: color, borderWidth: selected ? 3 : 1.5, backgroundColor: selected ? `${color}33` : 'transparent', opacity: item.status === 'excluded' ? 0.45 : 1 }]}>
             <View style={[styles.badge, { backgroundColor: color }]}><Text style={styles.badgeText}>{i + 1}</Text></View>
           </Pressable>
         );

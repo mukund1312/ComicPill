@@ -8,8 +8,8 @@ import { columnEdges, columnPersistence, findEdges, partitionShelf, transpose, v
 export type SpineLine = { text: string; x: number; y: number; w: number; h: number; conf?: number; dir?: 'down' | 'up' };
 /** One read of the photo. `turn` is how the image was turned before reading: 0 as taken, 180 upside down (to read text that runs upward). */
 export type ReadPass = { turn: 0 | 180; lines: SpineLine[] };
-export type Spine = { lines: SpineLine[]; box: { x: number; y: number; w: number; h: number }; /** Pixels sideways per pixel down: the lean of this book's edges in the photo. */ lean?: number; /** A volume number printed on the spine on a line of its own (the “1”, “2”, “3” at the foot of a spine). */ volumeHint?: string };
-export type SpineBook = ScannedBook & { box: Spine['box']; /** How much the spine leans in the photo: sideways per down, both as fractions of the photo's sides' pixels. 0 for an upright spine. */ lean: number; rawText: string; /** Which way the lettering runs: down the spine (most books), or up it. */ dir: 'down' | 'up' };
+export type Spine = { lines: SpineLine[]; box: { x: number; y: number; w: number; h: number }; /** The spine itself, before the box was widened to hold its lean: what a tilted outline is drawn around. */ core?: { x: number; y: number; w: number; h: number }; /** Pixels sideways per pixel down: the lean of this book's edges in the photo. */ lean?: number; /** A volume number printed on the spine on a line of its own (the “1”, “2”, “3” at the foot of a spine). */ volumeHint?: string };
+export type SpineBook = ScannedBook & { box: Spine['box']; core?: Spine['box']; /** How much the spine leans in the photo: sideways per down, both as fractions of the photo's sides' pixels. 0 for an upright spine. */ lean: number; rawText: string; /** Which way the lettering runs: down the spine (most books), or up it. */ dir: 'down' | 'up' };
 
 type Box = { x: number; y: number; w: number; h: number };
 const area = (b: Box) => b.w * b.h;
@@ -155,7 +155,7 @@ export function readSpine(spine: Spine): SpineBook | null {
   if (!volume && spine.volumeHint) volume = spine.volumeHint;
   const conf = Math.min(...titleParts.map((l) => l.conf ?? 1));
   const up = spine.lines.filter((l) => l.dir === 'up').length > spine.lines.filter((l) => l.dir !== 'up').length;
-  return { title, volume, creators: creators.slice(0, 3), confidence: conf >= 0.9 && alnum(title) >= 4 ? 'high' : conf >= 0.6 ? 'medium' : 'low', seenAs: 'spine', box: spine.box, rawText, dir: up ? 'up' : 'down', lean: spine.lean ?? 0 };
+  return { title, volume, creators: creators.slice(0, 3), confidence: conf >= 0.9 && alnum(title) >= 4 ? 'high' : conf >= 0.6 ? 'medium' : 'low', seenAs: 'spine', box: spine.box, core: spine.core, rawText, dir: up ? 'up' : 'down', lean: spine.lean ?? 0 };
 }
 
 const hasTitleLine = (s: Spine) => s.lines.some((l) => !isPublisher(l.text) && splitVolume(l.text).rest.length >= 3);
@@ -286,8 +286,8 @@ export function groupByPartition(lines: SpineLine[], gray: Gray, tune: { cutCost
   const typicalTop = tops.length >= 3 ? median(tops) : null;
   // A pile of flat books shares its left and right edges: use the stack's edges for every book, and ignore lettering beyond them (another object beside the pile).
   const quantile = (xs: number[], q: number) => { const s = [...xs].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(q * s.length))]; };
-  const stackLeft = !vertical && tops.length >= 3 ? quantile(tops, 0.25) : null;
-  const stackRight = !vertical && bottoms.length >= 3 ? quantile(bottoms, 0.75) : null;
+  const stackLeft = !vertical && tops.length >= 3 ? quantile(tops, 0.1) : null;
+  const stackRight = !vertical && bottoms.length >= 3 ? quantile(bottoms, 0.9) : null;
   return parts.filter((p) => p.inside.length > 0).map(({ seg, inside, ext }) => {
     // Lettering below the shelf belongs to whatever is on the shelf underneath, not to this book; beside a flat pile, to the next object.
     let onShelf = shelfBottom === null ? inside : inside.filter((l) => l.y + l.h / 2 <= shelfBottom + 0.03);
@@ -310,7 +310,8 @@ export function groupByPartition(lines: SpineLine[], gray: Gray, tune: { cutCost
     // (Only half the sideways carry is added: the box is a rectangle around a slanted spine, and a full allowance would swallow its neighbours.)
     const x0 = seg.from + 0.5 * Math.min(0, s0, s1); const x1 = seg.to + 0.5 * Math.max(0, s0, s1);
     const box = vertical ? { x: x0, y: top, w: x1 - x0, h: bottom - top } : { x: top, y: seg.from, w: bottom - top, h: seg.to - seg.from };
-    return { spine: { lines, box, lean: vertical ? lean : 0 }, from: seg.from, to: seg.to };
+    const core = vertical ? { x: seg.from, y: top, w: seg.to - seg.from, h: bottom - top } : undefined;
+    return { spine: { lines, box, core, lean: vertical ? lean : 0 }, from: seg.from, to: seg.to };
   });
 }
 

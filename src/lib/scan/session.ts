@@ -16,6 +16,8 @@ export type ScanItem = {
   scanId: string;
   /** Where this book is in the shelf photo (fractions of the photo). */
   box: Box;
+  /** The spine's own outline and how it leans (sideways per down, in photo pixels), so the picture can show a tilted box. */
+  core?: Box; lean?: number;
   /** A picture of the spine, for checking the match. Never used as a cover. */
   cropUri: string | null;
   extractedText: string[];
@@ -37,13 +39,13 @@ export type ScanItem = {
   error: string | null;
 };
 
-export type Detected = { scanId: string; box: Box; cropUri: string | null; extractedText: string[]; read: ScanItem['read']; candidates: Candidate[]; decision: MatchDecision };
+export type Detected = { scanId: string; box: Box; core?: Box; lean?: number; cropUri: string | null; extractedText: string[]; read: ScanItem['read']; candidates: Candidate[]; decision: MatchDecision };
 
 /** Start a result from what was read. Confident matches are ready to import; everything else waits for the reader. */
 export function itemFromDetected(d: Detected, defaults: { ownership: Ownership; reading: ReadingState }): ScanItem {
   const confident = !!d.decision.best && (d.decision.strength === 'strong' || d.decision.strength === 'likely') && !d.decision.editionUncertain;
   return {
-    scanId: d.scanId, box: d.box, cropUri: d.cropUri, extractedText: d.extractedText, read: d.read, candidates: d.candidates,
+    scanId: d.scanId, box: d.box, core: d.core, lean: d.lean, cropUri: d.cropUri, extractedText: d.extractedText, read: d.read, candidates: d.candidates,
     strength: d.decision.strength, editionUncertain: d.decision.editionUncertain,
     selected: confident && d.decision.best ? { kind: 'catalog', workId: d.decision.best.id, title: d.decision.best.title } : null,
     status: confident ? 'matched' : d.decision.best ? 'needs_review' : 'unmatched',
