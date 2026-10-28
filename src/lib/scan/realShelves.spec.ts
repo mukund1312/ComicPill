@@ -6,11 +6,13 @@ import truth from './__fixtures__/real-shelf-truth.json';
 // Four real photos of comic shelves (standing books, a pile lying flat, thin paperbacks, 25+ spines) were read by the device's text
 // recognition; the lines it found are saved here with a hand-made answer key. These numbers are a floor to guard against getting worse:
 // raise them as recognition improves.
+const DIMS: Record<number, [number, number]> = { 22: [640, 853], 23: [640, 853], 24: [640, 586], 25: [640, 538] };
+const gray = (n: number) => ({ data: new Uint8Array(readFileSync(new URL(`./__fixtures__/gray${n}.bin`, import.meta.url))), width: DIMS[n][0], height: DIMS[n][1] });
 const fx = (n: number) => JSON.parse(readFileSync(new URL(`./__fixtures__/real-shelf-${n}.json`, import.meta.url), 'utf8')) as { passes: ReadPass[] };
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9/]+/g, ' ').trim();
 
-function recall(n: number): { found: number; total: number; groups: number } {
-  const books = readShelf(fx(n).passes);
+function recall(n: number, withEdges = true): { found: number; total: number; groups: number } {
+  const books = readShelf(fx(n).passes, withEdges ? gray(n) : undefined);
   const used = new Set<number>();
   let found = 0;
   const key = (truth as Record<string, { books: string[][] }>)[String(n)].books;
@@ -30,5 +32,42 @@ describe('real shelf photos', () => {
     const r = recall(23);
     expect(r.groups).toBeGreaterThanOrEqual(10);
     expect(r.groups).toBeLessThanOrEqual(20);
+  });
+});
+
+describe('real shelf photos: what the edges between books add', () => {
+  it.each([22, 23, 24, 25])('photo %i: edges never make it find fewer books', (n) => {
+    expect(recall(n, true).found).toBeGreaterThanOrEqual(recall(n, false).found);
+  });
+});
+
+// ---- matching against the catalog, end to end -------------------------------------------------------------------------
+import { buildIndex, decide, fold, rankCandidates } from './candidates';
+
+const seed = (f: string) => JSON.parse(readFileSync(new URL(`../db/seed/${f}`, import.meta.url), 'utf8')) as { id: string; title: string; creators?: string[] }[];
+const catalog = [...seed('catalog.data.json'), ...seed('catalog.popular.data.json')].map((w) => ({ id: w.id, title: w.title, creators: w.creators ?? [] }));
+
+describe('real shelf photos: matching to the catalog', () => {
+  const index = buildIndex(catalog);
+  const tally = { automaticRight: 0, automaticWrong: 0, suggestedRight: 0, total: 0 };
+  for (const n of [22, 23, 24, 25]) {
+    const books = readShelf(fx(n).passes, gray(n));
+    const key = (truth as Record<string, { books: string[][] }>)[String(n)].books;
+    const used = new Set<number>();
+    tally.total += key.length;
+    for (const b of books) {
+      const d = decide(rankCandidates(b, index));
+      const at = (title: string) => key.findIndex((alts, k) => !used.has(k) && alts.some((a) => fold(title).join(' ').includes(fold(a).join(' '))));
+      if (!d.best) continue;
+      if (d.strength === 'strong' || d.strength === 'likely') { const i = at(d.best.title); if (i >= 0) { used.add(i); tally.automaticRight++; } else tally.automaticWrong++; }
+      else { const i = [d.best, ...d.alternatives].map((c) => at(c.title)).find((x) => x >= 0); if (i !== undefined && i >= 0) { used.add(i); tally.suggestedRight++; } }
+    }
+  }
+  it('is right far more often than wrong when it decides on its own', () => {
+    expect(tally.automaticRight).toBeGreaterThanOrEqual(20);
+    expect(tally.automaticWrong).toBeLessThanOrEqual(2);
+  });
+  it('helps with about half of the real books on these shelves (the rest aren’t in the catalog or can’t be read)', () => {
+    expect(tally.automaticRight + tally.suggestedRight).toBeGreaterThanOrEqual(30);
   });
 });

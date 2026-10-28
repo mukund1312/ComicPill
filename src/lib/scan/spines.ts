@@ -2,6 +2,7 @@
 // engine reads in place); this works out which lines belong to which spine and what each spine says: title, volume, publisher.
 // Pure arithmetic on boxes and strings, so it is the same on every platform and easy to test.
 import type { ScannedBook } from './schema';
+import { columnPersistence, findEdges, transpose, type Gray } from './segment';
 
 /** A line of text and its box, as fractions (0..1) of the photo, origin top-left. */
 export type SpineLine = { text: string; x: number; y: number; w: number; h: number; conf?: number; dir?: 'down' | 'up' };
@@ -124,7 +125,56 @@ export function readSpine(spine: Spine): SpineBook | null {
   return { title, volume, creators: creators.slice(0, 3), confidence: conf >= 0.9 && alnum(title) >= 4 ? 'high' : conf >= 0.6 ? 'medium' : 'low', seenAs: 'spine', box: spine.box, rawText };
 }
 
-/** Everything the photo says, one entry per spine, left to right. */
-export function readShelf(passes: ReadPass[]): SpineBook[] {
-  return groupSpines(dedupeLines(toPhotoFrame(passes))).map(readSpine).filter((b): b is SpineBook => b !== null);
+const hasTitleLine = (s: Spine) => s.lines.some((l) => !isPublisher(l.text) && splitVolume(l.text).rest.length >= 3);
+
+/** Where the physical edges between books are in the photo, as fractions of the shelf's length. */
+export function shelfEdges(lines: SpineLine[], gray: Gray): number[] {
+  const vertical = shelfIsVertical(lines);
+  const picture = vertical ? gray : transpose(gray);
+  // Look only at the part of the picture where books are: from where the lettering starts to where it ends, across the shelf.
+  const spans = lines.map((l) => (vertical ? [l.y, l.y + l.h] : [l.x, l.x + l.w])).sort((a, b) => a[0] - b[0]);
+  const from = spans[Math.floor(spans.length * 0.1)][0]; const to = spans[Math.floor(spans.length * 0.9)][1];
+  return findEdges(columnPersistence(picture, from, Math.min(1, to)));
+}
+
+/**
+ * Split a group that the lettering says is one book wherever a real edge runs between its lines, so two thin spines read as two. A piece left
+ * with no title of its own (a stripe of colour or a credits line cut off by an edge) is joined back to the book beside it.
+ */
+export function splitAtEdges(spines: Spine[], edges: number[], vertical: boolean): Spine[] {
+  const centre = (l: SpineLine) => crossCentre(l, vertical);
+  // Only the middle of a line's box counts as its lettering: the engine's boxes are loose on leaning spines, so a real edge can fall inside the outer part of a neighbour's box.
+  const inside = (l: SpineLine, e: number) => (vertical ? e > l.x + 0.35 * l.w && e < l.x + 0.65 * l.w : e > l.y + 0.35 * l.h && e < l.y + 0.65 * l.h);
+  const out: Spine[] = [];
+  for (const spine of spines) {
+    const lines = [...spine.lines].sort((a, b) => centre(a) - centre(b));
+    const pieces: SpineLine[][] = [[]];
+    lines.forEach((l, i) => {
+      if (i > 0) {
+        const prev = lines[i - 1];
+        // An edge between the two lines' centres, that doesn't cut through the lettering of either, separates them.
+        const cuts = edges.some((e) => e > centre(prev) && e < centre(l) && !inside(prev, e) && !inside(l, e));
+        if (cuts) pieces.push([]);
+      }
+      pieces[pieces.length - 1].push(l);
+    });
+    const made = pieces.map((p) => ({ lines: p, box: boxOf(p) }));
+    // join title-less pieces to the nearest piece that has one
+    const kept: Spine[] = [];
+    for (const piece of made) {
+      if (hasTitleLine(piece) || kept.length === 0) { kept.push(piece); continue; }
+      const prev = kept[kept.length - 1]; prev.lines.push(...piece.lines); prev.box = boxOf(prev.lines);
+    }
+    out.push(...kept);
+  }
+  return out;
+}
+
+/** Everything the photo says, one entry per book, in order along the shelf. With the picture's pixels, real edges between books sharpen the grouping. */
+export function readShelf(passes: ReadPass[], gray?: Gray): SpineBook[] {
+  const lines = dedupeLines(toPhotoFrame(passes));
+  if (lines.length === 0) return [];
+  let spines = groupSpines(lines);
+  if (gray) spines = splitAtEdges(spines, shelfEdges(lines, gray), shelfIsVertical(lines));
+  return spines.map(readSpine).filter((b): b is SpineBook => b !== null);
 }
