@@ -78,7 +78,11 @@ export function readyComics(exceptId?: string): ReadyComic[] {
 }
 
 /** Would fetching this comic fit in the space the reader allowed, and if not, what would make it fit? */
-export const planFetch = (comic: ReaderComic): RoomPlan => planRoom(readyComics(comic.id), cloudBudgetBytes(), comic.sizeBytes ?? 0, keepLimit());
+export const planFetch = (comic: ReaderComic): RoomPlan => planRoom(readyComics(comic.id), cloudBudgetBytes(), comic.sizeBytes ?? 0, keepLimit() || Infinity);
+
+/** What putting several comics on the device at once would need: space and how many may be kept. */
+export const planDownloads = (comics: ReaderComic[]): RoomPlan =>
+  planRoom(readyComics(), cloudBudgetBytes(), comics.reduce((n, c) => n + (c.sizeBytes ?? 0), 0), keepLimit() || Infinity, comics.length);
 
 export const isCached = (id: string): boolean => { try { return cachedFileFor(id).exists; } catch { return false; } };
 

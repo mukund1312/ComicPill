@@ -14,10 +14,10 @@ export type RoomPlan = {
   possible: boolean;
 };
 
-export function planRoom(ready: ReadyComic[], budget: number, need: number, maxCount = Infinity): RoomPlan {
+export function planRoom(ready: ReadyComic[], budget: number, need: number, maxCount = Infinity, adding = 1): RoomPlan {
   const used = ready.reduce((n, c) => n + c.bytes, 0);
   const over = used + need - budget;
-  const overCount = Math.max(0, ready.length + 1 - maxCount);
+  const overCount = Math.max(0, ready.length + adding - maxCount);
   const suggested: string[] = [];
   let freed = 0;
   if (over > 0 || overCount > 0) for (const c of [...ready].sort((a, b) => a.lastReadAt - b.lastReadAt)) {

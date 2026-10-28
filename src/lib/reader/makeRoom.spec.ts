@@ -40,3 +40,11 @@ describe('planRoom with a limit on how many comics are kept', () => {
     expect(plan.overCount).toBe(1); expect(plan.suggested).toEqual(['c1']);
   });
 });
+
+describe('planRoom when several comics are added at once', () => {
+  const ready = [1, 2, 3].map((n) => ({ id: `c${n}`, title: `C${n}`, bytes: 10, lastReadAt: n }));
+  it('counts every comic being added against the limit', () => {
+    const plan = planRoom(ready, 1000, 20, 4, 3);
+    expect(plan.overCount).toBe(2); expect(plan.suggested).toEqual(['c1', 'c2']);
+  });
+});

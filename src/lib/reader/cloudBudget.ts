@@ -14,8 +14,9 @@ export const cloudBudgetBytes = (): number => cloudBudgetGb() * GB;
 export const setCloudBudgetGb = (gb: number): void => { setMeta('cloud_budget_gb', String(gb)); };
 
 /** Like an e-reader: only so many cloud comics are downloaded and readable at once. Opening another means putting one away first. */
-export const KEEP_CHOICES = [10, 15, 20, 30] as const;
-export const keepLimit = (): number => { const v = Number(getMeta('cloud_keep_limit')); return Number.isFinite(v) && v > 0 ? v : 15; };
+export const KEEP_CHOICES = [0, 10, 15, 20, 30] as const;
+/** How many downloaded comics at most; 0 means no limit on the count (the space set aside still applies). */
+export const keepLimit = (): number => { const v = Number(getMeta('cloud_keep_limit')); return Number.isFinite(v) && v > 0 ? v : 0; };
 export const setKeepLimit = (n: number): void => { setMeta('cloud_keep_limit', String(n)); };
 
 /** `ask`: the reader chooses what to put away when space runs out. `auto`: the least recently read comics go on their own. */

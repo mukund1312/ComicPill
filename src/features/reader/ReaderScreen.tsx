@@ -135,7 +135,7 @@ export default function ReaderScreen() {
 
   if (gate) return <UnlockGate kind={gate.kind} id={gate.id} name={gate.name} onUnlocked={() => setUnlockTick((t) => t + 1)} />;
   if (error) return <View style={styles.center}><Text style={styles.errorText}>{error}</Text><Pressable onPress={() => router.back()} style={styles.button}><Text style={styles.buttonText}>Back</Text></Pressable></View>;
-  if (room && comic) return <View style={styles.center}><MakeRoomSheet title={comic.title} need={comic.sizeBytes ?? 0} budget={cloudBudgetBytes()} plan={room.plan} ready={room.ready} onConfirm={(ids) => room.resolve(ids)} onCancel={() => room.resolve(null)} /></View>;
+  if (room && comic) return <View style={styles.center}><MakeRoomSheet title={comic.title} need={comic.sizeBytes ?? 0} recompute={() => planFetch(comic)} plan={room.plan} ready={room.ready} onConfirm={(ids) => room.resolve(ids)} onCancel={() => room.resolve(null)} /></View>;
   if (!comic || !source || sizes === undefined || !reading) {
     const fetching = !!comic?.sourceUri && !isCached(comic.id);
     const total = arrived?.total ?? comic?.sizeBytes ?? null;

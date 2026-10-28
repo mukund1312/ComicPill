@@ -268,7 +268,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
 
   const keepMenu = () => setSheet({
     title: 'Comics kept on this device',
-    options: KEEP_CHOICES.map((n) => ({ label: `${n} at a time`, checked: keepLimit() === n, onPress: () => { setKeepLimit(n); flash(`Up to ${n} downloaded comics. Opening another asks which one to put away.`); } })),
+    options: KEEP_CHOICES.map((n) => ({ label: n === 0 ? 'No limit on the number' : `${n} at a time`, checked: keepLimit() === n, onPress: () => { setKeepLimit(n); flash(n === 0 ? 'Only the space you set aside limits downloads.' : `Up to ${n} downloaded comics. Opening another asks which one to put away.`); } })),
   });
 
   const addMenu = () => setSheet({
@@ -277,7 +277,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
       { label: 'Link a whole folder (Drive, iCloud, Files)…', onPress: () => runImport('Linking folder', 'Linked', (p) => linkWithCovers(() => pickAndLinkFolder({ parentId: openFolder ?? undefined, ...p }), p)) },
       { label: 'Link individual comic files…', onPress: () => runImport('Linking', 'Linked', (p) => linkWithCovers(() => pickAndLinkComics({ folderId: openFolder ?? undefined, ...p }), p)) },
       ...(unpreparedLinkIds().length ? [{ label: `Download covers for linked comics (${unpreparedLinkIds().length} left)…`, onPress: () => { void loadCoversNow(); } }] : []),
-      { label: `Comics kept on this device: ${keepLimit()}…`, onPress: keepMenu },
+      { label: `Most comics kept on this device: ${keepLimit() || 'no limit'}…`, onPress: keepMenu },
       { label: 'Browse an OPDS server…', onPress: () => router.push('/reader/opds') },
       { label: 'Import a folder…', onPress: () => runImport('Importing folder', 'Imported', (p) => pickAndImportFolder({ parentId: openFolder ?? undefined, ...p })) },
       { label: openFolder ? `New folder inside “${insideName ?? 'this folder'}”…` : 'New folder…', onPress: () => setPrompt({ title: 'New folder', submitLabel: 'Create', onSubmit: (name) => { createFolder(name, openFolder); refresh(); } }) },
@@ -525,7 +525,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
                 </View>
                 <Text numberOfLines={1} style={styles.here}>{insideName}</Text>
               </View>
-            ) : <Text style={styles.count}>{segment === 'collections' ? `${collections.length} ${collections.length === 1 ? 'collection' : 'collections'}` : `${comics.length} ${comics.length === 1 ? 'comic' : 'comics'}${comics.some((x) => x.sourceUri) ? ` · ${readyComics().length} of ${keepLimit()} downloaded` : ''}`}</Text>}
+            ) : <Text style={styles.count}>{segment === 'collections' ? `${collections.length} ${collections.length === 1 ? 'collection' : 'collections'}` : `${comics.length} ${comics.length === 1 ? 'comic' : 'comics'}${comics.some((x) => x.sourceUri) ? ` · ${readyComics().length}${keepLimit() ? ` of ${keepLimit()}` : ''} downloaded` : ''}`}</Text>}
             <View style={styles.subActions}>
               {segment === 'library' ? <Pressable accessibilityRole="button" onPress={() => (selecting ? endSelecting() : setSelecting(true))} hitSlop={8}><Text style={styles.sort}>{selecting ? 'Done' : 'Select'}</Text></Pressable> : null}
               <Pressable accessibilityRole="button" accessibilityLabel="View and sort" onPress={viewMenu} hitSlop={8}><Text style={styles.sort}>{SORT_LABEL[sort]}  ⌄</Text></Pressable>

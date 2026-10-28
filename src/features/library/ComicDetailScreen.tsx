@@ -18,6 +18,7 @@ import { isAccessible } from '../../lib/util/own';
 import ArcRelevance from '../arc/ArcRelevance';
 import MeetCharacters from '../arc/MeetCharacters';
 import { MyCopyCard } from './MyCopyCard';
+import { FileActions } from './FileActions';
 
 function formatCommitment(paise: number | null): string {
   if (paise == null) return 'price not on file for every remaining volume';
@@ -121,6 +122,7 @@ function Detail({ item, detail, setStatus, label, linkedBank, purchase, onSave, 
       <View style={styles.statuses}>{(['none', 'reading', 'done', 'dropped'] as const).map((status) => <Pill key={status} label={status === 'none' ? 'Unread' : status} active={item.status === status} onPress={() => setStatus(item.workId, status)} />)}</View>
       {item.status === 'reading' ? <View style={{ marginTop: 16 }}><Progress value={0.45} /></View> : null}
       <Button style={{ marginTop: 24 }} onPress={() => item.status === 'reading' ? router.push(`/check-in/${item.workId}`) : !isAccessible(item.own) ? onAdd() : setStatus(item.workId, 'reading')}>{item.status === 'reading' ? 'Check in' : item.own === 'none' ? 'Add to library' : !isAccessible(item.own) ? 'Update ownership' : 'Start reading'}</Button>
+      <FileActions workId={item.workId} />
       <Button kind="secondary" style={{ marginTop: 10 }} onPress={() => router.push({ pathname: '/compare', params: { workId: item.workId } })}>Compare</Button>
 
       {detail.skip.affectedWorkIds.length > 0 ? (

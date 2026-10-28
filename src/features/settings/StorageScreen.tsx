@@ -9,8 +9,9 @@ import { clearFetchedCopies, clearTemporaryFiles, storageUsage, type StorageUsag
 import { useJob } from '../../lib/reader/importJob';
 import { deviceName } from '../../lib/platform/device';
 import { ActionSheet, PromptModal, type SheetOption } from '../reader/dialogs';
-import { BUDGET_CHOICES_GB, budgetMode, cloudBudgetGb, setBudgetMode, setCloudBudgetGb } from '../../lib/reader/cloudBudget';
+import { BUDGET_CHOICES_GB, KEEP_CHOICES, budgetMode, cloudBudgetGb, keepLimit, setBudgetMode, setCloudBudgetGb, setKeepLimit } from '../../lib/reader/cloudBudget';
 import { CLOUD_APP_CACHE_HINT } from '../../lib/reader/cloudCache';
+import { eraseEverything } from '../../lib/app/eraseEverything';
 
 export default function StorageScreen() {
   const device = `this ${deviceName()}`;
@@ -18,10 +19,11 @@ export default function StorageScreen() {
   const [measured, setMeasured] = useState(false);
   const [budget, setBudget] = useState(() => cloudBudgetGb());
   const [mode, setMode] = useState(() => budgetMode());
+  const [most, setMost] = useState(() => keepLimit());
   const [sheet, setSheet] = useState<{ title: string; options: SheetOption[] } | null>(null);
   const [custom, setCustom] = useState(false);
   const importing = useJob().running; // clearing files an import is still using would break it
-  const measure = useCallback(() => { setUsage(storageUsage()); setMeasured(true); setBudget(cloudBudgetGb()); setMode(budgetMode()); }, []);
+  const measure = useCallback(() => { setUsage(storageUsage()); setMeasured(true); setBudget(cloudBudgetGb()); setMode(budgetMode()); setMost(keepLimit()); }, []);
   const pickBudget = (gb: number) => { setCloudBudgetGb(gb); setBudget(gb); };
   useFocusEffect(useCallback(() => { measure(); }, [measure]));
 
@@ -41,12 +43,23 @@ export default function StorageScreen() {
     notice('Done', freed > 0 ? `Freed ${formatBytes(freed)}.` : 'There was nothing to clear.');
   };
 
+  const startOver = async () => {
+    const ok = await confirm({ title: 'Erase everything?', message: 'Every comic, collection, rating, setting and saved server on this device is deleted, and ComicPill starts again from the beginning. This cannot be undone. Files in Drive or on your comic server are not touched.', confirmLabel: 'Erase everything', destructive: true });
+    if (!ok) return;
+    try { await eraseEverything(); notice('Everything was erased', 'Now close ComicPill completely (swipe it away in the app switcher) and open it again to start from zero.'); }
+    catch { notice('Couldn’t erase everything', 'Some data may remain. Deleting the app and installing it again erases it all.'); }
+  };
+
   return (
     <SettingsPage title="Storage" subtitle={`What ComicPill keeps on ${device}.`} backLabel="Settings">
       <SettingsSection title="Downloaded comics" footer={`${CLOUD_APP_CACHE_HINT} Comics you imported as copies aren’t counted here, since they’re your only copy.`}>
         <LinkRow label="Space to set aside" value={`${budget} GB`} detail="How much downloaded comics may use. Linked comics stay on your shelf; opening one downloads it." onPress={() => setSheet({
           title: 'Space for downloaded comics',
           options: [...BUDGET_CHOICES_GB.map((gb) => ({ label: `${gb} GB`, checked: budget === gb, onPress: () => pickBudget(gb) })), { label: 'Custom…', checked: !(BUDGET_CHOICES_GB as readonly number[]).includes(budget), onPress: () => setCustom(true) }],
+        })} />
+        <LinkRow label="Most comics at once" value={most ? `${most}` : 'No limit'} detail="Like an e-reader: only this many downloaded comics stay on the device. Opening another asks which one to put away. No limit means only the space above applies." onPress={() => setSheet({
+          title: 'Most downloaded comics at once',
+          options: KEEP_CHOICES.map((n) => ({ label: n === 0 ? 'No limit' : `${n} comics`, checked: most === n, onPress: () => { setKeepLimit(n); setMost(n); } })),
         })} />
         <LinkRow label="When it’s full" value={mode === 'ask' ? 'Ask me' : 'Automatic'} detail={mode === 'ask' ? 'You choose which comics to put away before a new one downloads.' : 'The comics you read longest ago are put away for you.'} onPress={() => setSheet({
           title: 'When the space is full',
@@ -67,6 +80,9 @@ export default function StorageScreen() {
       <SettingsSection title="Free up space" footer={importing ? 'An import is running. Wait for it to finish first.' : undefined}>
         <ActionRow label="Clear fetched copies" detail="Keeps your links, covers and progress." destructive disabled={importing || usage.fetched === 0} onPress={() => { void clear('fetched'); }} />
         <ActionRow label="Clear temporary files" destructive disabled={importing || usage.temporary === 0} onPress={() => { void clear('temporary'); }} last />
+      </SettingsSection>
+      <SettingsSection title="Start over" footer="Deletes everything ComicPill keeps on this device and returns it to a first run. Nothing is deleted from Drive or your comic server.">
+        <ActionRow label="Erase everything and start fresh…" detail="All comics, collections, ratings, settings and saved servers." destructive disabled={importing} last onPress={() => { void startOver(); }} />
       </SettingsSection>
       <ActionSheet visible={!!sheet} title={sheet?.title} options={sheet?.options ?? []} onClose={() => setSheet(null)} />
       <PromptModal visible={custom} title="Space in GB" initial={String(budget)} submitLabel="Set" onSubmit={(v) => { const gb = Math.round(Number(v)); if (gb >= 1 && gb <= 1000) pickBudget(gb); else notice('Pick a size', 'Enter a number of gigabytes between 1 and 1000.'); }} onClose={() => setCustom(false)} />

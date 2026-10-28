@@ -11,6 +11,7 @@ import { ArtStage, GenreStage, TraitStage } from './CardStages';
 import { ProcessingStage } from './ProcessingStage';
 import { RevealStage } from './RevealStage';
 import { CollectionStage } from './CollectionStage';
+import { StorageStage } from './StorageStage';
 import { FirstPickStage, LibraryReadyStage } from './FinalStages';
 import { useOnboarding, useOnboardingReady } from '../../lib/state/onboarding';
 import { PICK_STAGES, prevStageFor, type PickKey, type Stage } from '../../lib/onboarding/flow';
@@ -116,6 +117,8 @@ export default function OnboardingFlow() {
       return <ProcessingStage selections={s.selections} onDone={() => { s.markTasteSetup(); s.next(); }} />;
     case 'reveal':
       return <RevealStage selections={s.selections} onNext={s.next} />;
+    case 'storage':
+      return <StorageStage onNext={s.next} />;
     case 'collection':
       return <CollectionStage draft={s.draft} setDraft={s.setDraft} onSave={saveCollection} onSkip={() => { s.setDraft([]); s.markCollectionSetup(); s.next(); }} onBack={null} saving={saving} />;
     case 'library_ready':

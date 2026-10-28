@@ -19,7 +19,11 @@ import { PerRowSheet } from '../reader/PerRowSheet';
 import { useGridColumns } from '../../ui/gridColumns';
 import { Icon } from '../../ui/Icon';
 import { getMeta, setMeta } from '../../lib/db/queries/meta';
-import { downloadedWorkIds, putAway, removeFromCollection } from '../../lib/library/collectionActions';
+import { downloadComics, downloadedWorkIds, planFor, putAway, readerIdsByWork, removeFromCollection, toDownload } from '../../lib/library/collectionActions';
+import { MakeRoomSheet } from '../reader/MakeRoomSheet';
+import { freeSpaceFor, readyComics } from '../../lib/reader/cloudCache';
+import type { ReaderComic } from '../../lib/reader/readerLibrary';
+import type { RoomPlan } from '../../lib/reader/makeRoom';
 import { keepLimit } from '../../lib/reader/cloudBudget';
 import { sqlite } from '../../lib/db/client';
 import { EMPTY_COMIC_FILTERS, hasActiveFilters, matchesFilters, type ComicFilters, type PublisherFilter } from '../../lib/util/comicFilters';
@@ -47,6 +51,18 @@ export default function LibraryScreen() {
   const [selecting, setSelecting] = useState(false);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [notice, setNotice] = useState<string | null>(null);
+  const [room, setRoom] = useState<{ comics: ReaderComic[]; plan: RoomPlan } | null>(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const readerIds = useMemo(() => readerIdsByWork(), [tick, library.items]);
+  const startDownload = (comics: ReaderComic[]) => { void runJob('Downloading', async (p) => ({ verb: 'Downloaded', result: await downloadComics(comics, p) })).then((started) => { if (!started) Alert.alert('Another import is running', 'Wait for it to finish, or press Stop on the bar at the bottom.'); setTick((t) => t + 1); }); };
+  // Download the picked comics for offline reading. If they would not fit, say what has to be put away first.
+  const downloadPicked = () => {
+    const comics = toDownload([...picked]);
+    if (!comics.length) { endSelecting(); flash('Those are already on this device, or have no file to download'); return; }
+    const plan = planFor(comics);
+    endSelecting();
+    if (plan.over > 0 || plan.overCount > 0) setRoom({ comics, plan }); else startDownload(comics);
+  };
   const flash = (text: string) => { setNotice(text); setTimeout(() => setNotice((n) => (n === text ? null : n)), 2600); };
   const endSelecting = () => { setSelecting(false); setPicked(new Set()); };
   const toggle = (workId: string) => setPicked((prev) => { const next = new Set(prev); if (next.has(workId)) next.delete(workId); else next.add(workId); return next; });
@@ -91,17 +107,19 @@ export default function LibraryScreen() {
   const ownedCount = useMemo(() => inLibrary.filter((item) => isAccessible(item.own)).length, [inLibrary]);
   const filtersActive = hasActiveFilters(comicFilters);
   return <AppShell active="library" back title="My Collection" right={<HeaderActions><HeaderButton icon="search" label="Search" active={!!query} onPress={() => setQuery(query ? '' : 'a')} /><HeaderButton icon="grid-outline" label="Comics per row" onPress={() => setPerRowOpen(true)} /><HeaderButton icon="add" label="Add comics" onPress={() => setAddOpen(true)} /><HeaderButton icon="scan-outline" label="Scan Shelf" onPress={() => router.push('/scan')} /><HeaderButton icon="options-outline" label="Filter" active={filtersActive} onPress={() => setFiltersOpen(true)} /><HeaderButton icon="ellipsis-horizontal" label="More" onPress={() => setMoreOpen(true)} /></HeaderActions>}>
-    <FlashList key={`grid-${cols}`} data={items} numColumns={cols} keyExtractor={(item) => item.workId} getItemType={() => 'cover-grid'} extraData={`${selecting}-${picked.size}-${downloaded.size}`} renderItem={({ item }) => <LibraryCell item={item} selecting={selecting} picked={picked.has(item.workId)} downloaded={downloaded.has(item.workId)} onToggle={toggle} />} contentContainerStyle={[styles.content, selecting && { paddingBottom: 190 }]} showsVerticalScrollIndicator={false} ListHeaderComponent={<><View style={styles.header}>{query ? <Input placeholder="Search titles, creators, characters" value={query} onChangeText={setQuery} /> : null}<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pills}>{filters.map(([id, label]) => <Pill key={id} label={label} active={filter === id} onPress={() => setFilter(id)} />)}</ScrollView><View style={styles.subrow}><Text style={[styles.count, { color: c0.textMuted }]}>{ownedCount} {ownedCount === 1 ? 'comic' : 'comics'}{hasServerComics ? ` · ${downloaded.size} of ${keepLimit()} downloaded` : ''}</Text><View style={styles.subActions}><Pressable accessibilityRole="button" hitSlop={8} onPress={() => (selecting ? endSelecting() : setSelecting(true))}><Text style={[styles.subLink, { color: c0.textSecondary }]}>{selecting ? 'Done' : 'Select'}</Text></Pressable><Pressable accessibilityRole="button" hitSlop={8} onPress={() => setSortOpen(true)}><Text style={[styles.subLink, { color: c0.textSecondary }]}>{SORTS.find(([k]) => k === sort)?.[1]}  ⌄</Text></Pressable></View></View></View></>} ListEmptyComponent={<EmptyState title="Nothing here yet" copy={query ? 'Try a title, creator, or character.' : 'Your collection is ready for its first great comic.'} action={!query ? 'Browse catalog' : undefined} onAction={!query ? () => router.push('/discover') : undefined} />}/>
+    <FlashList key={`grid-${cols}`} data={items} numColumns={cols} keyExtractor={(item) => item.workId} getItemType={() => 'cover-grid'} extraData={`${selecting}-${picked.size}-${downloaded.size}-${readerIds.size}`} renderItem={({ item }) => <LibraryCell item={item} selecting={selecting} picked={picked.has(item.workId)} downloaded={downloaded.has(item.workId)} readerId={readerIds.get(item.workId)} onToggle={toggle} />} contentContainerStyle={[styles.content, selecting && { paddingBottom: 190 }]} showsVerticalScrollIndicator={false} ListHeaderComponent={<><View style={styles.header}>{query ? <Input placeholder="Search titles, creators, characters" value={query} onChangeText={setQuery} /> : null}<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pills}>{filters.map(([id, label]) => <Pill key={id} label={label} active={filter === id} onPress={() => setFilter(id)} />)}</ScrollView><View style={styles.subrow}><Text style={[styles.count, { color: c0.textMuted }]}>{ownedCount} {ownedCount === 1 ? 'comic' : 'comics'}{hasServerComics ? ` · ${downloaded.size}${keepLimit() ? ` of ${keepLimit()}` : ''} downloaded` : ''}</Text><View style={styles.subActions}><Pressable accessibilityRole="button" hitSlop={8} onPress={() => (selecting ? endSelecting() : setSelecting(true))}><Text style={[styles.subLink, { color: c0.textSecondary }]}>{selecting ? 'Done' : 'Select'}</Text></Pressable><Pressable accessibilityRole="button" hitSlop={8} onPress={() => setSortOpen(true)}><Text style={[styles.subLink, { color: c0.textSecondary }]}>{SORTS.find(([k]) => k === sort)?.[1]}  ⌄</Text></Pressable></View></View></View></>} ListEmptyComponent={<EmptyState title="Nothing here yet" copy={query ? 'Try a title, creator, or character.' : 'Your collection is ready for its first great comic.'} action={!query ? 'Browse catalog' : undefined} onAction={!query ? () => router.push('/discover') : undefined} />}/>
     <ActionSheet visible={sortOpen} title="Sort" onClose={() => setSortOpen(false)} options={SORTS.map(([k, label]) => ({ label, checked: sort === k, onPress: () => setSort(k) }))} />
     {notice ? <View pointerEvents="none" style={styles.toast}><Text style={styles.toastText}>{notice}</Text></View> : null}
     {selecting ? (
       <View style={[styles.bar, { backgroundColor: c0.surface, borderColor: c0.border }]}>
         <Text style={[styles.barText, { color: c0.textPrimary }]}>{picked.size ? `${picked.size} selected` : 'Tap comics to select them'}</Text>
         <Pressable hitSlop={8} onPress={() => setPicked(new Set(items.map((i) => i.workId)))}><Text style={[styles.barBtn, { color: c0.primary }]}>All</Text></Pressable>
+        <Pressable hitSlop={8} disabled={!picked.size} onPress={downloadPicked}><Text style={[styles.barBtn, { color: c0.primary }, !picked.size && styles.barOff]}>Download</Text></Pressable>
         <Pressable hitSlop={8} disabled={![...picked].some((id) => downloaded.has(id))} onPress={() => { const n = putAway([...picked]); setTick((t) => t + 1); endSelecting(); flash(n ? `Put away ${n}. They stay in My Collection.` : 'Nothing was downloaded'); }}><Text style={[styles.barBtn, { color: c0.primary }, ![...picked].some((id) => downloaded.has(id)) && styles.barOff]}>Put away</Text></Pressable>
         <Pressable hitSlop={8} disabled={!picked.size} onPress={() => { const ids = [...picked]; Alert.alert(`Remove ${ids.length} ${ids.length === 1 ? 'comic' : 'comics'} from My Collection?`, 'Files you added to this device are deleted. Comics linked from Drive or your comic server stay there, and can be added again.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Remove', style: 'destructive', onPress: () => { removeFromCollection(ids); library.refresh(); setTick((t) => t + 1); endSelecting(); flash(`Removed ${ids.length}`); } }]); }}><Text style={[styles.barBtn, { color: '#E5484D' }, !picked.size && styles.barOff]}>Remove</Text></Pressable>
       </View>
     ) : null}
+    {room ? <MakeRoomSheet verb="download" title={`${room.comics.length} comics`} need={room.comics.reduce((n, c) => n + (c.sizeBytes ?? 0), 0)} recompute={() => planFor(room.comics)} plan={room.plan} ready={readyComics()} onCancel={() => setRoom(null)} onConfirm={(ids) => { ids.forEach(freeSpaceFor); const comics = room.comics; setRoom(null); startDownload(comics); }} /> : null}
     <PerRowSheet visible={perRowOpen} onClose={() => setPerRowOpen(false)} />
     <ActionSheet visible={addOpen} title="Add to My Collection" onClose={() => setAddOpen(false)} options={[
       { label: 'Add a whole folder (Drive, iCloud, Files)…', onPress: () => { void link('Adding folder', (p) => linkWithCovers(() => pickAndLinkFolder(p), p)); } },
@@ -125,13 +143,13 @@ export default function LibraryScreen() {
   </AppShell>;
 }
 
-function LibraryCell({ item, selecting, picked, downloaded, onToggle }: { item: LibraryItem; selecting: boolean; picked: boolean; downloaded: boolean; onToggle: (workId: string) => void }) {
+function LibraryCell({ item, selecting, picked, downloaded, readerId, onToggle }: { item: LibraryItem; selecting: boolean; picked: boolean; downloaded: boolean; readerId?: string; onToggle: (workId: string) => void }) {
   const { theme, typography } = useAppearance(); const c = theme.colors;
   const statusLabel = item.status === 'reading' ? 'Reading' : item.status === 'done' ? 'Read' : item.status === 'dropped' ? 'Dropped' : item.own === 'wishlist' ? 'Wishlist' : item.own === 'ordered' ? 'Ordered' : 'Unread';
   return (
     <View style={styles.gridItem}>
       <View>
-        <ComicCover size="fluid" title={item.title} workId={item.workId} recyclingKey={item.workId} status={item.status === 'done' ? '✓' : undefined} onPress={() => (selecting ? onToggle(item.workId) : router.push(`/comic/${item.workId}`))} />
+        <ComicCover size="fluid" title={item.title} workId={item.workId} recyclingKey={item.workId} status={item.status === 'done' ? '✓' : undefined} onPress={() => (selecting ? onToggle(item.workId) : readerId ? router.push(`/reader/${readerId}`) : router.push(`/comic/${item.workId}`))} />
         {downloaded ? <View pointerEvents="none" style={styles.cloud}><Icon name="checkmark-circle" size={16} color="#fff" /></View> : null}
         {picked ? <View pointerEvents="none" style={styles.pickedMark}><Icon name="checkmark-circle" size={34} color="#fff" /></View> : null}
       </View>
