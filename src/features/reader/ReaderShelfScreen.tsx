@@ -141,16 +141,22 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   const importHere = () => runImport('Importing', 'Imported', (p) => pickAndImportComics({ folderId: openFolder ?? undefined, ...p }));
 
   // A folder wears the covers of the first comics inside it (oldest first), so it never looks blank.
-  const folderCovers = useMemo(() => {
-    const byFolder = new Map<string, string[]>();
+  // A folder wears the covers of the first comics inside it or inside its subfolders, and counts all of them, so a parent folder never looks empty.
+  const { folderCovers, folderTotals } = useMemo(() => {
+    const byFolder = new Map<string, string[]>(); const totals = new Map<string, number>();
+    const parentOf = new Map(folders.map((f) => [f.id, f.parentId]));
+    const hidden = (id: string | null) => { for (let n = id, guard = 0; n && guard < 20; n = parentOf.get(n) ?? null, guard++) if (lockedFolders.has(n)) return true; return false; };
     // (a comic with no usable cover still counts: its tile falls back to a title card)
     for (const comic of [...comics].sort((a, b) => a.addedAt - b.addedAt)) {
-      if (!comic.folderId || comic.locked) continue;
-      const list = byFolder.get(comic.folderId) ?? [];
-      if (list.length < 3) { list.push(comic.coverPath ?? ''); byFolder.set(comic.folderId, list); }
+      if (!comic.folderId || comic.locked || hidden(comic.folderId)) continue;
+      for (let id: string | null = comic.folderId, guard = 0; id && guard < 20; id = parentOf.get(id) ?? null, guard++) {
+        totals.set(id, (totals.get(id) ?? 0) + 1);
+        const list = byFolder.get(id) ?? [];
+        if (list.length < 3) { list.push(comic.coverPath ?? ''); byFolder.set(id, list); }
+      }
     }
-    return byFolder;
-  }, [comics]);
+    return { folderCovers: byFolder, folderTotals: totals };
+  }, [comics, folders, lockedFolders]);
 
   const cells: Cell[] = useMemo(() => {
     const searching = query.trim().length > 0;
@@ -347,6 +353,9 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   const listWrapRef = useRef<View>(null);
   const listBox = useRef({ y: 0, h: 0 }); // the scrolling part only: the controls above it don't scroll
   const folderViews = useRef(new Map<string, View>());
+  const comicViews = useRef(new Map<string, View>());
+  const touching = useRef(false); // the finger is still down (it can lift while the comic under it is being looked up)
+  const dragOrigin = useRef<string | null>(null); // the folder the comics were picked up from
   const backView = useRef<View>(null);
   const finger = useRef({ x: 0, y: 0 });
   const hover = useRef<{ target: string | null; timer: ReturnType<typeof setTimeout> | null }>({ target: null, timer: null });
@@ -407,9 +416,19 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   };
   const place = (x: number, y: number) => { dragX.set(x - frameBox.current.x - STACK_W / 2); dragY.set(y - frameBox.current.y - STACK_H / 2); };
   const dragApi = useMemo(() => ({
+    begin: (x: number, y: number) => {
+      touching.current = true;
+      void (async () => {
+        const entries = [...comicViews.current.entries()];
+        const boxes = await Promise.all(entries.map(([, view]) => boxOf(view)));
+        const hit = boxes.findIndex((b) => within(b, x, y));
+        if (hit >= 0 && touching.current) dragApi.start(entries[hit][0], finger.current.x || x, finger.current.y || y);
+      })();
+    },
     start: (id: string, x: number, y: number) => {
       if (!selectedRef.current.has(id)) commitSelected(new Set(selectedRef.current).add(id));
       finger.current = { x, y };
+      dragOrigin.current = latest.current.openFolder;
       setDragging(true);
       feedback.tap(); // picked up
       setDragLead(id);
@@ -420,14 +439,17 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
     move: (x: number, y: number) => { finger.current = { x, y }; place(x, y); },
     scroll: (dy: number) => { scrollBy(dy); },
     end: async () => {
+      touching.current = false;
       if (!tick.current) return; // the hold never turned into a drag
       clearInterval(tick.current);
       tick.current = null;
       if (hover.current.timer) clearTimeout(hover.current.timer);
       const target = await targetAt(finger.current.x, finger.current.y, true);
       hover.current = { target: null, timer: null }; setHoverTarget(null); setDragging(false);
-      if (!target) return;
-      const destination = target === 'up' ? parentOfOpen() : target;
+      // Let go on a folder to drop into it; let go on bare shelf after opening another folder to drop into the folder you are in.
+      const here = latest.current.openFolder;
+      if (!target && here === dragOrigin.current) return;
+      const destination = !target ? here : target === 'up' ? parentOfOpen() : target;
       const n = moveItems([...selectedRef.current], [...pickedFoldersRef.current], destination);
       feedback.success();
       endSelecting(); refresh(); flash(`Moved ${n} to ${targetName(destination)}`);
@@ -449,7 +471,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
     return ordered.slice(0, 4).map((comic) => ({ uri: comic.coverPath, title: comic.title }));
   }, [comics, selected, dragLead]);
 
-  const folderSub = (f: ReaderFolder) => [f.count > 0 || f.subfolders === 0 ? `${f.count} ${f.count === 1 ? 'title' : 'titles'}` : null, f.subfolders ? `${f.subfolders} ${f.subfolders === 1 ? 'folder' : 'folders'}` : null].filter(Boolean).join(' · ');
+  const folderSub = (f: ReaderFolder) => { const total = f.locked ? f.count : folderTotals.get(f.id) ?? f.count; return [total > 0 || f.subfolders === 0 ? `${total} ${total === 1 ? 'title' : 'titles'}` : null, f.subfolders ? `${f.subfolders} ${f.subfolders === 1 ? 'folder' : 'folders'}` : null].filter(Boolean).join(' · '); };
 
   const renderItem = ({ item }: { item: Cell }) => {
     if (item.kind === 'folder') return <Tile styles={styles} view={view} width={cellWidth} highlight={hoverTarget === item.folder.id} registerRef={(v) => { if (v) folderViews.current.set(item.folder.id, v); else folderViews.current.delete(item.folder.id); }} label={item.folder.name} sub={folderSub(item.folder)} covers={item.folder.locked && !isUnlocked('folder', item.folder.id) ? [] : folderCovers.get(item.folder.id) ?? []} glyph={item.folder.locked && !isUnlocked('folder', item.folder.id) ? '🔒' : '▤'} picked={pickedFolders.has(item.folder.id)} onPress={() => (selecting ? toggleFolder(item.folder) : requireUnlock('folder', item.folder.id, item.folder.name, item.folder.locked, () => setOpenFolder(item.folder.id)))} onLongPress={() => { if (!selecting) folderMenu(item.folder); }} />;
@@ -465,7 +487,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
     );
     const press = () => (selecting ? toggleSelect(comic) : openComic(comic));
     const longPress = selecting ? undefined : () => comicMenu(comic);
-    const draggable = (body: ReactNode) => <DragSource enabled={selecting} id={comic.id} api={dragApi}><View collapsable={false} style={[view === 'grid' ? { width: cellWidth, alignSelf: 'center' } : null, dragging && selected.has(comic.id) ? styles.carried : null]}>{body}</View></DragSource>;
+    const draggable = (body: ReactNode) => <View ref={(v) => { if (v) comicViews.current.set(comic.id, v); else comicViews.current.delete(comic.id); }} collapsable={false} style={[view === 'grid' ? { width: cellWidth, alignSelf: 'center' } : null, dragging && selected.has(comic.id) ? styles.carried : null]}>{body}</View>;
     if (view === 'list') {
       return draggable(
         <PressableScale to={0.985} style={styles.listRow} onPress={press} onLongPress={longPress}>
@@ -512,6 +534,8 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
         ) : null}
       </Animated.View>
       <View ref={listWrapRef} collapsable={false} style={styles.frame}>
+      <DragFrame enabled={selecting} api={dragApi}>
+      <View collapsable={false} style={styles.frame}>
       <FlashList
         ref={listRef}
         scrollEnabled={!dragging}
@@ -527,6 +551,8 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
         renderItem={renderItem}
         ListEmptyComponent={empty}
       />
+      </View>
+      </DragFrame>
       {/* While one finger holds the pile, a second finger anywhere on the list scrolls it. */}
       {dragging ? <SecondFingerScroll api={dragApi} /> : null}
       {dragging && openFolder ? <View pointerEvents="none" style={[styles.edgeBand, hoverTarget === 'up' && styles.edgeBandHot]}><Icon name="chevron-back" size={28} color="#fff" /></View> : null}
@@ -587,18 +613,22 @@ function Tile({ styles, view, width, label, sub, glyph, covers, highlight, regis
 }
 
 /** Lets a comic be held and dragged while selecting. A short hold starts the drag; moving sooner just scrolls. */
-type DragApi = { start: (id: string, x: number, y: number) => void; move: (x: number, y: number) => void; scroll: (dy: number) => void; end: () => void };
+type DragApi = { begin: (x: number, y: number) => void; start: (id: string, x: number, y: number) => void; move: (x: number, y: number) => void; scroll: (dy: number) => void; end: () => void };
 
 /** Catches a second finger's swipe while the first is holding the selection, and scrolls the shelf with it. */
 function SecondFingerScroll({ api }: { api: DragApi }) {
   const gesture = useMemo(() => Gesture.Pan().runOnJS(true).onChange((e) => { api.scroll(-e.changeY); }), [api]);
   return <GestureDetector gesture={gesture}><View style={StyleSheet.absoluteFill} /></GestureDetector>;
 }
-function DragSource({ enabled, id, api, children }: { enabled: boolean; id: string; api: DragApi; children: ReactNode }) {
+/**
+ * One gesture for the whole list: hold a comic and drag. It used to sit on each comic, so opening a folder mid-drag removed the comic being
+ * held, took its gesture with it, and the drag never ended. Here the gesture outlives any folder change; `begin` finds the comic under the finger.
+ */
+function DragFrame({ enabled, api, children }: { enabled: boolean; api: DragApi; children: ReactNode }) {
   const gesture = useMemo(() => Gesture.Pan().enabled(enabled).runOnJS(true).activateAfterLongPress(350)
-    .onStart((e) => { api.start(id, e.absoluteX, e.absoluteY); })
+    .onStart((e) => { api.begin(e.absoluteX, e.absoluteY); })
     .onUpdate((e) => { api.move(e.absoluteX, e.absoluteY); })
-    .onFinalize(() => { void api.end(); }), [enabled, id, api]);
+    .onFinalize(() => { void api.end(); }), [enabled, api]);
   return <GestureDetector gesture={gesture}>{children}</GestureDetector>;
 }
 
