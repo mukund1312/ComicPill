@@ -238,6 +238,30 @@ class ComicArchiveModule : Module() {
         recognizer.close()
       }
     }
+
+    // Every line of text on a page with its box, as fractions of the image with the origin at the top left. The JavaScript puts the
+    // lines in reading order and reads the page in tiles, so this keeps ML Kit's raw lines rather than joining them.
+    AsyncFunction("recognizeLines") { path: String ->
+      val context = appContext.reactContext ?: throw CodedException("NO_CONTEXT", "No Android context", null)
+      val uri = Uri.parse(path).let { if (it.scheme == null) Uri.fromFile(File(path)) else it }
+      val image = try {
+        InputImage.fromFilePath(context, uri)
+      } catch (e: Exception) {
+        throw CodedException("DECODE", "Cannot open image", e)
+      }
+      val width = image.width.toFloat()
+      val height = image.height.toFloat()
+      val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+      try {
+        val result = Tasks.await(recognizer.process(image))
+        return@AsyncFunction result.textBlocks.flatMap { it.lines }.mapNotNull { line ->
+          val box = line.boundingBox ?: return@mapNotNull null
+          mapOf("text" to line.text, "x" to box.left / width, "y" to box.top / height, "w" to box.width() / width, "h" to box.height() / height)
+        }
+      } finally {
+        recognizer.close()
+      }
+    }
   }
 }
 

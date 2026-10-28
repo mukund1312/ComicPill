@@ -4,9 +4,16 @@ import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-ha
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSheetDrag } from '../../ui/sheetDrag';
+import { optionalNative } from '../../lib/reader/nativeArchive';
 import { color, font, radius, space, type } from '../../ui/tokens';
 
 export type PageText = { loading: boolean; text: string | null; unavailable?: boolean } | null;
+
+/** Translate on the device where the system can (Apple Translation), otherwise open Google Translate in the browser. */
+export async function translate(text: string): Promise<void> {
+  try { if (await optionalNative()?.translateText?.(text.slice(0, 4000))) return; } catch { /* fall through to the browser */ }
+  void Linking.openURL(translateUrl(text));
+}
 
 export const translateUrl = (text: string) => `https://translate.google.com/?sl=auto&tl=en&op=translate&text=${encodeURIComponent(text.slice(0, 4000))}`;
 
@@ -24,16 +31,16 @@ export function PageTextSheet({ value, onClose }: { value: PageText; onClose: ()
           <View style={styles.handle} />
           <Text style={styles.heading}>Text on this page</Text>
           {value?.loading ? <ActivityIndicator color={color.accent} style={{ marginVertical: space.xl }} /> : value?.unavailable ? (
-            <Text style={styles.note}>Reading text from pages needs the Android app (it uses the phone’s own text recognition).</Text>
+            <Text style={styles.note}>This build can’t read text from pages. Install the full ComicPill app (not Expo Go) to use the device’s own text recognition.</Text>
           ) : !text ? <Text style={styles.note}>No text found on this page.</Text> : (
             <>
               <ScrollView style={styles.box}><Text selectable style={styles.text}>{text}</Text></ScrollView>
               <View style={styles.row}>
                 <Pressable accessibilityRole="button" style={[styles.btn, styles.primary]} onPress={() => { void Clipboard.setStringAsync(text); }}><Text style={styles.primaryText}>Copy</Text></Pressable>
-                <Pressable accessibilityRole="button" style={styles.btn} onPress={() => { void Linking.openURL(translateUrl(text)); }}><Text style={styles.btnText}>Translate</Text></Pressable>
+                <Pressable accessibilityRole="button" style={styles.btn} onPress={() => { void translate(text); }}><Text style={styles.btnText}>Translate</Text></Pressable>
                 <Pressable accessibilityRole="button" style={styles.btn} onPress={() => { void Share.share({ message: text }); }}><Text style={styles.btnText}>Share</Text></Pressable>
               </View>
-              <Text style={styles.note}>Translate opens Google Translate with this text. It is only sent if you tap it.</Text>
+              <Text style={styles.note}>{optionalNative()?.translateText ? 'Translate uses the translation built into this device. Language packs download once, then it works offline.' : 'Translate opens Google Translate with this text. It is only sent if you tap it.'}</Text>
             </>
           )}
         </Animated.View>

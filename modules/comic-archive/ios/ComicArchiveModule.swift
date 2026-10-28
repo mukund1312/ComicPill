@@ -4,6 +4,8 @@ import PDFKit
 import UIKit
 import Vision
 import UniformTypeIdentifiers
+import SwiftUI
+@_weakLinked import Translation // iOS 17.4+; weakly linked so the app still launches on older iOS
 import UnrarKit
 import SWCompression
 
@@ -138,8 +140,42 @@ public class ComicArchiveModule: Module {
       }
       request.recognitionLevel = .accurate
       request.usesLanguageCorrection = true
+      request.automaticallyDetectsLanguage = true
       DispatchQueue.global(qos: .userInitiated).async {
         do { try VNImageRequestHandler(cgImage: cg, options: [:]).perform([request]) } catch { promise.reject("OCR", error.localizedDescription) }
+      }
+    }
+
+    // Each line of text on a page with its box, as fractions of the image with the origin at the top left. The JavaScript puts the lines
+    // in reading order, so this keeps Vision's raw lines rather than joining them.
+    AsyncFunction("recognizeLines") { (path: String, promise: Promise) in
+      guard let cg = UIImage(contentsOfFile: Self.fileURL(path).path)?.cgImage else { promise.reject("DECODE", "Cannot open image"); return }
+      let request = VNRecognizeTextRequest { req, error in
+        if let error = error { promise.reject("OCR", error.localizedDescription); return }
+        let lines: [[String: Any]] = ((req.results as? [VNRecognizedTextObservation]) ?? []).compactMap { o in
+          guard let text = o.topCandidates(1).first?.string else { return nil }
+          let b = o.boundingBox // Vision's origin is the bottom left
+          return ["text": text, "x": b.minX, "y": 1 - b.maxY, "w": b.width, "h": b.height]
+        }
+        promise.resolve(lines)
+      }
+      request.recognitionLevel = .accurate
+      request.usesLanguageCorrection = true
+      request.automaticallyDetectsLanguage = true
+      DispatchQueue.global(qos: .userInitiated).async {
+        do { try VNImageRequestHandler(cgImage: cg, options: [:]).perform([request]) } catch { promise.reject("OCR", error.localizedDescription) }
+      }
+    }
+
+    // Apple's own translation sheet, which works on the device (language packs download once). Resolves false where it isn't available.
+    AsyncFunction("translateText") { (text: String, promise: Promise) in
+      DispatchQueue.main.async {
+        guard #available(iOS 17.4, *), let presenter = self.appContext?.utilities?.currentViewController() else { promise.resolve(false); return }
+        var host: UIHostingController<TranslateHost>?
+        host = UIHostingController(rootView: TranslateHost(text: text) { host?.dismiss(animated: false); promise.resolve(true) })
+        host?.view.backgroundColor = .clear
+        host?.modalPresentationStyle = .overCurrentContext
+        if let host = host { presenter.present(host, animated: false) }
       }
     }
   }
@@ -209,5 +245,19 @@ final class InPlacePickerDelegate: NSObject, UIDocumentPickerDelegate {
   func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
     promise.resolve([[String: Any]]())
     finished()
+  }
+}
+
+/// An empty, see-through screen whose only job is to show the system translation sheet for `text`, and to say when it has been closed.
+@available(iOS 17.4, *)
+struct TranslateHost: View {
+  let text: String
+  let finished: () -> Void
+  @State private var showing = true
+
+  var body: some View {
+    Color.clear
+      .translationPresentation(isPresented: $showing, text: text)
+      .onChange(of: showing) { _, now in if !now { finished() } }
   }
 }

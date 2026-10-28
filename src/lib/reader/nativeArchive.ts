@@ -14,6 +14,10 @@ type Native = {
   renderPdfPage(path: string, index: number, dest: string, targetWidth: number): Promise<void>;
   grayThumbnail?(path: string, maxWidth: number): Promise<{ width: number; height: number; data: string }>;
   recognizeText?(path: string): Promise<string>;
+  /** Every line of text on an image with its box (fractions of the image, origin top left). Reading order is worked out in JavaScript. */
+  recognizeLines?(path: string): Promise<{ text: string; x: number; y: number; w: number; h: number }[]>;
+  /** iOS 17.4+: show Apple's on-device translation sheet for `text`. Resolves false when it can't be shown. */
+  translateText?(text: string): Promise<boolean>;
   /** Keep access to a picked cloud file after the app closes. */
   persistUriPermission?(uri: string): boolean;
   /** iOS: the Files picker opening files in place (no copy), so it returns at once. `bookmark` reopens the file later. Empty when cancelled. */

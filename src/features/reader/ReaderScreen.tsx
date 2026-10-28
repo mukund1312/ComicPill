@@ -21,7 +21,7 @@ import { ZoomableView, type ZoomHandle } from './ZoomableView';
 import { detectPagePanels, guidedAvailable } from '../../lib/reader/guided/detect';
 import { contentBox, decodeBase64, FULL_PAGE, type Panel } from '../../lib/reader/guided/panels';
 import { isUnlocked } from '../../lib/reader/lock';
-import { recognizeText } from '../../lib/mind/capture/ocr';
+import { readPageText as readText } from '../../lib/reader/ocr/readPage';
 import { optionalNative } from '../../lib/reader/nativeArchive';
 import { CloudFetchError, ensureLocalCopy, freeSpaceFor, isCached, planFetch, readyComics } from '../../lib/reader/cloudCache';
 import { budgetMode, cloudBudgetBytes } from '../../lib/reader/cloudBudget';
@@ -325,7 +325,7 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
   // ---- text on the page, and sharing it ----
   const readPageText = async () => {
     setPageText({ loading: true, text: null });
-    const text = await recognizeText(await source.getPageUri(page));
+    const text = await readText(await source.getPageUri(page), { rtl: reading.mode === 'rtl' });
     setPageText(text === null ? { loading: false, text: null, unavailable: true } : { loading: false, text });
   };
 
