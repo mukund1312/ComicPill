@@ -281,6 +281,8 @@ export function ensureSchema(): void {
     ['lock_hash', 'TEXT'], ['lock_salt', 'TEXT'], ['work_id', 'TEXT'], ['size_bytes', 'INTEGER'], ['source_uri', 'TEXT'], ['source_key', 'TEXT'],
   ];
   for (const [name, def] of added) if (!cols.includes(name)) sqlite.execSync(`ALTER TABLE reader_comics ADD COLUMN ${name} ${def}`);
+  const libraryCols = sqlite.getAllSync<{ name: string }>('PRAGMA table_info(user_library)').map((c) => c.name);
+  if (!libraryCols.includes('notes')) sqlite.execSync('ALTER TABLE user_library ADD COLUMN notes TEXT');
   const folderCols = sqlite.getAllSync<{ name: string }>('PRAGMA table_info(reader_folders)').map((c) => c.name);
   for (const name of ['lock_hash', 'lock_salt', 'parent_id']) if (!folderCols.includes(name)) sqlite.execSync(`ALTER TABLE reader_folders ADD COLUMN ${name} TEXT`);
   bootstrapped = true;

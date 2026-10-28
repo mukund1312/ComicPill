@@ -60,7 +60,7 @@ export function loadAllScorableWorks(): Map<string, ScorableWork> {
   return map;
 }
 
-export function upsertLibraryEntry(workId: string, fields: Partial<{ own: Own; status: ReadStatus; rating: number | null; finishedAt: string | null }>): void {
+export function upsertLibraryEntry(workId: string, fields: Partial<{ own: Own; status: ReadStatus; rating: number | null; finishedAt: string | null; notes: string | null }>): void {
   const now = new Date().toISOString();
   const existing = db.select().from(userLibrary).where(eq(userLibrary.workId, workId)).get();
   if (existing) {
@@ -68,7 +68,7 @@ export function upsertLibraryEntry(workId: string, fields: Partial<{ own: Own; s
   } else {
     db.insert(userLibrary).values({
       workId, own: fields.own ?? 'none', status: fields.status ?? 'none',
-      rating: fields.rating ?? null, finishedAt: fields.finishedAt ?? null, updatedAt: now,
+      rating: fields.rating ?? null, finishedAt: fields.finishedAt ?? null, notes: fields.notes ?? null, updatedAt: now,
     }).run();
   }
 }

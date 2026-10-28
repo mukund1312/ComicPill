@@ -1,8 +1,7 @@
-// Scan: photograph a shelf (or pick screenshots of a digital library), have
-// the reader's own AI read the titles, and review the matches before adding.
-// One photo action = one AI request. Nothing is added without a tick, and
-// doubtful matches start unticked. With no key the screen says so plainly and
-// offers manual add — it never pretends to have scanned anything.
+// Scan: photograph a shelf and have the titles read, then review them before adding.
+// The default reads the spines on the device itself (text recognition, nothing uploaded, no key).
+// If the reader has set up their own AI key they can use it instead, for photos the device can't read.
+// Nothing is added without a tick, and doubtful matches start unticked.
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
@@ -22,13 +21,18 @@ import { prepareForScan } from '../../lib/scan/prepare';
 import { matchScannedBooks, summarizeScan, type ScanMatch, type ScanSummary } from '../../lib/scan/match';
 import { defaultSelection, planAdditions, type ScanFormat } from '../../lib/scan/additions';
 import { feedback } from '../../lib/platform/feedback';
+import { scanShelfOnDevice, type ShelfFind } from '../../lib/scan/onDevice';
+import { createScannedWork, fullTitle } from '../../lib/scan/custom';
+import { mergeOwn } from '../../lib/util/own';
+import { ShelfResults, type ShelfPick } from './ShelfResults';
 import { usePermissions } from '../settings/usePermissions';
 
 type Stage =
   | { name: 'intro' }
   | { name: 'working'; note: string }
   | { name: 'error'; kind: AiErrorKind | 'no_photo'; message: string }
-  | { name: 'results'; matches: ScanMatch[]; summary: ScanSummary; format: ScanFormat };
+  | { name: 'results'; matches: ScanMatch[]; summary: ScanSummary; format: ScanFormat }
+  | { name: 'shelf'; finds: ShelfFind[] };
 
 const STATUS_LABEL: Record<ScanMatch['status'], string> = { matched: 'Matched', review: 'Check this one', unmatched: 'Not in the catalog' };
 
@@ -53,6 +57,44 @@ export default function ScanScreen() {
     setSelected(defaultSelection(matches));
     feedback.success();
     setStage({ name: 'results', matches, summary: summarizeScan(matches, res.data.unreadable), format });
+  };
+
+  // ---- on this device: no key, nothing uploaded ----
+  const runDevice = async (uris: string[]) => {
+    setStage({ name: 'working', note: 'Reading the spines on this device…' });
+    try {
+      const finds = await scanShelfOnDevice(uris, (note) => setStage({ name: 'working', note }));
+      feedback.success();
+      setStage({ name: 'shelf', finds });
+    } catch (e) {
+      feedback.warning();
+      setStage({ name: 'error', kind: 'no_photo', message: e instanceof Error && e.message === 'NO_OCR' ? 'This build can’t read text from photos. Install the full ComicPill app (not Expo Go).' : 'That photo couldn’t be read. Please try another.' });
+    }
+  };
+  const shelfFromCamera = async () => {
+    if (!(await perms.ensure('camera'))) return;
+    const r = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 1 });
+    if (!r.canceled && r.assets?.length) await runDevice(r.assets.map((a) => a.uri));
+  };
+  const shelfFromLibrary = async () => {
+    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsMultipleSelection: true, selectionLimit: 8, quality: 1 });
+    if (!r.canceled && r.assets?.length) await runDevice(r.assets.map((a) => a.uri));
+  };
+  const addShelf = (picks: ShelfPick[], format: ScanFormat) => {
+    const library = loadArcLibrary();
+    const seen = new Set<string>();
+    let added = 0;
+    for (const p of picks) {
+      const key = p.kind === 'catalog' ? p.workId : `new:${fullTitle(p.title, p.volume).toLowerCase()}`;
+      if (seen.has(key)) continue; // the same comic twice on a shelf is added once
+      seen.add(key);
+      const workId = p.kind === 'catalog' ? p.workId : createScannedWork({ title: p.title, volume: p.volume, creators: p.creators, coverPath: p.cropUri });
+      upsertLibraryEntry(workId, { own: mergeOwn(library.get(workId)?.own ?? 'none', format) });
+      added++;
+    }
+    feedback.success();
+    notice(added === 1 ? 'Added 1 comic' : `Added ${added} comics`, 'They’re in your library. Open one to rate it or leave a comment.');
+    router.replace('/library');
   };
 
   const fromCamera = async () => {
@@ -83,24 +125,20 @@ export default function ScanScreen() {
     <SettingsPage title="Scan your comics" subtitle="Turn a photo of your shelf into a library." backLabel="Back">
       {stage.name === 'intro' ? (
         <View style={styles.gap}>
+          <Text style={[styles.body, { color: c.textSecondary, fontFamily: typography.body }]}>
+            Take a photo of a shelf with the spines facing you, about 10 to 15 comics at a time, in good light. ComicPill reads the spines on this device — nothing is uploaded and you don’t need an account or a key — then shows you what it found. Nothing is added until you say so.
+          </Text>
+          <Button onPress={shelfFromCamera}>Take a photo of a shelf</Button>
+          <Button kind="secondary" onPress={shelfFromLibrary}>Choose photos</Button>
+          <Text style={[styles.note, { color: c.textMuted, fontFamily: typography.body }]}>Works best with the spines straight on, no glare, and the whole shelf in view. You can correct any title before it is added.</Text>
           {hasKey ? (
-            <>
-              <Text style={[styles.body, { color: c.textSecondary, fontFamily: typography.body }]}>
-                Take a photo of your shelf, or choose screenshots of a digital library. ComicPill reads the titles with your AI key, then shows you what it found — nothing is added until you say so.
-              </Text>
-              <Button onPress={fromCamera}>Scan with camera</Button>
-              <Button kind="secondary" onPress={fromLibrary}>Choose screenshots or photos</Button>
-              <Text style={[styles.note, { color: c.textMuted, fontFamily: typography.body }]}>Up to {MAX_PHOTOS} photos at a time · one AI request</Text>
-            </>
-          ) : (
             <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.border }]}>
-              <Eyebrow>Needs an AI key</Eyebrow>
-              <Text style={[styles.body, { color: c.textPrimary, fontFamily: typography.body }]}>
-                Scanning reads your photo with an AI model, so it needs your own API key. Add one in Settings — it takes a minute — or add comics by hand.
-              </Text>
-              <Button onPress={() => router.push('/ai-settings')}>Set up AI assistant</Button>
+              <Eyebrow>Optional: use your AI key</Eyebrow>
+              <Text style={[styles.body, { color: c.textSecondary, fontFamily: typography.body }]}>For photos the device can’t read, or screenshots of a digital library. Up to {MAX_PHOTOS} photos · one AI request.</Text>
+              <Button kind="secondary" onPress={fromCamera}>Scan with AI (camera)</Button>
+              <Button kind="secondary" onPress={fromLibrary}>Scan with AI (choose photos)</Button>
             </View>
-          )}
+          ) : null}
           <Button kind="ghost" onPress={() => router.push('/library')}>Add manually instead</Button>
         </View>
       ) : null}
@@ -120,6 +158,8 @@ export default function ScanScreen() {
           <Button kind="secondary" onPress={() => setStage({ name: 'intro' })}>Try again</Button>
         </View>
       ) : null}
+
+      {stage.name === 'shelf' ? <ShelfResults finds={stage.finds} catalog={catalog} onAdd={addShelf} onAgain={() => setStage({ name: 'intro' })} /> : null}
 
       {stage.name === 'results' ? (
         <Results

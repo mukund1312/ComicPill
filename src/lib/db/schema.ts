@@ -290,6 +290,7 @@ export const userLibrary = sqliteTable('user_library', {
   pricePaidPaise: integer('price_paid_paise'),
   purchasedAt: text('purchased_at'),
   store: text('store'),
+  notes: text('notes'), // the reader's own comment on their copy
   updatedAt: text('updated_at').notNull(),
 });
 
