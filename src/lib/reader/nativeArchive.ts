@@ -15,7 +15,7 @@ type Native = {
   grayThumbnail?(path: string, maxWidth: number): Promise<{ width: number; height: number; data: string }>;
   recognizeText?(path: string): Promise<string>;
   /** Every line of text on an image with its box (fractions of the image, origin top left). Reading order is worked out in JavaScript. */
-  recognizeLines?(path: string): Promise<{ text: string; x: number; y: number; w: number; h: number }[]>;
+  recognizeLines?(path: string): Promise<{ text: string; x: number; y: number; w: number; h: number; conf?: number }[]>;
   /** iOS 17.4+: show Apple's on-device translation sheet for `text`. Resolves false when it can't be shown. */
   translateText?(text: string): Promise<boolean>;
   /** Keep access to a picked cloud file after the app closes. */

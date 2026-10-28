@@ -40,7 +40,7 @@ import { usePermissions } from '../settings/usePermissions';
 type Stage =
   | { name: 'intro' }
   | { name: 'working'; note: string }
-  | { name: 'detecting'; stage: ScanStage }
+  | { name: 'detecting'; stage: ScanStage; done?: number; total?: number }
   | { name: 'error'; kind: AiErrorKind | 'no_photo'; message: string }
   | { name: 'results'; matches: ScanMatch[]; summary: ScanSummary; format: ScanFormat }
   | { name: 'review'; draftId: string; scan: Pick<ShelfScan, 'photoUri' | 'photoWidth' | 'photoHeight'> }
@@ -92,7 +92,7 @@ export default function ScanScreen() {
     let draftId: string | null = null;
     try {
       draftId = await createDraft(photoUri);
-      const scan = await scanShelfOnDevice(photoUri, draftId, catalogIndex(), (st) => setStage({ name: 'detecting', stage: st }));
+      const scan = await scanShelfOnDevice(photoUri, draftId, catalogIndex(), (st, done, total) => setStage({ name: 'detecting', stage: st, done, total }));
       setItems(scan.detected.map((d) => itemFromDetected(d, { ownership: 'physical', reading: 'unread' })));
       feedback.success();
       setStage({ name: 'review', draftId, scan: { photoUri: scan.photoUri, photoWidth: scan.photoWidth, photoHeight: scan.photoHeight } });
@@ -252,10 +252,11 @@ export default function ScanScreen() {
       {stage.name === 'detecting' ? (
         <View style={styles.center}>
           <ActivityIndicator color={c.primary} size="large" />
-          {(['detecting', 'reading', 'matching'] as const).map((st) => {
-            const order = ['detecting', 'reading', 'matching'] as const;
+          {(['detecting', 'reading', 'spines', 'matching'] as const).map((st) => {
+            const order = ['detecting', 'reading', 'spines', 'matching'] as const;
             const state = order.indexOf(st) < order.indexOf(stage.stage) ? 'done' : st === stage.stage ? 'now' : 'next';
-            return <Text key={st} accessibilityLiveRegion={state === 'now' ? 'polite' : undefined} style={[styles.body, { color: state === 'now' ? c.textPrimary : c.textMuted, fontFamily: state === 'now' ? typography.bodySemibold : typography.body }]}>{state === 'done' ? '✓ ' : ''}{st === 'detecting' ? 'Detecting books' : st === 'reading' ? 'Reading spine text' : 'Finding catalog matches'}</Text>;
+            const label = st === 'detecting' ? 'Detecting books' : st === 'reading' ? 'Reading the shelf' : st === 'spines' ? `Reading each spine${state === 'now' && stage.total ? ` (${Math.min(stage.total, (stage.done ?? 0) + 1)} of ${stage.total})` : ''}` : 'Finding catalog matches';
+            return <Text key={st} accessibilityLiveRegion={state === 'now' ? 'polite' : undefined} style={[styles.body, { color: state === 'now' ? c.textPrimary : c.textMuted, fontFamily: state === 'now' ? typography.bodySemibold : typography.body }]}>{state === 'done' ? '✓ ' : ''}{label}</Text>;
           })}
         </View>
       ) : null}

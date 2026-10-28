@@ -256,7 +256,7 @@ class ComicArchiveModule : Module() {
         val result = Tasks.await(recognizer.process(image))
         return@AsyncFunction result.textBlocks.flatMap { it.lines }.mapNotNull { line ->
           val box = line.boundingBox ?: return@mapNotNull null
-          mapOf("text" to line.text, "x" to box.left / width, "y" to box.top / height, "w" to box.width() / width, "h" to box.height() / height)
+          mapOf("text" to line.text, "x" to box.left / width, "y" to box.top / height, "w" to box.width() / width, "h" to box.height() / height, "conf" to line.confidence)
         }
       } finally {
         recognizer.close()

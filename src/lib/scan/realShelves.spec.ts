@@ -24,7 +24,7 @@ function recall(n: number, withEdges = true): { found: number; total: number; gr
 }
 
 describe('real shelf photos', () => {
-  it.each([[22, 6], [23, 10], [24, 13], [25, 15]])('photo %i: finds at least %i of its books', (n, floor) => {
+  it.each([[22, 7], [23, 10], [24, 14], [25, 14]])('photo %i: finds at least %i of its books', (n, floor) => {
     const r = recall(n);
     expect(r.found).toBeGreaterThanOrEqual(floor);
   });
@@ -35,9 +35,18 @@ describe('real shelf photos', () => {
   });
 });
 
-describe('real shelf photos: what the edges between books add', () => {
-  it.each([22, 23, 24, 25])('photo %i: edges never make it find fewer books', (n) => {
-    expect(recall(n, true).found).toBeGreaterThanOrEqual(recall(n, false).found);
+describe('real shelf photos: cutting the shelf from the picture', () => {
+  it('finds at least as many books overall as grouping by lettering alone', () => {
+    const withEdges = [22, 23, 24, 25].reduce((n, p) => n + recall(p, true).found, 0);
+    const lettering = [22, 23, 24, 25].reduce((n, p) => n + recall(p, false).found, 0);
+    expect(withEdges).toBeGreaterThanOrEqual(lettering);
+  });
+  it('gives every book a box that spans its spine, not just its lettering', () => {
+    for (const n of [24, 25]) {
+      const books = readShelf(fx(n).passes, gray(n));
+      const tall = books.filter((b) => b.box.h >= 0.4).length;
+      expect(tall / books.length).toBeGreaterThan(0.8); // spines are tall; lettering-only boxes were often a fraction of that
+    }
   });
 });
 

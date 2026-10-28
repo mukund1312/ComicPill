@@ -153,9 +153,9 @@ public class ComicArchiveModule: Module {
       let request = VNRecognizeTextRequest { req, error in
         if let error = error { promise.reject("OCR", error.localizedDescription); return }
         let lines: [[String: Any]] = ((req.results as? [VNRecognizedTextObservation]) ?? []).compactMap { o in
-          guard let text = o.topCandidates(1).first?.string else { return nil }
+          guard let top = o.topCandidates(1).first else { return nil }
           let b = o.boundingBox // Vision's origin is the bottom left
-          return ["text": text, "x": b.minX, "y": 1 - b.maxY, "w": b.width, "h": b.height]
+          return ["text": top.string, "x": b.minX, "y": 1 - b.maxY, "w": b.width, "h": b.height, "conf": Double(top.confidence)]
         }
         promise.resolve(lines)
       }

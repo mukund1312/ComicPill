@@ -2,14 +2,14 @@
 // engine reads in place); this works out which lines belong to which spine and what each spine says: title, volume, publisher.
 // Pure arithmetic on boxes and strings, so it is the same on every platform and easy to test.
 import type { ScannedBook } from './schema';
-import { columnPersistence, findEdges, transpose, type Gray } from './segment';
+import { columnPersistence, findEdges, partitionShelf, transpose, verticalExtent, type Gray } from './segment';
 
 /** A line of text and its box, as fractions (0..1) of the photo, origin top-left. */
 export type SpineLine = { text: string; x: number; y: number; w: number; h: number; conf?: number; dir?: 'down' | 'up' };
 /** One read of the photo. `turn` is how the image was turned before reading: 0 as taken, 180 upside down (to read text that runs upward). */
 export type ReadPass = { turn: 0 | 180; lines: SpineLine[] };
 export type Spine = { lines: SpineLine[]; box: { x: number; y: number; w: number; h: number } };
-export type SpineBook = ScannedBook & { box: Spine['box']; rawText: string };
+export type SpineBook = ScannedBook & { box: Spine['box']; rawText: string; /** Which way the lettering runs: down the spine (most books), or up it. */ dir: 'down' | 'up' };
 
 type Box = { x: number; y: number; w: number; h: number };
 const area = (b: Box) => b.w * b.h;
@@ -122,7 +122,8 @@ export function readSpine(spine: Spine): SpineBook | null {
   const title = titleParts.map((l) => l.text).join(' ').replace(/\s+/g, ' ').trim();
   if (alnum(title) < 2) return null;
   const conf = Math.min(...titleParts.map((l) => l.conf ?? 1));
-  return { title, volume, creators: creators.slice(0, 3), confidence: conf >= 0.9 && alnum(title) >= 4 ? 'high' : conf >= 0.6 ? 'medium' : 'low', seenAs: 'spine', box: spine.box, rawText };
+  const up = spine.lines.filter((l) => l.dir === 'up').length > spine.lines.filter((l) => l.dir !== 'up').length;
+  return { title, volume, creators: creators.slice(0, 3), confidence: conf >= 0.9 && alnum(title) >= 4 ? 'high' : conf >= 0.6 ? 'medium' : 'low', seenAs: 'spine', box: spine.box, rawText, dir: up ? 'up' : 'down' };
 }
 
 const hasTitleLine = (s: Spine) => s.lines.some((l) => !isPublisher(l.text) && splitVolume(l.text).rest.length >= 3);
@@ -170,11 +171,58 @@ export function splitAtEdges(spines: Spine[], edges: number[], vertical: boolean
   return out;
 }
 
-/** Everything the photo says, one entry per book, in order along the shelf. With the picture's pixels, real edges between books sharpen the grouping. */
+/**
+ * Group lines into books by the best partition of the shelf (see `partitionShelf`): lines whose centre falls in the same stretch belong to one book.
+ * Returns the books and the stretch each one occupies along the shelf, so the box can span the whole spine and not just the lettering.
+ */
+export function groupByPartition(lines: SpineLine[], gray: Gray, tune: { cutCost?: number; minWidth?: number } = {}): { spine: Spine; from: number; to: number }[] {
+  const vertical = shelfIsVertical(lines);
+  const along = lines.filter((l) => (l.h > l.w) === vertical);
+  if (along.length === 0) return [];
+  const picture = vertical ? gray : transpose(gray);
+  const spans = along.map((l) => (vertical ? [l.y, l.y + l.h] : [l.x, l.x + l.w])).sort((a, b) => a[0] - b[0]);
+  const persistence = columnPersistence(picture, spans[Math.floor(spans.length * 0.1)][0], Math.min(1, spans[Math.floor(spans.length * 0.9)][1]));
+  const marks = along.map((l) => ({ centre: crossCentre(l, vertical), size: lettering(l, vertical) }));
+  const segments = partitionShelf(persistence, marks, tune);
+  // Each book's lettering, and the top and bottom of its spine as far as the picture shows them.
+  const parts = segments.map((seg) => {
+    const inside = along.filter((l) => { const c = crossCentre(l, vertical); return c >= seg.from && c < seg.to + 1e-9; });
+    if (inside.length === 0) return { seg, inside, ext: null as ReturnType<typeof verticalExtent> | null, text: null as Box | null };
+    const text = boxOf(inside);
+    const [lo, hi] = vertical ? [text.y, text.y + text.h] : [text.x, text.x + text.w];
+    return { seg, inside, ext: verticalExtent(picture, seg.from, seg.to, lo, hi), text };
+  });
+  const median = (xs: number[]) => { const s = [...xs].sort((a, b) => a - b); return s[Math.floor(s.length / 2)]; };
+  const found = parts.filter((p) => p.ext);
+  const bottoms = found.filter((p) => p.ext!.bottomFound).map((p) => p.ext!.bottom);
+  const tops = found.filter((p) => p.ext!.topFound).map((p) => p.ext!.top);
+  // Standing books all rest on the shelf, so they share one bottom; books lying flat have no such line, so each keeps its own.
+  const shelfBottom = vertical ? (bottoms.length >= 3 ? median(bottoms) : Math.min(1, Math.max(...found.map((p) => (vertical ? p.text!.y + p.text!.h : p.text!.x + p.text!.w))) + 0.02)) : null;
+  const typicalTop = tops.length >= 3 ? median(tops) : null;
+  return parts.filter((p) => p.inside.length > 0).map(({ seg, inside, ext }) => {
+    // Lettering below the shelf belongs to whatever is on the shelf underneath, not to this book.
+    const onShelf = shelfBottom === null ? inside : inside.filter((l) => l.y + l.h / 2 <= shelfBottom + 0.03);
+    const lines = onShelf.length ? onShelf : inside;
+    const text = boxOf(lines);
+    const [lo, hi] = vertical ? [text.y, text.y + text.h] : [text.x, text.x + text.w];
+    let top = ext!.top; let bottom = ext!.bottom;
+    if (shelfBottom !== null) bottom = Math.max(hi + 0.01, shelfBottom);
+    // The top: an edge found above the lettering, if it is near where the other books' tops are (artwork gives false ones); otherwise a typical top, but not far above the lettering.
+    const plausible = ext!.topFound && (typicalTop === null || Math.abs(ext!.top - typicalTop) <= 0.07);
+    if (!plausible) top = typicalTop !== null ? Math.min(lo - 0.015, Math.max(typicalTop, lo - 0.25)) : Math.max(0, lo - 0.015);
+    top = Math.min(top, lo - 0.005); bottom = Math.max(bottom, hi + 0.005);
+    const box = vertical ? { x: seg.from, y: top, w: seg.to - seg.from, h: bottom - top } : { x: top, y: seg.from, w: bottom - top, h: seg.to - seg.from };
+    return { spine: { lines, box }, from: seg.from, to: seg.to };
+  });
+}
+
+/**
+ * Everything the photo says, one entry per book, in order along the shelf. With the picture's pixels, the shelf is cut into books from the real
+ * edges in the picture (and each book's box covers its whole spine); without them, books are grouped by their lettering alone.
+ */
 export function readShelf(passes: ReadPass[], gray?: Gray): SpineBook[] {
   const lines = dedupeLines(toPhotoFrame(passes));
   if (lines.length === 0) return [];
-  let spines = groupSpines(lines);
-  if (gray) spines = splitAtEdges(spines, shelfEdges(lines, gray), shelfIsVertical(lines));
-  return spines.map(readSpine).filter((b): b is SpineBook => b !== null);
+  if (gray) return groupByPartition(lines, gray).map((g) => readSpine(g.spine)).filter((b): b is SpineBook => b !== null);
+  return groupSpines(lines).map(readSpine).filter((b): b is SpineBook => b !== null);
 }
