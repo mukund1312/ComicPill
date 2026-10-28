@@ -236,7 +236,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
       { label: 'Move to folder…', onPress: () => requireUnlock('folder', f.id, f.name, f.locked, () => chooseDestination(`Move “${f.name}”`, (id) => !canMoveFolders(folders, [f.id], id), f.parentId, (target) => { moveItems([], [f.id], target); refresh(); })) },
       { label: 'Reading preset for this folder…', onPress: () => pickPreset(f.presetId, 'Folder preset', (id) => { setFolderPreset(f.id, id); refresh(); }) },
       f.locked ? { label: 'Remove password lock', onPress: () => removeLock('folder', f.id, f.name) } : { label: 'Lock with a password…', onPress: () => chooseLock('folder', f.id, f.name) },
-      { label: 'Delete folder (keeps what’s inside)', destructive: true, onPress: () => requireUnlock('folder', f.id, f.name, f.locked, () => { deleteFolder(f.id); refresh(); }) },
+      { label: 'Delete folder…', destructive: true, onPress: () => requireUnlock('folder', f.id, f.name, f.locked, () => askDeleteFolders([f.id], [], (n) => { refresh(); flash(`Deleted ${n}`); })) },
     ],
   });
 
@@ -330,6 +330,21 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
     const n = moveItems([...selectedRef.current], [...pickedFoldersRef.current], target);
     endSelecting(); refresh(); flash(`Moved ${n} to ${targetName(target)}`);
   });
+  /** Asks what to do with what is inside the folders: keep it (moved up a level) or delete it too. */
+  const askDeleteFolders = (folderIds: string[], ids: string[], done: (n: number) => void) => {
+    // Every folder inside a picked folder goes with it; the comics inside either go too or are kept and moved up.
+    const all = new Set(folderIds); const nodes = listFolders();
+    for (let grew = true; grew;) { grew = false; for (const f of nodes) if (f.parentId && all.has(f.parentId) && !all.has(f.id)) { all.add(f.id); grew = true; } }
+    const inside = listReaderComics().filter((comic) => comic.folderId && all.has(comic.folderId)).map((comic) => comic.id);
+    const drop = () => { for (const id of [...all].reverse()) deleteFolder(id); };
+    const lone = folderIds.length === 1 && !ids.length ? listFolders().find((f) => f.id === folderIds[0])?.name : undefined;
+    Alert.alert(lone ? `Delete “${lone}”?` : `Delete ${folderIds.length} ${folderIds.length === 1 ? 'folder' : 'folders'}${ids.length ? ` and ${ids.length} ${ids.length === 1 ? 'comic' : 'comics'}` : ''}?`,
+      `${inside.length} ${inside.length === 1 ? 'comic is' : 'comics are'} inside the folders. Comics linked from Drive stay in Drive.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Folders only, keep their comics', onPress: () => { removeComics(ids); for (const id of folderIds) deleteFolder(id); done(ids.length + folderIds.length); } },
+      { text: 'Delete the comics too', style: 'destructive', onPress: () => { removeComics([...new Set([...ids, ...inside])]); drop(); done(ids.length + inside.length + all.size); } },
+    ]);
+  };
   const deleteSelected = () => {
     const ids = [...selected]; const folderIds = [...pickedFolders];
     const done = (n: number) => { endSelecting(); refresh(); flash(`Deleted ${n}`); };
@@ -340,17 +355,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
       ]);
       return;
     }
-    // Every folder inside a picked folder goes with it; the comics inside either go too or are kept and moved up.
-    const all = new Set(folderIds); const nodes = listFolders();
-    for (let grew = true; grew;) { grew = false; for (const f of nodes) if (f.parentId && all.has(f.parentId) && !all.has(f.id)) { all.add(f.id); grew = true; } }
-    const inside = listReaderComics().filter((comic) => comic.folderId && all.has(comic.folderId)).map((comic) => comic.id);
-    const drop = () => { for (const id of [...all].reverse()) deleteFolder(id); };
-    Alert.alert(`Delete ${folderIds.length} ${folderIds.length === 1 ? 'folder' : 'folders'}${ids.length ? ` and ${ids.length} ${ids.length === 1 ? 'comic' : 'comics'}` : ''}?`,
-      `${inside.length} ${inside.length === 1 ? 'comic is' : 'comics are'} inside the folders. Comics linked from Drive stay in Drive.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Folders only, keep their comics', onPress: () => { removeComics(ids); for (const id of folderIds) deleteFolder(id); done(ids.length + folderIds.length); } },
-      { text: 'Delete the comics too', style: 'destructive', onPress: () => { removeComics([...new Set([...ids, ...inside])]); drop(); done(ids.length + inside.length + all.size); } },
-    ]);
+    askDeleteFolders(folderIds, ids, done);
   };
 
   // Dragging: hold a comic and move it; the finger's place is checked against the folder tiles about ten times a second.
@@ -395,7 +400,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
     if (!inEdge) edgeSpent.current = false;
     if (inEdge && !forDrop && !edgeSpent.current) return 'up';
     if (here && within(await boxOf(backView.current), x, y)) return 'up';
-    const entries = [...folderViews.current.entries()].filter(([id]) => !locked.has(id) || isUnlocked('folder', id));
+    const entries = [...folderViews.current.entries()].filter(([id]) => (!locked.has(id) || isUnlocked('folder', id)) && !pickedFoldersRef.current.has(id)); // (a folder being carried is not a place to drop)
     const boxes = await Promise.all(entries.map(([, view]) => boxOf(view)));
     const hit = boxes.findIndex((b) => within(b, x, y));
     return hit >= 0 ? entries[hit][0] : null;
@@ -431,11 +436,18 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
         const entries = [...comicViews.current.entries()];
         const boxes = await Promise.all(entries.map(([, view]) => boxOf(view)));
         const hit = boxes.findIndex((b) => within(b, x, y));
-        if (hit >= 0 && touching.current) dragApi.start(entries[hit][0], finger.current.x || x, finger.current.y || y);
+        if (hit >= 0 && touching.current) { dragApi.start(entries[hit][0], finger.current.x || x, finger.current.y || y); return; }
+        // Not on a comic: a folder can be picked up too.
+        const { lockedFolders: locked } = latest.current;
+        const folderEntries = [...folderViews.current.entries()].filter(([id]) => !locked.has(id) || isUnlocked('folder', id));
+        const folderBoxes = await Promise.all(folderEntries.map(([, view]) => boxOf(view)));
+        const folderHit = folderBoxes.findIndex((b) => within(b, x, y));
+        if (folderHit >= 0 && touching.current) dragApi.start(folderEntries[folderHit][0], finger.current.x || x, finger.current.y || y, true);
       })();
     },
-    start: (id: string, x: number, y: number) => {
-      if (!selectedRef.current.has(id)) commitSelected(new Set(selectedRef.current).add(id));
+    start: (id: string, x: number, y: number, isFolder = false) => {
+      if (isFolder) { if (!pickedFoldersRef.current.has(id)) commitFolders(new Set(pickedFoldersRef.current).add(id)); }
+      else if (!selectedRef.current.has(id)) commitSelected(new Set(selectedRef.current).add(id));
       finger.current = { x, y };
       dragOrigin.current = latest.current.openFolder;
       setDragging(true);
@@ -477,8 +489,12 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
     const chosen = comics.filter((comic) => selected.has(comic.id) && !comic.locked);
     const lead = chosen.findIndex((comic) => comic.id === dragLead);
     const ordered = lead > 0 ? [chosen[lead], ...chosen.slice(0, lead), ...chosen.slice(lead + 1)] : chosen;
-    return ordered.slice(0, 4).map((comic) => ({ uri: comic.coverPath, title: comic.title }));
-  }, [comics, selected, dragLead]);
+    const pile = ordered.map((comic) => ({ uri: comic.coverPath, title: comic.title }));
+    // Folders being carried show their first cover (or their name).
+    const carried = folders.filter((f) => pickedFolders.has(f.id) && !f.locked).map((f) => ({ uri: folderCovers.get(f.id)?.[0] ?? null, title: f.name }));
+    const lead2 = carried.findIndex((_, i) => folders.filter((f) => pickedFolders.has(f.id) && !f.locked)[i].id === dragLead);
+    return (lead2 >= 0 ? [carried[lead2], ...pile, ...carried.filter((_, i) => i !== lead2)] : [...pile, ...carried]).slice(0, 4);
+  }, [comics, selected, dragLead, folders, pickedFolders, folderCovers]);
 
   const folderSub = (f: ReaderFolder) => { const total = f.locked ? f.count : folderTotals.get(f.id) ?? f.count; return [total > 0 || f.subfolders === 0 ? `${total} ${total === 1 ? 'title' : 'titles'}` : null, f.subfolders ? `${f.subfolders} ${f.subfolders === 1 ? 'folder' : 'folders'}` : null].filter(Boolean).join(' · '); };
 
@@ -566,7 +582,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
       {dragging ? <SecondFingerScroll api={dragApi} /> : null}
       {dragging && openFolder ? <View pointerEvents="none" style={[styles.edgeBand, hoverTarget === 'up' && styles.edgeBandHot]}><Icon name="chevron-back" size={28} color="#fff" /></View> : null}
       </View>
-      {dragging ? <DragStack covers={dragCovers} count={selected.size} x={dragX} y={dragY} /> : null}
+      {dragging ? <DragStack covers={dragCovers} count={selected.size + pickedFolders.size} x={dragX} y={dragY} /> : null}
       {notice ? <View pointerEvents="none" style={styles.toast}><Text style={styles.toastText}>{notice}</Text></View> : null}
       {selecting ? (
         <View style={styles.bar}>
