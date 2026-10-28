@@ -28,8 +28,8 @@ import { keepLimit } from '../../lib/reader/cloudBudget';
 import { sqlite } from '../../lib/db/client';
 import { EMPTY_COMIC_FILTERS, hasActiveFilters, matchesFilters, type ComicFilters, type PublisherFilter } from '../../lib/util/comicFilters';
 
-type Filter = 'all' | 'owned' | 'downloaded' | 'reading' | 'read' | 'wishlist';
-const filters: Array<[Filter, string]> = [['all', 'All'], ['owned', 'Owned'], ['downloaded', 'Downloaded'], ['reading', 'Reading'], ['read', 'Read'], ['wishlist', 'Wishlist']];
+type Filter = 'all' | 'physical' | 'digital' | 'owned' | 'downloaded' | 'reading' | 'read' | 'wishlist';
+const filters: Array<[Filter, string]> = [['all', 'All'], ['physical', 'Physical'], ['digital', 'Digital'], ['owned', 'Owned'], ['downloaded', 'Downloaded'], ['reading', 'Reading'], ['read', 'Read'], ['wishlist', 'Wishlist']];
 
 type Sort = 'title' | 'title-desc' | 'rating' | 'downloaded' | 'reading';
 const SORTS: Array<[Sort, string]> = [['title', 'Title A–Z'], ['title-desc', 'Title Z–A'], ['rating', 'Highest rated'], ['downloaded', 'Downloaded first'], ['reading', 'Reading first']];
@@ -87,6 +87,8 @@ export default function LibraryScreen() {
   const inLibrary = useMemo(() => library.items.filter((item) => item.own !== 'none'), [library.items]);
   const items = useMemo(() => inLibrary.filter((item) => (
     filter === 'all'
+    || (filter === 'physical' && (item.own === 'physical' || item.own === 'both')) // comics added by scanning a shelf photo are physical
+    || (filter === 'digital' && (item.own === 'digital' || item.own === 'both')) // files, Drive and server comics are digital
     || (filter === 'owned' && isAccessible(item.own))
     || (filter === 'downloaded' && downloaded.has(item.workId))
     || (filter === 'reading' && item.status === 'reading')
