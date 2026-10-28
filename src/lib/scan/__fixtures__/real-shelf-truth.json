@@ -1,0 +1,14 @@
+{
+  "22": { "orientation": "vertical", "books": [
+    ["black mirror"], ["dark knight returns"], ["dceased"], ["kingdom come"], ["long halloween"], ["abomination"], ["zoo"], ["year one"], ["dark victory"], ["knightfall"], ["killing joke"], ["tower of babel"]
+  ]},
+  "23": { "orientation": "horizontal", "books": [
+    ["civil war"], ["fantastic four"], ["maus"], ["authority"], ["superman/batman", "superman batman"], ["wonder woman"], ["american vampire"], ["harley quinn"], ["new frontier"], ["watchmen"], ["hush"], ["birthright"]
+  ]},
+  "24": { "orientation": "vertical", "books": [
+    ["omnibus", "morrison"], ["knightfall"], ["knightfall"], ["knightfall"], ["death in the family"], ["red hood"], ["three jokers"], ["year one"], ["ego"], ["gordon"], ["white knight"], ["curse of the white"], ["beyond the white"], ["deathstroke"], ["court of owls"], ["city of owls"], ["death of the family"], ["eternal"]
+  ]},
+  "25": { "orientation": "vertical", "books": [
+    ["forever evil"], ["emerald twilight"], ["green lantern"], ["green lantern"], ["green lantern"], ["green lantern"], ["identity crisis"], ["infinite crisis"], ["year zero"], ["year one"], ["year two"], ["year three"], ["year four"], ["year five"], ["injustice league"], ["earth 2"], ["darkseid war"], ["darkseid war"], ["darkseid war"], ["rorschach"], ["sandman"], ["sandman"], ["death of superman"], ["funeral for a friend"], ["reign of the supermen"]
+  ]}
+}

@@ -58,49 +58,69 @@ export function splitVolume(text: string): { rest: string; volume: string | null
 
 const looksLikeName = (t: string) => /^[\p{Lu}][\p{L}.'’-]+(?: [\p{Lu}][\p{L}.'’-]+){1,2}$/u.test(t.trim()) && !/\d/.test(t);
 
-/** Group lines into spines: lines that sit in the same stripe of the shelf belong to the same book. */
+/** Does the shelf hold standing books (text runs along tall, narrow spines) or books lying flat (text runs across)? */
+export function shelfIsVertical(lines: SpineLine[]): boolean {
+  const tall = lines.filter((l) => l.h > l.w * 1.3).length;
+  const wide = lines.filter((l) => l.w > l.h * 1.3).length;
+  return tall >= wide;
+}
+
+/** The size of a line's lettering: how thick the text is, across its direction. */
+const lettering = (l: SpineLine, vertical: boolean) => (vertical ? l.w : l.h);
+const crossCentre = (l: SpineLine, vertical: boolean) => (vertical ? l.x + l.w / 2 : l.y + l.h / 2);
+
+/**
+ * Group lines into books. Along the shelf, the lines of one book sit close together and the next book starts after a gap; a gap wider than
+ * about 0.7 of a typical line's thickness starts a new book (measured on real shelves of standing books, a flat pile and thin paperbacks).
+ * Lines running the other way to most of the shelf (a book turned round) are left out of the grouping rather than splitting books.
+ */
 export function groupSpines(lines: SpineLine[]): Spine[] {
-  const sorted = [...lines].sort((a, b) => a.x + a.w / 2 - (b.x + b.w / 2));
+  if (lines.length === 0) return [];
+  const vertical = shelfIsVertical(lines);
+  const along = lines.filter((l) => (l.h > l.w) === vertical).sort((a, b) => crossCentre(a, vertical) - crossCentre(b, vertical));
+  if (along.length === 0) return [];
+  const sizes = along.map((l) => lettering(l, vertical)).sort((a, b) => a - b);
+  const threshold = 0.7 * sizes[Math.floor(sizes.length / 2)];
   const stripes: SpineLine[][] = [];
-  for (const l of sorted) {
+  for (const l of along) {
     const last = stripes[stripes.length - 1];
-    const range = last ? boxOf(last) : null;
-    const shared = range ? Math.min(range.x + range.w, l.x + l.w) - Math.max(range.x, l.x) : 0;
-    if (range && shared >= 0.3 * Math.min(range.w, l.w)) last.push(l); else stripes.push([l]);
+    if (last && crossCentre(l, vertical) - crossCentre(last[last.length - 1], vertical) <= threshold) last.push(l); else stripes.push([l]);
   }
   const spines: Spine[] = stripes.map((s) => ({ lines: s, box: boxOf(s) }));
-  // A stripe with no title in it (only a publisher or a volume number) is a second line of its neighbour's spine, if it sits right beside it.
+  // A stripe with no title in it (only a publisher or a volume number) is a second line of its neighbour's book, if it sits right beside it.
   const hasTitle = (s: Spine) => s.lines.some((l) => !isPublisher(l.text) && splitVolume(l.text).rest.length >= 2);
   const out: Spine[] = [];
   for (const s of spines) {
     const prev = out[out.length - 1];
-    if (!hasTitle(s) && prev && s.box.x - (prev.box.x + prev.box.w) < 0.02) { prev.lines.push(...s.lines); prev.box = boxOf(prev.lines); }
+    const gap = vertical ? s.box.x - (prev?.box.x ?? 0) - (prev?.box.w ?? 0) : s.box.y - (prev?.box.y ?? 0) - (prev?.box.h ?? 0);
+    if (!hasTitle(s) && prev && gap < 0.02) { prev.lines.push(...s.lines); prev.box = boxOf(prev.lines); }
     else out.push(s);
   }
   return out;
 }
 
-/** What one spine says. The biggest lettering is the title; publisher names are set aside; a volume marker becomes the volume. */
+/** What one book says. The biggest lettering is the title; smaller lettering is credits; publisher names are set aside; a volume marker becomes the volume. */
 export function readSpine(spine: Spine): SpineBook | null {
-  const lines = [...spine.lines].sort((a, b) => (a.dir === 'up' ? a.x - b.x : b.x - a.x)); // the first line of a spine sits on its right when the text runs down
+  const vertical = shelfIsVertical(spine.lines);
+  // Lines of a title read in the order of the text: down a spine the first line is on the right, up a spine on the left, across a book from the top.
+  const lines = [...spine.lines].sort((a, b) => (vertical ? (a.dir === 'up' ? a.x - b.x : b.x - a.x) : a.y - b.y || a.x - b.x));
   const rawText = lines.map((l) => l.text).join(' | ');
   let volume: string | null = null;
-  const titleParts: SpineLine[] = [];
-  const creators: string[] = [];
   const parsed = lines.map((l) => ({ l, ...splitVolume(l.text) }));
   const candidates = parsed.filter((p) => !isPublisher(p.l.text) && !isPublisher(p.rest) && p.rest.length >= 2);
-  const biggest = Math.max(0, ...candidates.map((p) => p.l.w));
+  const biggest = Math.max(0, ...candidates.map((p) => lettering(p.l, vertical)));
+  const titleParts: SpineLine[] = [];
+  const creators: string[] = [];
   for (const p of parsed) {
     if (p.volume && !volume) volume = p.volume;
     if (isPublisher(p.l.text) || isPublisher(p.rest) || p.rest.length < 2) continue; // “Vol. 3 IMAGE” is a volume and a publisher, not a title
-    // A line set in much smaller type that reads like a person's name is a creator, not part of the title.
-    if (looksLikeName(p.rest) && candidates.length > 1 && p.l.w < 0.85 * biggest) creators.push(p.rest);
-    else titleParts.push({ ...p.l, text: p.rest });
+    // Smaller lettering, or a list of names joined by bullets, is the credits (writer, artist) rather than the title.
+    const credits = (candidates.length > 1 && lettering(p.l, vertical) < 0.72 * biggest) || /[•·]/.test(p.rest) || (looksLikeName(p.rest) && candidates.length > 1 && lettering(p.l, vertical) < 0.85 * biggest);
+    if (credits) creators.push(p.rest); else titleParts.push({ ...p.l, text: p.rest });
   }
   const title = titleParts.map((l) => l.text).join(' ').replace(/\s+/g, ' ').trim();
   if (alnum(title) < 2) return null;
-  const confs = titleParts.map((l) => l.conf ?? 1);
-  const conf = Math.min(...confs);
+  const conf = Math.min(...titleParts.map((l) => l.conf ?? 1));
   return { title, volume, creators: creators.slice(0, 3), confidence: conf >= 0.9 && alnum(title) >= 4 ? 'high' : conf >= 0.6 ? 'medium' : 'low', seenAs: 'spine', box: spine.box, rawText };
 }
 

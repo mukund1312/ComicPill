@@ -18,6 +18,7 @@ import {
 import { BarlowCondensed_600SemiBold, BarlowCondensed_700Bold } from '@expo-google-fonts/barlow-condensed';
 import { initDatabase } from '../src/lib/db/client';
 import { clearTemporaryFiles } from '../src/lib/reader/storage';
+import { purgeExpiredDrafts } from '../src/lib/scan/draft';
 import { backfillReaderLinks } from '../src/lib/reader/libraryLink';
 import { registerGeneratedArcTemplates } from '../src/lib/db/queries/generatedArcs';
 import { loadFileCovers } from '../src/ui/fileCovers';
@@ -46,6 +47,7 @@ export default function RootLayout() {
     try { backfillReaderLinks(); } catch { /* the reader works without library links */ }
     loadFileCovers();
     try { clearTemporaryFiles(); } catch { /* leftovers are harmless; the Storage screen can clear them */ }
+    try { purgeExpiredDrafts(); } catch { /* an old scan lingering is harmless */ }
     try { registerGeneratedArcTemplates(); } catch { /* the hand-written journeys still work */ }
     installCrashLog();
     return true;

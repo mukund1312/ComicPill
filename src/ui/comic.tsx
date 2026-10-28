@@ -4,7 +4,8 @@ import { Image } from 'expo-image';
 import { color, font, radius, space, type } from './tokens';
 import { PurchaseBadge } from './primitives';
 import { COVER_ASSETS } from './coverAssets';
-import { fileCoverFor } from './fileCovers';
+import { customCoverFor, fileCoverFor } from './fileCovers';
+import { pickCover } from '../lib/covers/pick';
 import { useAppearance } from './theme';
 
 const coverColors = ['#5b1015', '#421619', '#182b35', '#302042', '#5b351b', '#172b26', '#402121'];
@@ -13,8 +14,7 @@ function tint(title: string) { return coverColors[title.split('').reduce((sum, c
 /** The image behind a work's cover (bundled artwork, or the first page of an imported file), if there is one. */
 export function coverSourceFor(workId?: string): { uri: string } | number | undefined {
   if (!workId) return undefined;
-  const file = fileCoverFor(workId);
-  return (COVER_ASSETS[workId] as number | { uri: string } | undefined) ?? (file ? { uri: file } : undefined);
+  return pickCover(customCoverFor(workId), COVER_ASSETS[workId] as number | { uri: string } | undefined, fileCoverFor(workId));
 }
 
 /** A fixed 2:3 cover cell. `workId` looks up a real, bundled cover asset
@@ -30,8 +30,7 @@ export function ComicCover({ title, workId, size = 'grid', status, onPress, recy
   const dims = { tiny: [44, 66], list: [58, 86], grid: [96, 144], hero: [132, 198], fluid: [0, 0] }[size];
   const corner = size === 'tiny' ? 6 : size === 'list' ? 9 : 14;
   const shape = size === 'fluid' ? { width: '100%' as const, aspectRatio: 2 / 3 } : { width: dims[0], height: dims[1] };
-  const fileCover = workId ? fileCoverFor(workId) : undefined;
-  const asset = workId ? COVER_ASSETS[workId] ?? (fileCover ? { uri: fileCover } : undefined) : undefined;
+  const asset = workId ? pickCover(customCoverFor(workId), COVER_ASSETS[workId], fileCoverFor(workId)) : undefined;
   return <PressableScale to={0.97} testID={recyclingKey ? `cover-${recyclingKey}` : undefined} accessibilityRole={onPress ? 'button' : undefined} onPress={onPress} disabled={!onPress} style={[styles.cover, shape, { borderRadius: corner, backgroundColor: asset ? c.surfaceRaised : tint(title), borderColor: `${c.textPrimary}18` }]}>
     {asset ? (
       <Image source={asset} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" recyclingKey={recyclingKey} transition={120} />

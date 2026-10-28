@@ -291,6 +291,7 @@ export const userLibrary = sqliteTable('user_library', {
   purchasedAt: text('purchased_at'),
   store: text('store'),
   notes: text('notes'), // the reader's own comment on their copy
+  customCoverPath: text('custom_cover_path'), // the reader's own cover for their copy; never replaces the catalog artwork
   updatedAt: text('updated_at').notNull(),
 });
 

@@ -88,7 +88,7 @@ export default function ScanScreen() {
       const key = p.kind === 'catalog' ? p.workId : `new:${fullTitle(p.title, p.volume).toLowerCase()}`;
       if (seen.has(key)) continue; // the same comic twice on a shelf is added once
       seen.add(key);
-      const workId = p.kind === 'catalog' ? p.workId : createScannedWork({ title: p.title, volume: p.volume, creators: p.creators, coverPath: p.cropUri });
+      const workId = p.kind === 'catalog' ? p.workId : createScannedWork({ title: p.title, volume: p.volume, creators: p.creators });
       upsertLibraryEntry(workId, { own: mergeOwn(library.get(workId)?.own ?? 'none', format) });
       added++;
     }

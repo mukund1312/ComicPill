@@ -12,7 +12,7 @@ import type { ShelfFind } from '../../lib/scan/onDevice';
 import type { ScanFormat } from '../../lib/scan/additions';
 
 /** What the reader chose to add: a comic the catalog already knows, or a new entry made from the spine. */
-export type ShelfPick = { kind: 'catalog'; workId: string } | { kind: 'new'; title: string; volume: string | null; creators: string[]; cropUri: string | null };
+export type ShelfPick = { kind: 'catalog'; workId: string } | { kind: 'new'; title: string; volume: string | null; creators: string[] };
 
 type Item = { key: string; find: ShelfFind; text: string; match: ScanMatch; selected: boolean };
 
@@ -41,7 +41,7 @@ export function ShelfResults({ finds, catalog, onAdd, onAgain }: { finds: ShelfF
   const picks = (): ShelfPick[] => chosen.map((it): ShelfPick => {
     if (it.match.status === 'matched' && it.match.workId) return { kind: 'catalog', workId: it.match.workId };
     const { rest, volume } = splitVolume(it.text);
-    return { kind: 'new', title: rest, volume, creators: it.find.creators, cropUri: it.find.cropUri };
+    return { kind: 'new', title: rest, volume, creators: it.find.creators };
   });
 
   if (items.length === 0) {

@@ -262,6 +262,10 @@ CREATE TABLE IF NOT EXISTS reader_panels (
   PRIMARY KEY (comic_id, page)
 );
 
+CREATE TABLE IF NOT EXISTS scan_drafts (
+  id TEXT PRIMARY KEY, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'draft', state_json TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS reader_bookmarks (
   id INTEGER PRIMARY KEY AUTOINCREMENT, comic_id TEXT NOT NULL, page INTEGER NOT NULL, created_at INTEGER NOT NULL,
   UNIQUE (comic_id, page)
@@ -283,6 +287,9 @@ export function ensureSchema(): void {
   for (const [name, def] of added) if (!cols.includes(name)) sqlite.execSync(`ALTER TABLE reader_comics ADD COLUMN ${name} ${def}`);
   const libraryCols = sqlite.getAllSync<{ name: string }>('PRAGMA table_info(user_library)').map((c) => c.name);
   if (!libraryCols.includes('notes')) sqlite.execSync('ALTER TABLE user_library ADD COLUMN notes TEXT');
+  if (!libraryCols.includes('custom_cover_path')) sqlite.execSync('ALTER TABLE user_library ADD COLUMN custom_cover_path TEXT');
+  // A photo of a spine is never a cover. Entries made by an earlier version of the shelf scan used one; they show the placeholder now.
+  sqlite.execSync("UPDATE works SET cover_path = NULL WHERE id LIKE 'scan-%' AND cover_path IS NOT NULL");
   const folderCols = sqlite.getAllSync<{ name: string }>('PRAGMA table_info(reader_folders)').map((c) => c.name);
   for (const name of ['lock_hash', 'lock_salt', 'parent_id']) if (!folderCols.includes(name)) sqlite.execSync(`ALTER TABLE reader_folders ADD COLUMN ${name} TEXT`);
   bootstrapped = true;
