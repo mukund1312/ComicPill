@@ -23,12 +23,13 @@ import {
   listReaderComics, markComic, moveItems, unpreparedLinkIds, renameCollection, renameFolder, renameReaderComic, setComicFolder, setComicPreset, setFolderPreset, setLock, toggleInCollection,
   type ReaderCollection, type ReaderComic, type ReaderFolder,
 } from '../../lib/reader/readerLibrary';
-import { keepCopyOnDevice, pickAndImportComics, pickAndImportFolder, pickAndLinkComics, pickAndLinkFolder, prepareLinkedComics, removeComic, removeComics, type ImportProgress, type ImportResult } from '../../lib/reader/importComics';
+import { keepCopyOnDevice, pickAndImportComics, pickAndImportFolder, linkWithCovers, pickAndLinkComics, pickAndLinkFolder, prepareLinkedComics, removeComic, removeComics, type ImportProgress, type ImportResult } from '../../lib/reader/importComics';
 import { getJob, runJob, subscribeJob, useJob } from '../../lib/reader/importJob';
 import { formatBytes } from '../../lib/reader/bytes';
 import { confirm } from '../../ui/dialogs';
 import { canMoveFolders, pathTo, shutFolders } from '../../lib/reader/folderTree';
-import { freeSpaceFor, isCached } from '../../lib/reader/cloudCache';
+import { freeSpaceFor, isCached, readyComics } from '../../lib/reader/cloudCache';
+import { KEEP_CHOICES, keepLimit, setKeepLimit } from '../../lib/reader/cloudBudget';
 import { Icon } from '../../ui/Icon';
 import { checkPassword, isUnlocked, makeLock, markUnlocked, passwordProblem } from '../../lib/reader/lock';
 import { newSalt, sha256 } from '../../lib/reader/lockCrypto';
@@ -79,6 +80,11 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const selectedRef = useRef(selected);
   const commitSelected = (next: Set<string>) => { selectedRef.current = next; setSelected(next); };
+  // Folders can be picked too, to move or delete them along with comics.
+  const [pickedFolders, setPickedFolders] = useState<Set<string>>(new Set());
+  const pickedFoldersRef = useRef(pickedFolders);
+  const commitFolders = (next: Set<string>) => { pickedFoldersRef.current = next; setPickedFolders(next); };
+  const pickedCount = selected.size + pickedFolders.size;
   const [notice, setNotice] = useState<string | null>(null);
   const flash = (text: string) => { setNotice(text); setTimeout(() => setNotice((n) => (n === text ? null : n)), 2600); };
 
@@ -251,12 +257,18 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
     if (ok) runImport('Loading covers', 'Prepared', (p) => prepareLinkedComics(p));
   };
 
+  const keepMenu = () => setSheet({
+    title: 'Comics kept on this device',
+    options: KEEP_CHOICES.map((n) => ({ label: `${n} at a time`, checked: keepLimit() === n, onPress: () => { setKeepLimit(n); flash(`Up to ${n} downloaded comics. Opening another asks which one to put away.`); } })),
+  });
+
   const addMenu = () => setSheet({
     options: [
       { label: openFolder ? `Import files into “${insideName ?? 'this folder'}”…` : 'Import files…', onPress: importHere },
-      { label: 'Link from Drive or Dropbox (saves space)…', onPress: () => runImport('Linking', 'Linked', (p) => pickAndLinkComics({ folderId: openFolder ?? undefined, ...p })) },
-      { label: 'Link a whole folder from Drive or Dropbox…', onPress: () => runImport('Linking folder', 'Linked', (p) => pickAndLinkFolder({ parentId: openFolder ?? undefined, ...p })) },
+      { label: 'Link from Drive or Dropbox (saves space)…', onPress: () => runImport('Linking', 'Linked', (p) => linkWithCovers(() => pickAndLinkComics({ folderId: openFolder ?? undefined, ...p }), p)) },
+      { label: 'Link a whole folder from Drive or Dropbox…', onPress: () => runImport('Linking folder', 'Linked', (p) => linkWithCovers(() => pickAndLinkFolder({ parentId: openFolder ?? undefined, ...p }), p)) },
       ...(unpreparedLinkIds().length ? [{ label: `Download covers for linked comics (${unpreparedLinkIds().length} left)…`, onPress: () => { void loadCoversNow(); } }] : []),
+      { label: `Comics kept on this device: ${keepLimit()}…`, onPress: keepMenu },
       { label: 'Browse an OPDS server…', onPress: () => router.push('/reader/opds') },
       { label: 'Import a folder…', onPress: () => runImport('Importing folder', 'Imported', (p) => pickAndImportFolder({ parentId: openFolder ?? undefined, ...p })) },
       { label: openFolder ? `New folder inside “${insideName ?? 'this folder'}”…` : 'New folder…', onPress: () => setPrompt({ title: 'New folder', submitLabel: 'Create', onSubmit: (name) => { createFolder(name, openFolder); refresh(); } }) },
@@ -284,18 +296,41 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
     if (next.has(comic.id)) next.delete(comic.id); else next.add(comic.id);
     commitSelected(next);
   });
-  const endSelecting = () => { setSelecting(false); commitSelected(new Set()); };
-  const selectAll = () => commitSelected(new Set(cells.flatMap((cell) => (cell.kind === 'comic' && !cell.comic.locked ? [cell.comic.id] : []))));
+  const toggleFolder = (folder: ReaderFolder) => requireUnlock('folder', folder.id, folder.name, folder.locked, () => {
+    const next = new Set(pickedFoldersRef.current);
+    if (next.has(folder.id)) next.delete(folder.id); else next.add(folder.id);
+    commitFolders(next);
+  });
+  const endSelecting = () => { setSelecting(false); commitSelected(new Set()); commitFolders(new Set()); };
+  const selectAll = () => {
+    commitSelected(new Set(cells.flatMap((cell) => (cell.kind === 'comic' && !cell.comic.locked ? [cell.comic.id] : []))));
+    commitFolders(new Set(cells.flatMap((cell) => (cell.kind === 'folder' && !cell.folder.locked ? [cell.folder.id] : []))));
+  };
   const targetName = (id: string | null) => (id ? listFolders().find((f) => f.id === id)?.name ?? 'folder' : 'Library'); // reads the database: it also runs from the drag handlers
-  const moveSelected = () => chooseDestination(`Move ${selected.size} ${selected.size === 1 ? 'comic' : 'comics'}`, () => false, undefined, (target) => {
-    const n = moveItems([...selectedRef.current], [], target);
+  const moveSelected = () => chooseDestination(`Move ${pickedCount} ${pickedCount === 1 ? 'item' : 'items'}`, (id) => pathTo(folders, id).some((p) => pickedFoldersRef.current.has(p)), undefined, (target) => {
+    const n = moveItems([...selectedRef.current], [...pickedFoldersRef.current], target);
     endSelecting(); refresh(); flash(`Moved ${n} to ${targetName(target)}`);
   });
   const deleteSelected = () => {
-    const ids = [...selected];
-    Alert.alert(`Delete ${ids.length} ${ids.length === 1 ? 'comic' : 'comics'}?`, 'They are removed from this device. Comics linked from Drive stay in Drive.', [
+    const ids = [...selected]; const folderIds = [...pickedFolders];
+    const done = (n: number) => { endSelecting(); refresh(); flash(`Deleted ${n}`); };
+    if (!folderIds.length) {
+      Alert.alert(`Delete ${ids.length} ${ids.length === 1 ? 'comic' : 'comics'}?`, 'They are removed from this device. Comics linked from Drive stay in Drive.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => { removeComics(ids); done(ids.length); } },
+      ]);
+      return;
+    }
+    // Every folder inside a picked folder goes with it; the comics inside either go too or are kept and moved up.
+    const all = new Set(folderIds); const nodes = listFolders();
+    for (let grew = true; grew;) { grew = false; for (const f of nodes) if (f.parentId && all.has(f.parentId) && !all.has(f.id)) { all.add(f.id); grew = true; } }
+    const inside = listReaderComics().filter((comic) => comic.folderId && all.has(comic.folderId)).map((comic) => comic.id);
+    const drop = () => { for (const id of [...all].reverse()) deleteFolder(id); };
+    Alert.alert(`Delete ${folderIds.length} ${folderIds.length === 1 ? 'folder' : 'folders'}${ids.length ? ` and ${ids.length} ${ids.length === 1 ? 'comic' : 'comics'}` : ''}?`,
+      `${inside.length} ${inside.length === 1 ? 'comic is' : 'comics are'} inside the folders. Comics linked from Drive stay in Drive.`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => { removeComics(ids); endSelecting(); refresh(); flash(`Deleted ${ids.length}`); } },
+      { text: 'Folders only, keep their comics', onPress: () => { removeComics(ids); for (const id of folderIds) deleteFolder(id); done(ids.length + folderIds.length); } },
+      { text: 'Delete the comics too', style: 'destructive', onPress: () => { removeComics([...new Set([...ids, ...inside])]); drop(); done(ids.length + inside.length + all.size); } },
     ]);
   };
 
@@ -389,7 +424,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
       hover.current = { target: null, timer: null }; setHoverTarget(null); setDragging(false);
       if (!target) return;
       const destination = target === 'up' ? parentOfOpen() : target;
-      const n = moveItems([...selectedRef.current], [], destination);
+      const n = moveItems([...selectedRef.current], [...pickedFoldersRef.current], destination);
       feedback.success();
       endSelecting(); refresh(); flash(`Moved ${n} to ${targetName(destination)}`);
     },
@@ -413,7 +448,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   const folderSub = (f: ReaderFolder) => [f.count > 0 || f.subfolders === 0 ? `${f.count} ${f.count === 1 ? 'title' : 'titles'}` : null, f.subfolders ? `${f.subfolders} ${f.subfolders === 1 ? 'folder' : 'folders'}` : null].filter(Boolean).join(' · ');
 
   const renderItem = ({ item }: { item: Cell }) => {
-    if (item.kind === 'folder') return <Tile styles={styles} view={view} width={cellWidth} highlight={hoverTarget === item.folder.id} registerRef={(v) => { if (v) folderViews.current.set(item.folder.id, v); else folderViews.current.delete(item.folder.id); }} label={item.folder.name} sub={folderSub(item.folder)} covers={item.folder.locked && !isUnlocked('folder', item.folder.id) ? [] : folderCovers.get(item.folder.id) ?? []} glyph={item.folder.locked && !isUnlocked('folder', item.folder.id) ? '🔒' : '▤'} onPress={() => requireUnlock('folder', item.folder.id, item.folder.name, item.folder.locked, () => setOpenFolder(item.folder.id))} onLongPress={() => folderMenu(item.folder)} />;
+    if (item.kind === 'folder') return <Tile styles={styles} view={view} width={cellWidth} highlight={hoverTarget === item.folder.id} registerRef={(v) => { if (v) folderViews.current.set(item.folder.id, v); else folderViews.current.delete(item.folder.id); }} label={item.folder.name} sub={folderSub(item.folder)} covers={item.folder.locked && !isUnlocked('folder', item.folder.id) ? [] : folderCovers.get(item.folder.id) ?? []} glyph={item.folder.locked && !isUnlocked('folder', item.folder.id) ? '🔒' : '▤'} picked={pickedFolders.has(item.folder.id)} onPress={() => (selecting ? toggleFolder(item.folder) : requireUnlock('folder', item.folder.id, item.folder.name, item.folder.locked, () => setOpenFolder(item.folder.id)))} onLongPress={() => { if (!selecting) folderMenu(item.folder); }} />;
     if (item.kind === 'collection') return <Tile styles={styles} view={view} width={cellWidth} label={item.collection.name} sub={`${item.collection.count} ${item.collection.count === 1 ? 'title' : 'titles'}`} covers={[]} glyph="❖" onPress={() => setOpenCollection(item.collection.id)} onLongPress={() => collectionMenu(item.collection)} />;
     const comic = item.comic; const masked = coverHidden(comic);
     const cover = (
@@ -464,7 +499,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
                 </View>
                 <Text numberOfLines={1} style={styles.here}>{insideName}</Text>
               </View>
-            ) : <Text style={styles.count}>{segment === 'collections' ? `${collections.length} ${collections.length === 1 ? 'collection' : 'collections'}` : `${comics.length} ${comics.length === 1 ? 'comic' : 'comics'}`}</Text>}
+            ) : <Text style={styles.count}>{segment === 'collections' ? `${collections.length} ${collections.length === 1 ? 'collection' : 'collections'}` : `${comics.length} ${comics.length === 1 ? 'comic' : 'comics'}${comics.some((x) => x.sourceUri) ? ` · ${readyComics().length} of ${keepLimit()} downloaded` : ''}`}</Text>}
             <View style={styles.subActions}>
               {segment === 'library' ? <Pressable accessibilityRole="button" onPress={() => (selecting ? endSelecting() : setSelecting(true))} hitSlop={8}><Text style={styles.sort}>{selecting ? 'Done' : 'Select'}</Text></Pressable> : null}
               <Pressable accessibilityRole="button" accessibilityLabel="View and sort" onPress={viewMenu} hitSlop={8}><Text style={styles.sort}>{SORT_LABEL[sort]}  ⌄</Text></Pressable>
@@ -478,7 +513,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
         scrollEnabled={!dragging}
         onScroll={(e) => { scrollY.current = e.nativeEvent.contentOffset.y; }}
         scrollEventThrottle={16}
-        extraData={`${selected.size}-${hoverTarget}-${selecting}`}
+        extraData={`${selected.size}-${pickedFolders.size}-${hoverTarget}-${selecting}`}
         key={`${view}-${columns}`}
         data={cells}
         numColumns={columns}
@@ -497,12 +532,12 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
       {selecting ? (
         <View style={styles.bar}>
           <View style={styles.barBody}>
-            <Text style={styles.barText}>{selected.size ? `${selected.size} selected` : 'Tap comics to select them'}</Text>
-            {selected.size ? <Text style={styles.sub}>Hold one and drag it onto a folder</Text> : null}
+            <Text style={styles.barText}>{pickedCount ? `${pickedCount} selected` : 'Tap comics or folders to select them'}</Text>
+            {selected.size ? <Text style={styles.sub}>Hold a comic and drag it onto a folder</Text> : null}
           </View>
           <Pressable onPress={selectAll} hitSlop={8}><Text style={styles.barBtn}>All</Text></Pressable>
-          <Pressable disabled={!selected.size} onPress={moveSelected} hitSlop={8}><Text style={[styles.barBtn, !selected.size && styles.barOff]}>Move</Text></Pressable>
-          <Pressable disabled={!selected.size} onPress={deleteSelected} hitSlop={8}><Text style={[styles.barDanger, !selected.size && styles.barOff]}>Delete</Text></Pressable>
+          <Pressable disabled={!pickedCount} onPress={moveSelected} hitSlop={8}><Text style={[styles.barBtn, !pickedCount && styles.barOff]}>Move</Text></Pressable>
+          <Pressable disabled={!pickedCount} onPress={deleteSelected} hitSlop={8}><Text style={[styles.barDanger, !pickedCount && styles.barOff]}>Delete</Text></Pressable>
         </View>
       ) : null}
       </View>
@@ -522,7 +557,7 @@ function FileCover({ uri, title, style, recyclingKey, transition }: { uri: strin
   return <Image source={{ uri }} style={style} contentFit="cover" recyclingKey={recyclingKey} transition={transition} onError={() => setFailed(true)} />;
 }
 
-function Tile({ styles, view, width, label, sub, glyph, covers, highlight, registerRef, onPress, onLongPress }: { styles: ReturnType<typeof makeStyles>; view: View_; width: number; label: string; sub: string; glyph: string; covers: string[]; highlight?: boolean; registerRef?: (v: View | null) => void; onPress: () => void; onLongPress: () => void }) {
+function Tile({ styles, view, width, label, sub, glyph, covers, highlight, registerRef, picked, onPress, onLongPress }: { styles: ReturnType<typeof makeStyles>; view: View_; width: number; label: string; sub: string; glyph: string; covers: string[]; highlight?: boolean; picked?: boolean; registerRef?: (v: View | null) => void; onPress: () => void; onLongPress: () => void }) {
   // Up to three covers fanned out behind the first, like a stack of issues; an empty folder shows its glyph.
   const stack = (
     <View style={[styles.stack, view === 'list' && styles.stackList]}>
@@ -533,6 +568,7 @@ function Tile({ styles, view, width, label, sub, glyph, covers, highlight, regis
         </View>
       ))}
       {covers.length ? <View style={[styles.cover, styles.stackFill]}><FileCover uri={covers[0]} title={label} style={styles.coverImage} recyclingKey={covers[0]} transition={120} /></View> : null}
+      {picked ? <View style={styles.picked}><Icon name="checkmark-circle" size={34} color="#fff" /></View> : null}
     </View>
   );
   // The wrapper is what the drag looks for under the finger; the ring shows it will accept the drop.

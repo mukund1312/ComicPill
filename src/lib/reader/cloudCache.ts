@@ -5,7 +5,7 @@ import * as LegacyFS from 'expo-file-system/legacy';
 import { Directory, File, Paths } from 'expo-file-system';
 import { getReaderComic, type ReaderComic } from './readerLibrary';
 import { pickEvictions } from './evict';
-import { budgetMode, cloudBudgetBytes, LOW_SPACE_RESERVE } from './cloudBudget';
+import { budgetMode, cloudBudgetBytes, keepLimit, LOW_SPACE_RESERVE } from './cloudBudget';
 import { isLowOnSpace, planRoom, type ReadyComic, type RoomPlan } from './makeRoom';
 import { optionalNative } from './nativeArchive';
 import { extractNestedComic } from './ComicSource';
@@ -49,7 +49,7 @@ export function readyComics(exceptId?: string): ReadyComic[] {
 }
 
 /** Would fetching this comic fit in the space the reader allowed, and if not, what would make it fit? */
-export const planFetch = (comic: ReaderComic): RoomPlan => planRoom(readyComics(comic.id), cloudBudgetBytes(), comic.sizeBytes ?? 0);
+export const planFetch = (comic: ReaderComic): RoomPlan => planRoom(readyComics(comic.id), cloudBudgetBytes(), comic.sizeBytes ?? 0, keepLimit());
 
 export const isCached = (id: string): boolean => { try { return cachedFileFor(id).exists; } catch { return false; } };
 

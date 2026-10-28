@@ -28,3 +28,15 @@ describe('isLowOnSpace', () => {
     expect(isLowOnSpace(3.5e9, 1e9, 3e9)).toBe(true);
   });
 });
+
+describe('planRoom with a limit on how many comics are kept', () => {
+  const ready = [1, 2, 3].map((n) => ({ id: `c${n}`, title: `C${n}`, bytes: 10, lastReadAt: n }));
+  it('has room while under the limit', () => {
+    const plan = planRoom(ready, 1000, 10, 4);
+    expect(plan.overCount).toBe(0); expect(plan.suggested).toEqual([]);
+  });
+  it('asks for the least recently read comic to go when the limit is full', () => {
+    const plan = planRoom(ready, 1000, 10, 3);
+    expect(plan.overCount).toBe(1); expect(plan.suggested).toEqual(['c1']);
+  });
+});

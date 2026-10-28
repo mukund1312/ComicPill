@@ -23,7 +23,7 @@ export function ActionSheet({ visible, title, options, onClose }: { visible: boo
                 <View style={styles.grab} />
                 {title ? <Text numberOfLines={1} style={styles.title}>{title}</Text> : null}
                 {options.map((o) => (
-                  <Pressable key={o.label} accessibilityRole="button" style={styles.row} onPress={() => { onClose(); o.onPress(); }}>
+                  <Pressable key={o.label} accessibilityRole="button" style={styles.row} onPress={() => { onClose(); setTimeout(o.onPress, 450); }}>
                     <Text style={[styles.rowText, o.destructive && styles.destructive]}>{o.label}</Text>
                     {o.checked ? <Text style={styles.check}>✓</Text> : null}
                   </Pressable>

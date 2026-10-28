@@ -102,8 +102,9 @@ export default function ReaderScreen() {
         // A comic that isn't downloaded yet must fit in the space the reader set aside; if it doesn't, something is put away first.
         if (comic.sourceUri && !isCached(comic.id)) {
           const plan = planFetch(comic);
-          if (plan.over > 0) {
-            if (budgetMode() === 'auto') plan.suggested.forEach(freeSpaceFor);
+          if (plan.over > 0 || plan.overCount > 0) {
+            // Over the number of comics kept at once: the reader always chooses which one goes, even in automatic mode.
+            if (budgetMode() === 'auto' && plan.overCount === 0) plan.suggested.forEach(freeSpaceFor);
             else {
               const putAway = await new Promise<string[] | null>((resolve) => setRoom({ plan, ready: readyComics(comic.id), resolve }));
               setRoom(null);

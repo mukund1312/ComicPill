@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { formatBytes } from '../../lib/reader/bytes';
+import { keepLimit } from '../../lib/reader/cloudBudget';
 import type { ReadyComic, RoomPlan } from '../../lib/reader/makeRoom';
 import { color, font, radius, space, type } from '../../ui/tokens';
 
@@ -20,7 +21,8 @@ export function MakeRoomSheet({ title, need, budget, plan, ready, onConfirm, onC
   const short = Math.max(0, plan.over - freed);
   const everything = chosen.size === list.length;
   // A comic bigger than the whole budget can still be opened once everything else is put away.
-  const canOpen = short === 0 || (!plan.possible && everything);
+  const mustPutAway = Math.max(0, plan.overCount - chosen.size);
+  const canOpen = mustPutAway === 0 && (short === 0 || (!plan.possible && everything));
   const toggle = (id: string) => setChosen((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
 
   return (
@@ -29,7 +31,7 @@ export function MakeRoomSheet({ title, need, budget, plan, ready, onConfirm, onC
         <View style={styles.sheet}>
           <Text style={styles.title}>Make room to open this comic</Text>
           <Text style={styles.body}>
-            “{title}” needs {need ? formatBytes(need) : 'some space'}. You’ve set aside {formatBytes(budget)} for downloaded comics and {formatBytes(plan.used)} is in use.
+            {plan.overCount > 0 ? `You can keep ${keepLimit()} comics downloaded at a time. Put ${plan.overCount === 1 ? 'one' : plan.overCount} away to open “${title}”. ` : `“${title}” needs ${need ? formatBytes(need) : 'some space'}. You’ve set aside ${formatBytes(budget)} for downloaded comics and ${formatBytes(plan.used)} is in use. `}
             Put some away to continue. They stay on your shelf and download again when you open them.
           </Text>
           {!plan.possible ? <Text style={styles.warn}>This comic is bigger than your whole limit. Raise it in Settings → Storage, or put everything away to open it anyway.</Text> : null}
@@ -44,7 +46,7 @@ export function MakeRoomSheet({ title, need, budget, plan, ready, onConfirm, onC
               </Pressable>
             ))}
           </ScrollView>
-          <Text style={styles.status}>{short > 0 && !(everything && !plan.possible) ? `Choose ${formatBytes(short)} more` : `Freeing ${formatBytes(freed)}`}</Text>
+          <Text style={styles.status}>{mustPutAway > 0 ? `Choose ${mustPutAway} more` : short > 0 && !(everything && !plan.possible) ? `Choose ${formatBytes(short)} more` : `Freeing ${formatBytes(freed)}`}</Text>
           <Pressable disabled={!canOpen} onPress={() => onConfirm([...chosen])} style={[styles.primary, !canOpen && styles.off]}>
             <Text style={styles.primaryText}>{chosen.size ? `Put away ${chosen.size} and open` : 'Open'}</Text>
           </Pressable>

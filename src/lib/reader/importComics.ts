@@ -336,6 +336,16 @@ export async function expandLinkedBundle(comic: { id: string; sourceUri: string 
   return held;
 }
 
+/** Link from the cloud, then read each new comic's cover (one at a time, each file released straight away), so the shelf shows covers and nothing stays downloaded. */
+export async function linkWithCovers(link: () => Promise<ImportResult>, opts: ImportProgress): Promise<ImportResult> {
+  const result = await link();
+  if (result.imported.length && !opts.cancel?.cancelled) {
+    const covers = await prepareLinkedComics(opts);
+    result.failed.push(...covers.failed);
+  }
+  return result;
+}
+
 /** Read the cover, page count and details of linked comics that haven't been looked at yet, one at a time. Each file is fetched, read, then released. */
 export async function prepareLinkedComics(opts: ImportProgress & { /** Only these; by default every linked comic that is still waiting. */ ids?: string[] } = {}): Promise<ImportResult> {
   const result = emptyResult();
