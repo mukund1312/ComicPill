@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { chooseMatch, confirmAllMatched, duplicateWithinScan, excludeItem, importItems, isReady, itemFromDetected, summarize, type ImportDeps, type ScanItem } from './session';
+import { chooseMatch, confirmAllMatched, duplicateWithinScan, excludeItem, importItems, isReady, itemFromDetected, replace, summarize, type ImportDeps, type ScanItem } from './session';
 import { decide } from './candidates';
 import { validateManual } from './manual';
 
@@ -42,6 +42,15 @@ describe('correcting', () => {
     if (!r.ok) throw new Error('valid');
     const after = chooseMatch(make(), 'd', { kind: 'custom', comic: r.value });
     expect(isReady(after.find((i) => i.scanId === 'd')!)).toBe(true);
+  });
+  it('keeps a cover that came with the choice (an online result and its picture are saved together)', () => {
+    const r = validateManual({ title: 'Wonder Woman', publisher: 'DC Comics', isbn: '9781563891489' });
+    if (!r.ok) throw new Error('valid');
+    const withCover = replace(make(), 'd', { customCoverUri: 'file:///online-cover.jpg' });
+    const after = chooseMatch(withCover, 'd', { kind: 'custom', comic: r.value });
+    const d = after.find((i) => i.scanId === 'd')!;
+    expect(d.customCoverUri).toBe('file:///online-cover.jpg');
+    expect(d.status).toBe('manually_verified');
   });
   it('excludes and restores a result', () => {
     const excluded = excludeItem(make(), 'a', true);

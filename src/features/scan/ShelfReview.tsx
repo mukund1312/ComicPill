@@ -130,7 +130,7 @@ export function ShelfReview({ scan, items, onItems, alreadyOwned, onImport, onAd
         <EditMatchSheet
           item={editing} number={items.findIndex((i) => i.scanId === editing.scanId) + 1}
           onClose={() => setEditingId(null)}
-          onChoose={(s) => { onItems(chooseMatch(items, editing.scanId, s)); setEditingId(null); }}
+          onChoose={(s, cover) => { onItems(chooseMatch(cover === undefined ? items : replace(items, editing.scanId, { customCoverUri: cover }), editing.scanId, s)); setEditingId(null); }}
           onCover={(uri) => onItems(replace(items, editing.scanId, { customCoverUri: uri }))}
           onExclude={(ex) => onItems(excludeItem(items, editing.scanId, ex))}
         />

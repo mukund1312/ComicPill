@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -8,17 +8,26 @@ import { ComicCover } from '../../ui/comic';
 import { space } from '../../ui/tokens';
 import { useAppearance } from '../../ui/theme';
 import { searchWorks } from '../../lib/db/queries/search';
+import { getMeta, setMeta } from '../../lib/db/queries/meta';
+import { loadComicVineKey } from '../../lib/mind/settings';
+import { confirm } from '../../ui/dialogs';
+import { searchOnline, toManualComic, type OnlineResult } from '../../lib/scan/online';
+import { downloadCover } from '../../lib/scan/onlineCover';
 import { PRINTINGS, validateManual, type ManualInput, type Printing } from '../../lib/scan/manual';
 import type { ScanItem, Selection } from '../../lib/scan/session';
 
-type Mode = 'find' | 'manual';
+type Mode = 'find' | 'online' | 'manual';
+type Online = { status: 'idle' | 'loading' | 'done'; results: OnlineResult[]; notes: string[]; reached: boolean };
+const ASKED = 'online_lookup_ok';
 
 /**
  * Fix one result without leaving the review: search the catalog, pick another candidate, describe a comic the catalog doesn't have, or set the
  * reader's own cover. The spine picture stays as it was; nothing here changes the catalog.
  */
 export function EditMatchSheet({ item, number, onClose, onChoose, onCover, onExclude }: {
-  item: ScanItem; number: number; onClose: () => void; onChoose: (s: Selection) => void; onCover: (uri: string | null) => void; onExclude: (excluded: boolean) => void;
+  item: ScanItem; number: number; onClose: () => void;
+  /** The reader's choice, with a cover they picked along with it (so both are saved together), or undefined to leave the cover as it is. */
+  onChoose: (s: Selection, cover?: string | null) => void; onCover: (uri: string | null) => void; onExclude: (excluded: boolean) => void;
 }) {
   const { theme, typography } = useAppearance(); const c = theme.colors;
   const [mode, setMode] = useState<Mode>('find');
@@ -26,6 +35,28 @@ export function EditMatchSheet({ item, number, onClose, onChoose, onCover, onExc
   const results = useMemo(() => (query.trim() ? searchWorks(query, 25).map((r) => ({ id: r.workId, title: r.title, creators: r.creators })) : item.candidates.map((cd) => ({ id: cd.id, title: cd.title, creators: [] as string[], note: cd.reasons[0] }))), [query, item.candidates]);
   const [form, setForm] = useState<ManualInput>({ title: item.read.title, volume: item.read.volume?.replace(/^Vol\.\s*/i, '') ?? '', writer: item.read.creators[0] ?? '', printing: 'trade_paperback', format: 'physical' });
   const [errors, setErrors] = useState<Partial<Record<keyof ManualInput, string>>>({});
+  // Looking a comic up online happens only when the reader taps Search, and sends only the words they typed.
+  const [onlineQuery, setOnlineQuery] = useState(`${item.read.title} ${item.read.volume ?? ''}`.trim());
+  const [online, setOnline] = useState<Online>({ status: 'idle', results: [], notes: [], reached: true });
+  const [useTheirCover, setUseTheirCover] = useState(true);
+  const [picking, setPicking] = useState<string | null>(null);
+  const [hasCv, setHasCv] = useState(false);
+  useEffect(() => { void loadComicVineKey().then((k) => setHasCv(!!k)); }, []);
+  const searchWeb = async () => {
+    if (getMeta(ASKED) !== '1') {
+      const ok = await confirm({ title: 'Search online?', message: `This sends the words you searched for to Open Library${hasCv ? ' and Comic Vine' : ''}. Nothing else leaves your device, and nothing is sent unless you tap Search.`, confirmLabel: 'Search' });
+      if (!ok) return;
+      setMeta(ASKED, '1');
+    }
+    setOnline({ status: 'loading', results: [], notes: [], reached: true });
+    const r = await searchOnline(onlineQuery, { comicVineKey: await loadComicVineKey() });
+    setOnline({ status: 'done', results: r.results, notes: r.notes, reached: r.reached });
+  };
+  const chooseOnline = async (r: OnlineResult) => {
+    setPicking(r.id);
+    const cover = useTheirCover && r.coverUrl ? await downloadCover(r.coverUrl) : null;
+    onChoose({ kind: 'custom', comic: toManualComic(r) }, cover ?? undefined);
+  };
   const set = (k: keyof ManualInput, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   const save = () => {
@@ -72,6 +103,7 @@ export function EditMatchSheet({ item, number, onClose, onChoose, onCover, onExc
 
           <View style={styles.pills}>
             <Pill label="Find in catalog" active={mode === 'find'} onPress={() => setMode('find')} />
+            <Pill label="Search online" active={mode === 'online'} onPress={() => setMode('online')} />
             <Pill label="Add it myself" active={mode === 'manual'} onPress={() => setMode('manual')} />
           </View>
 
@@ -90,6 +122,35 @@ export function EditMatchSheet({ item, number, onClose, onChoose, onCover, onExc
                   <Text style={[styles.pick, { color: c.primary, fontFamily: typography.bodySemibold }]}>{r.id === selectedWorkId ? 'Chosen' : 'Choose'}</Text>
                 </Pressable>
               ))}
+            </View>
+          ) : mode === 'online' ? (
+            <View style={styles.gap}>
+              <Text style={[styles.label, { color: c.textMuted, fontFamily: typography.body }]}>
+                Looks the comic up on Open Library{hasCv ? ' and Comic Vine' : ''}. Only the words you search for are sent, and only when you tap Search. A comic you pick is added to your own library, not to the shared catalog.
+              </Text>
+              <TextInput value={onlineQuery} onChangeText={setOnlineQuery} placeholder="Title, and the creator if you know it" placeholderTextColor={c.textMuted} autoCorrect={false} returnKeyType="search" onSubmitEditing={() => { void searchWeb(); }}
+                style={[styles.input, { color: c.textPrimary, borderColor: c.border, backgroundColor: c.surface, fontFamily: typography.body }]} accessibilityLabel="Search online" />
+              <Button onPress={() => { void searchWeb(); }} disabled={online.status === 'loading' || onlineQuery.trim().length < 2}>{online.status === 'loading' ? 'Searching…' : 'Search'}</Button>
+              {online.status === 'loading' ? <ActivityIndicator color={c.primary} /> : null}
+              {online.notes.map((n) => <Text key={n} style={[styles.label, { color: c.warning, fontFamily: typography.body }]}>{n}</Text>)}
+              {online.status === 'done' && online.results.length === 0 ? <Text style={[styles.label, { color: c.textSecondary, fontFamily: typography.body }]}>{online.reached ? 'Nothing found. Try fewer words, or add it yourself.' : 'You seem to be offline. Try again when you’re connected, or add it yourself.'}</Text> : null}
+              {online.results.length ? (
+                <View style={styles.pills}>
+                  <Pill label={useTheirCover ? 'Using their cover' : 'Not using their cover'} active={useTheirCover} onPress={() => setUseTheirCover((v) => !v)} />
+                </View>
+              ) : null}
+              {online.results.map((r) => (
+                <Pressable key={`${r.source}-${r.id}`} accessibilityRole="button" disabled={picking !== null} onPress={() => { void chooseOnline(r); }} style={[styles.result, { borderColor: c.border, backgroundColor: c.surface, opacity: picking && picking !== r.id ? 0.5 : 1 }]}>
+                  {r.coverUrl ? <Image source={{ uri: r.coverUrl }} style={styles.cover} contentFit="cover" accessibilityLabel={`Cover of ${r.title}`} /> : <View style={[styles.cover, { backgroundColor: c.surfaceRaised }]} />}
+                  <View style={styles.flex}>
+                    <Text numberOfLines={2} style={[styles.read, { color: c.textPrimary, fontFamily: typography.displayMedium }]}>{r.title}</Text>
+                    <Text numberOfLines={1} style={[styles.label, { color: c.textMuted, fontFamily: typography.body }]}>{[r.authors.slice(0, 2).join(', '), r.year, r.publisher].filter(Boolean).join(' · ')}</Text>
+                    {r.isbn13 ? <Text style={[styles.label, { color: c.textMuted, fontFamily: typography.body }]}>ISBN {r.isbn13}{r.source === 'comicvine' ? ' · a series' : ''}</Text> : r.source === 'comicvine' ? <Text style={[styles.label, { color: c.textMuted, fontFamily: typography.body }]}>Comic Vine · a series</Text> : null}
+                  </View>
+                  {picking === r.id ? <ActivityIndicator color={c.primary} /> : <Text style={[styles.pick, { color: c.primary, fontFamily: typography.bodySemibold }]}>Choose</Text>}
+                </Pressable>
+              ))}
+              {!hasCv ? <Text style={[styles.label, { color: c.textMuted, fontFamily: typography.body }]}>For more results on Western comics, add your free Comic Vine key in Mind Space settings.</Text> : null}
             </View>
           ) : (
             <View style={styles.gap}>

@@ -13,6 +13,7 @@ type Removable = Directory | { exists: boolean; size?: number | null; delete(): 
 function temporaryEntries(): Removable[] {
   const out: Removable[] = [];
   try { out.push(new Directory(Paths.cache, 'DocumentPicker')); } catch { /* not there */ }
+  try { out.push(new Directory(Paths.cache, 'online-covers')); } catch { /* not there */ }
   try {
     for (const e of new Directory(Paths.cache).list()) if (e.name.startsWith('nested-')) out.push(e);
   } catch { /* nothing to list */ }
