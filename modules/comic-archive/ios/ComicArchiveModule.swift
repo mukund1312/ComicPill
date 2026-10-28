@@ -100,6 +100,14 @@ public class ComicArchiveModule: Module {
       }
     }
 
+    // Downloaded comics can always be fetched again, so they are kept out of iCloud backups.
+    Function("excludeFromBackup") { (path: String) in
+      var url = Self.fileURL(path)
+      var values = URLResourceValues()
+      values.isExcludedFromBackup = true
+      try? url.setResourceValues(values)
+    }
+
     // The same for a folder. Expo's own folder picker counts a folder as "cancelled" when iOS says it needs no security scope, which is
     // what Google Drive's folders do, so choosing one there seemed to do nothing. This one takes the folder either way.
     AsyncFunction("pickFolderInPlace") { (promise: Promise) in

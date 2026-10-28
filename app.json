@@ -13,6 +13,7 @@
       "bundleIdentifier": "com.mukund.comicpill",
       "infoPlist": {
         "LSSupportsOpeningDocumentsInPlace": true,
+        "NSLocalNetworkUsageDescription": "ComicPill connects to a comic server on your home network, such as Komga or Kavita, to show and fetch your comics.",
         "UIFileSharingEnabled": true,
         "CFBundleDocumentTypes": [
           {

@@ -7,6 +7,8 @@ import { authHeaders, loadFeed, searchUrl, OpdsError } from '../../lib/opds/clie
 import { safeFileName, type OpdsEntry, type OpdsFeed } from '../../lib/opds/parse';
 import { listServers } from '../../lib/opds/servers';
 import { importLocalFile } from '../../lib/reader/importComics';
+import { linkOpdsLibrary } from '../../lib/reader/linkOpds';
+import { runJob, useJob } from '../../lib/reader/importJob';
 import { SettingsPage } from '../../ui/SettingsPage';
 import { Input } from '../../ui/primitives';
 import { color, font, radius, space, type } from '../../ui/tokens';
@@ -23,6 +25,16 @@ export default function OpdsBrowseScreen() {
   const [busy, setBusy] = useState(true); // the first page loads as soon as the screen opens
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<Record<string, 'downloading' | 'added' | 'failed'>>({});
+  const running = useJob().running;
+
+  // Like Kindle: every comic here appears in My Collection with its cover; a comic is only fetched when it is opened.
+  const addAll = () => {
+    if (!server) return;
+    Alert.alert('Add everything here to My Collection?', 'Every comic in this catalog is added with its cover and name. Nothing is downloaded: a comic comes across when you open it, and only as many as you allow are kept on this device. Series become folders. Adding again only brings in new comics.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Add them', onPress: () => { void runJob('Reading the catalog', async (p) => ({ verb: 'Added', result: await linkOpdsLibrary(server, String(url), p) })).then((started) => { if (!started) Alert.alert('Another import is running', 'Wait for it to finish, or press Stop on the bar at the bottom.'); }); } },
+    ]);
+  };
 
   /** Fetch one page. The caller says whether it is the first page of something new or more of the current one. */
   const load = useCallback(async (target: string, append: boolean) => {
@@ -74,6 +86,7 @@ export default function OpdsBrowseScreen() {
   return (
     <SettingsPage title={feed?.title ?? server.name} subtitle={server.url}>
       {feed?.search || feed?.searchDescription ? <View style={{ marginTop: space.md }}><Input placeholder="Search this catalog" value={query} onChangeText={setQuery} /><Pressable onPress={search} style={styles.searchBtn}><Text style={styles.searchText}>Search</Text></Pressable></View> : null}
+      <Pressable accessibilityRole="button" disabled={running || busy || !!error} onPress={addAll} style={[styles.searchBtn, (running || busy || !!error) && { opacity: 0.5 }]}><Text style={styles.searchText}>{running ? 'An import is running…' : 'Add everything here to My Collection'}</Text></Pressable>
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <FlatList
         data={entries}

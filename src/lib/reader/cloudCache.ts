@@ -9,9 +9,38 @@ import { budgetMode, cloudBudgetBytes, keepLimit, LOW_SPACE_RESERVE } from './cl
 import { isLowOnSpace, planRoom, type ReadyComic, type RoomPlan } from './makeRoom';
 import { optionalNative } from './nativeArchive';
 import { extractNestedComic } from './ComicSource';
+import { downloadFromOpds, isOpdsSource } from '../opds/source';
 
 
-const cacheRoot = () => new Directory(Paths.cache, 'comics-cache');
+// Downloaded comics are kept in the app's own support folder, not in the cache folder iOS empties when storage runs low, and left out of iCloud
+// backups (they can always be fetched again). Android has no such folder, so its app files folder is used.
+const oldCacheRoot = () => new Directory(Paths.cache, 'comics-cache');
+const downloadsRoot = (): Directory => {
+  const support = Paths.document.parentDirectory ? new Directory(Paths.document.parentDirectory, 'Library', 'Application Support') : null;
+  return support && support.uri.includes('/Library/') ? new Directory(support, 'comicpill-downloads') : new Directory(Paths.document, 'comicpill-downloads');
+};
+let adopted = false;
+/** Comics fetched by an earlier version sat in the cache folder: move them across once, so they stay readable offline. */
+function adoptOldDownloads(root: Directory): void {
+  try {
+    const old = oldCacheRoot();
+    if (!old.exists) return;
+    if (!root.exists) root.create({ intermediates: true });
+    for (const entry of old.list()) {
+      if (!(entry instanceof Directory)) continue;
+      try { const book = new File(entry, 'book'); const target = new Directory(root, entry.name); target.create({ intermediates: true }); if (book.exists) void Promise.resolve(book.move(new File(target, 'book'))).catch(() => undefined); } catch { /* it is fetched again if needed */ }
+    }
+  } catch { /* nothing to carry over */ }
+}
+export const cacheRoot = (): Directory => {
+  const root = downloadsRoot();
+  if (!adopted) {
+    adopted = true;
+    try { if (!root.exists) root.create({ intermediates: true }); optionalNative()?.excludeFromBackup?.(root.uri); } catch { /* the folder is made again when a comic is fetched */ }
+    adoptOldDownloads(root);
+  }
+  return root;
+};
 export const cacheDirFor = (id: string) => new Directory(cacheRoot(), id);
 export const cachedFileFor = (id: string) => new File(cacheDirFor(id), 'book');
 
@@ -75,6 +104,7 @@ export const NESTED_SEP = '\u001F';
 
 /** Copy a linked comic from its cloud app to `destUri`. */
 export async function copyFromSource(sourceUri: string, destUri: string): Promise<void> {
+  if (isOpdsSource(sourceUri)) { await downloadFromOpds(sourceUri, destUri); return; }
   if (sourceUri.startsWith(BOOKMARK_PREFIX)) {
     const native = optionalNative();
     if (!native?.copyFromBookmark) throw new CloudFetchError('This build can’t open cloud links.');
@@ -111,7 +141,7 @@ export async function ensureLocalCopy(comic: ReaderComic, onProgress?: (p: { byt
     }
   } catch {
     try { cacheDirFor(comic.id).delete(); } catch { /* ignore */ }
-    throw new CloudFetchError('Couldn’t fetch this comic from its cloud app. Check your connection and that the app (Drive, Dropbox…) still has access, then try again.');
+    throw new CloudFetchError(isOpdsSource(comic.sourceUri) ? 'Couldn’t fetch this comic from your comic server. Check that the server is on and on the same network, then try again.' : 'Couldn’t fetch this comic from its cloud app. Check your connection and that the app (Drive, Dropbox…) still has access, then try again.');
   } finally { if (watch) clearInterval(watch); }
   trimIfAuto(comic.id);
   return target.uri;

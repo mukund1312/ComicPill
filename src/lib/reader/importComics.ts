@@ -13,11 +13,11 @@ import { BOOKMARK_PREFIX, NESTED_SEP, cacheDirFor, cachedFileFor, copyFromSource
 import { createFolder, deleteReaderComic, fillInComic, getReaderComic, insertReaderComic, isDuplicateSource, setComicStorage, sourceKeyOf, unpreparedLinkIds, type ReaderMode } from './readerLibrary';
 
 export type ImportResult = { imported: string[]; /** Already in the library, so left alone. */ skipped: string[]; failed: Array<{ name: string; reason: string }> };
-const emptyResult = (): ImportResult => ({ imported: [], skipped: [], failed: [] });
+export const emptyResult = (): ImportResult => ({ imported: [], skipped: [], failed: [] });
 
 const titleOf = (name: string) => name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim() || name;
 
-const comicsRoot = () => new Directory(Paths.document, 'comics');
+export const comicsRoot = () => new Directory(Paths.document, 'comics');
 
 /** Lets a screen show "3 of 12" and stop a long import: set `cancel.cancelled` and the import ends after the file it is on. */
 export type ImportProgress = { onProgress?: (p: { done: number; total: number; name: string; phase?: string }) => void; cancel?: { cancelled: boolean } };
@@ -35,7 +35,7 @@ export type ImportOptions = {
 };
 
 /** Runs `one` for each item, reporting progress, and stops early when asked. */
-async function eachWithProgress<T>(items: T[], progress: ImportProgress, nameOf: (item: T) => string, one: (item: T) => Promise<void>, phase?: string): Promise<void> {
+export async function eachWithProgress<T>(items: T[], progress: ImportProgress, nameOf: (item: T) => string, one: (item: T) => Promise<void>, phase?: string): Promise<void> {
   for (let i = 0; i < items.length; i++) {
     if (progress.cancel?.cancelled) return;
     progress.onProgress?.({ done: i, total: items.length, name: nameOf(items[i]), phase });
@@ -176,7 +176,7 @@ async function importBundle(zipUri: string, result: ImportResult, opts: ImportOp
 }
 
 /** Why something failed, in words: our own messages as they are, anything else with its detail so it can be reported. */
-function reasonOf(e: unknown, fallback: string): string {
+export function reasonOf(e: unknown, fallback: string): string {
   if (e instanceof ComicOpenError) return e.message;
   const detail = e instanceof Error ? e.message.replace(/\s+/g, ' ').slice(0, 140) : '';
   if (__DEV__ || detail) console.warn('import failed:', e);
@@ -251,7 +251,7 @@ export async function keepCopyOnDevice(id: string): Promise<boolean> {
 // and its cover and page count are read afterwards by `prepareLinkedComics`, one at a time, which can be stopped and resumed.
 
 const LINK_EXT = ['cbz', 'cbr', 'cb7', 'zip', 'pdf', 'epub'];
-const FORMAT_OF: Record<string, 'cbz' | 'cbr' | 'cb7' | 'pdf' | 'epub'> = { cbz: 'cbz', zip: 'cbz', cbr: 'cbr', cb7: 'cb7', pdf: 'pdf', epub: 'epub' };
+export const FORMAT_OF: Record<string, 'cbz' | 'cbr' | 'cb7' | 'pdf' | 'epub'> = { cbz: 'cbz', zip: 'cbz', cbr: 'cbr', cb7: 'cb7', pdf: 'pdf', epub: 'epub' };
 const MAX_LINK_DEPTH = 8;
 
 type Found = { file: File; /** Folder names from the picked folder down, then the file name. */ path: string[] };

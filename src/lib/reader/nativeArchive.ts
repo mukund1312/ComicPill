@@ -21,6 +21,7 @@ type Native = {
   /** Keep access to a picked cloud file after the app closes. */
   persistUriPermission?(uri: string): boolean;
   /** iOS: the Files picker opening files in place (no copy), so it returns at once. `bookmark` reopens the file later. Empty when cancelled. */
+  excludeFromBackup?(path: string): void;
   pickFolderInPlace?(): Promise<{ uri: string; name: string; size: number; bookmark: string | null }[]>;
   listFolderComics?(bookmark: string, extensions: string[], maxDepth: number): Promise<{ path: string[]; name: string; size: number }[]>;
   pickFilesInPlace?(): Promise<{ uri: string; name: string; size: number; bookmark: string | null }[]>;

@@ -3,7 +3,7 @@
 import { XMLParser } from 'fast-xml-parser';
 
 export type ComicExt = 'cbz' | 'cbr' | 'cb7' | 'pdf' | 'epub' | 'zip';
-export type OpdsAcquisition = { href: string; type: string; ext: ComicExt | null };
+export type OpdsAcquisition = { href: string; type: string; ext: ComicExt | null; /** Bytes, when the server says. */ size?: number };
 export type OpdsEntry = {
   id: string; title: string; authors: string[]; summary: string; thumb: string | null;
   /** A sub-catalog to open (a series, a library, a letter…). */
@@ -49,7 +49,7 @@ export const extOfType = (type: string, href = ''): ComicExt | null => {
 const PREFERENCE: ComicExt[] = ['cbz', 'cbr', 'cb7', 'pdf', 'epub', 'zip'];
 const rank = (a: OpdsAcquisition) => { const i = a.ext ? PREFERENCE.indexOf(a.ext) : 99; return i < 0 ? 99 : i; };
 
-type Link = { '@_href'?: string; '@_rel'?: string; '@_type'?: string };
+type Link = { '@_href'?: string; '@_rel'?: string; '@_type'?: string; '@_length'?: string | number };
 const text = (v: unknown): string => (typeof v === 'string' ? v : typeof v === 'number' ? String(v) : v && typeof v === 'object' && '#text' in v ? String((v as { '#text': unknown })['#text']) : '').trim();
 
 export function parseFeed(xml: string, baseUrl: string): OpdsFeed {
@@ -66,7 +66,7 @@ export function parseFeed(xml: string, baseUrl: string): OpdsFeed {
     const eLinks = (e.link as Link[] | undefined) ?? [];
     const acquisitions = eLinks
       .filter((l) => (l['@_rel'] ?? '').startsWith(REL.acquisition) && !/buy|borrow|subscribe|sample/i.test(l['@_rel'] ?? ''))
-      .map((l): OpdsAcquisition => ({ href: hrefOf(l), type: l['@_type'] ?? '', ext: extOfType(l['@_type'] ?? '', l['@_href'] ?? '') }))
+      .map((l): OpdsAcquisition => ({ href: hrefOf(l), type: l['@_type'] ?? '', ext: extOfType(l['@_type'] ?? '', l['@_href'] ?? ''), size: Number(l['@_length']) > 0 ? Number(l['@_length']) : undefined }))
       .filter((a) => a.href)
       .sort((a, b) => rank(a) - rank(b));
     const navLink = acquisitions.length ? undefined : eLinks.find((l) => (l['@_rel'] === 'subsection' || l['@_rel'] === 'http://opds-spec.org/sort/new' || l['@_rel'] === 'http://opds-spec.org/sort/popular' || /atom\+xml/i.test(l['@_type'] ?? '')) && l['@_href']);

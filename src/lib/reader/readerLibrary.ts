@@ -75,6 +75,8 @@ export const insertReaderComic = (c: NewReaderComic): void => {
 
 export { sourceKeyOf };
 
+export const hasSourceKey = (key: string): boolean => !!sqlite.getFirstSync('SELECT 1 FROM reader_comics WHERE source_key = ? LIMIT 1', key);
+
 /** Is this file (same name and exact size) already in the library? Comics imported before keys existed match on size and title. */
 export const isDuplicateSource = (name: string, size: number, titleGuess: string): boolean =>
   !!sqlite.getFirstSync(
@@ -84,7 +86,8 @@ export const isDuplicateSource = (name: string, size: number, titleGuess: string
 
 /** Linked comics whose cover and page count haven't been read yet (a folder link saves them for later). */
 export const unpreparedLinkIds = (): string[] =>
-  sqlite.getAllSync<{ id: string }>('SELECT id FROM reader_comics WHERE source_uri IS NOT NULL AND page_count = 0 ORDER BY added_at').map((r) => r.id);
+  // (comics on a comic server already have their cover from the server; the rest is filled in when one is opened)
+  sqlite.getAllSync<{ id: string }>("SELECT id FROM reader_comics WHERE source_uri IS NOT NULL AND source_uri NOT LIKE 'opds:%' AND page_count = 0 ORDER BY added_at").map((r) => r.id);
 
 export const fillInComic = (id: string, f: { title: string; pageCount: number; coverPath: string | null; series: string | null; issue: string | null; writer: string | null; /** Only set when the file says so (manga); null keeps the reader's choice. */ mode: ReaderMode | null }): void => {
   sqlite.runSync('UPDATE reader_comics SET title = ?, page_count = ?, cover_path = ?, series = ?, issue = ?, writer = ?, mode = COALESCE(?, mode) WHERE id = ?', f.title, f.pageCount, f.coverPath, f.series, f.issue, f.writer, f.mode, id);

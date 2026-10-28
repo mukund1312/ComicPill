@@ -3,7 +3,7 @@
 import { Directory, Paths } from 'expo-file-system';
 
 const comicsRoot = () => new Directory(Paths.document, 'comics');
-const cacheRoot = () => new Directory(Paths.cache, 'comics-cache');
+import { cacheRoot } from './cloudCache';
 
 const sizeOf = (entry: { exists: boolean; size?: number | null }): number => { try { return entry.exists ? (entry.size ?? 0) : 0; } catch { return 0; } };
 
