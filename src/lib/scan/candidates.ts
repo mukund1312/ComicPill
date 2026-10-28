@@ -92,7 +92,13 @@ export function rankCandidates(read: Reading, index: CatalogIndex, limit = 5): C
       const distinct = stemWeight >= 0.6 * Math.log(1 + index.entries.length);
       if (stemWeight >= 0.35 * Math.log(1 + index.entries.length) && stemScore >= 0.85 && (spineSaysMore === 0 || (spineSaysMore === 1 && distinct))) { out.push({ id: entry.id, title: entry.title, score: Math.min(0.66, 0.78 * stemScore), reasons: ['same series: choose the volume'], editionWords: [...editionWords] }); continue; }
     }
-    if (score < 0.5) continue;
+    if (score < 0.5) {
+      // The title may be in lettering that can't be read while the credits are plain. Two or more of this comic's creators on the spine is worth a
+      // suggestion (never an automatic match): “TAYLOR • HAIRSINE • GAUDIANO” points at DCeased.
+      const hits = new Set(entry.creators.map((c) => fold(c).pop() ?? '').filter((last) => last.length >= 4 && docWords.some((w) => wordSimilarity(last, w) >= 0.85)));
+      if (hits.size >= 2) out.push({ id: entry.id, title: entry.title, score: Math.min(0.64, 0.42 + 0.1 * hits.size), reasons: [`${hits.size} creators match`], editionWords: [...editionWords] });
+      continue;
+    }
     // A short catalog title (one or two words) must be what the spine's title actually says, not something in the credits.
     if (words.length <= 2 && !words.every((w) => titleWords.some((t) => wordSimilarity(w, t) > 0))) score *= 0.7;
     // The spine's own title should mostly be explained by this catalog title: "Batman" alone isn't "Batman: Year One".

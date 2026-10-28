@@ -54,3 +54,19 @@ describe('rankCandidates / decide', () => {
   });
   it('folds accents and punctuation', () => { expect(fold('Nocturnes & Preludes: Épée')).toEqual(['nocturnes', 'and', 'preludes', 'epee']); });
 });
+
+describe('creators as a clue', () => {
+  const idx = buildIndex([
+    { id: 'dceased', title: 'DCeased', creators: ['Tom Taylor', 'Trevor Hairsine', 'Stefano Gaudiano'] },
+    { id: 'other', title: 'Another Book', creators: ['Tom Taylor'] },
+    { id: 'hush', title: 'Batman: Hush', creators: ['Jeph Loeb', 'Jim Lee'] },
+  ]);
+  it('suggests a book from its creators when the title is unreadable, but never automatically', () => {
+    const d = decide(rankCandidates({ title: 'TAVLOR HAIRSINE CAUDIANO BEREDO', volume: null, creators: [], rawText: 'TAVLOR • HAIRSINE • CAUDIANO • BEREDO' }, idx));
+    expect(d.best?.id).toBe('dceased');
+    expect(d.strength).toBe('possible');
+  });
+  it('needs more than one creator to go on', () => {
+    expect(decide(rankCandidates({ title: 'TAYLOR', volume: null, creators: [], rawText: 'TAYLOR' }, idx)).best).toBeNull();
+  });
+});

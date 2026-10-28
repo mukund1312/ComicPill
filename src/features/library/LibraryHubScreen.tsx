@@ -45,7 +45,7 @@ export default function LibraryHubScreen() {
     { icon: 'document-outline', label: 'Import from Files', sub: 'Keeps a copy on this device', tint: '#3B82F6', onPress: () => { if (!running) void runImport('Importing', 'Imported', (p) => pickAndImportComics(p)); } },
     { icon: 'folder-outline', label: 'Import a folder', tint: '#3B82F6', onPress: () => { if (!running) void runImport('Importing folder', 'Imported', (p) => pickAndImportFolder(p)); } },
     { icon: 'server-outline', label: 'Connect a server (OPDS)', onPress: () => router.push('/reader/opds') },
-    { icon: 'scan-outline', label: 'Scan a comic or shelf', onPress: () => router.push('/scan') },
+    { icon: 'scan-outline', label: 'Scan Shelf', sub: 'Photograph your shelf and add many comics at once', onPress: () => router.push('/scan') },
   ];
   const tools: Row[] = [
     { icon: 'list-outline', label: 'Playlists', onPress: () => router.push('/playlists') },

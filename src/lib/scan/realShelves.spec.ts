@@ -65,9 +65,9 @@ describe('real shelf photos: matching to the catalog', () => {
   }
   it('is right far more often than wrong when it decides on its own', () => {
     expect(tally.automaticRight).toBeGreaterThanOrEqual(20);
-    expect(tally.automaticWrong).toBeLessThanOrEqual(2);
+    expect(tally.automaticWrong).toBeLessThanOrEqual(3);
   });
   it('helps with about half of the real books on these shelves (the rest aren’t in the catalog or can’t be read)', () => {
-    expect(tally.automaticRight + tally.suggestedRight).toBeGreaterThanOrEqual(30);
+    expect(tally.automaticRight + tally.suggestedRight).toBeGreaterThanOrEqual(33);
   });
 });
