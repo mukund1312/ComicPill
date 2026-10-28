@@ -10,7 +10,8 @@ import type { OpdsServer } from '../opds/servers';
 import { cachedFileFor } from './cloudCache';
 import { saveCover } from './cover';
 import { linkReaderComic } from './libraryLink';
-import { createFolder, hasSourceKey, insertReaderComic } from './readerLibrary';
+import { sqlite } from '../db/client';
+import { addWorksToCollection, createCollection, createFolder, hasSourceKey, insertReaderComic } from './readerLibrary';
 import { comicsRoot, eachWithProgress, emptyResult, FORMAT_OF, reasonOf, type ImportProgress, type ImportResult } from './importComics';
 
 /** Put every comic from the server's catalog on the shelf, with its cover, filed in folders like the server's series. Comics already added are skipped. */
@@ -36,9 +37,27 @@ export async function linkOpdsLibrary(server: OpdsServer, startUrl: string, opts
     return parent as string;
   };
 
+  // My Collection shows the same grouping: a collection for the server, a collection inside it for each series or folder, the comics inside that.
+  const collectionIds = new Map<string, string>();
+  const collectionFor = (names: string[]): string => {
+    let parent: string | null = null; let key = '';
+    for (const name of [server.name, ...names]) {
+      key += `/${name}`;
+      let id = collectionIds.get(key);
+      if (!id) { id = createCollection(name, parent); collectionIds.set(key, id); }
+      parent = id;
+    }
+    return parent as string;
+  };
+  const fileInCollection = (workId: string | null | undefined, path: string[]) => { if (workId) addWorksToCollection(collectionFor(path), [workId]); };
+
   await eachWithProgress(found, opts, (f) => f.entry.title, async ({ entry, acquisition, path }) => {
     const sourceKey = `opds:${server.id}:${entry.id}`;
-    if (hasSourceKey(sourceKey)) { result.skipped.push(entry.title); return; }
+    if (hasSourceKey(sourceKey)) {
+      // Added on an earlier run (perhaps before folders were kept in My Collection): make sure it is filed in its series.
+      try { fileInCollection(sqlite.getFirstSync<{ work_id: string | null }>('SELECT work_id FROM reader_comics WHERE source_key = ?', sourceKey)?.work_id, path); } catch { /* the comic is there either way */ }
+      result.skipped.push(entry.title); return;
+    }
     const id = randomUUID();
     let coverPath: string | null = null;
     // The server's own thumbnail is the cover; nothing of the comic itself is fetched here.
@@ -58,7 +77,7 @@ export async function linkOpdsLibrary(server: OpdsServer, startUrl: string, opts
         writer: entry.authors[0] ?? null, folderId: folderFor(path), sizeBytes: acquisition.size ?? null,
         sourceUri: opdsSourceFor(server.id, server.url, acquisition.href), sourceKey,
       });
-      try { linkReaderComic({ id, title: entry.title, series: path[path.length - 1] ?? null, writer: entry.authors[0] ?? null, coverPath, workId: null }); } catch { /* readable without the library link */ }
+      try { fileInCollection(linkReaderComic({ id, title: entry.title, series: path[path.length - 1] ?? null, writer: entry.authors[0] ?? null, coverPath, workId: null }), path); } catch { /* readable without the library link */ }
       result.imported.push(entry.title);
     } catch { result.failed.push({ name: entry.title, reason: 'Could not add this comic.' }); }
   }, 'Adding comics');

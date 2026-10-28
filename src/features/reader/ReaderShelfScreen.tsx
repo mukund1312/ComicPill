@@ -3,7 +3,8 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, Vi
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Image } from 'expo-image';
-import { router, useFocusEffect } from 'expo-router';
+import { startBackgroundOpen } from '../../lib/library/collectionActions';
+import { router, useFocusEffect, useNavigation } from 'expo-router';
 import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { ActionSheet, PromptModal, type SheetOption } from './dialogs';
 import { DragStack, STACK_H, STACK_W } from './DragStack';
@@ -209,7 +210,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
     ],
   });
 
-  const openComic = (comic: ReaderComic) => requireUnlock('comic', comic.id, comic.title, comic.locked, () => router.push(`/reader/${comic.id}`));
+  const openComic = (comic: ReaderComic) => requireUnlock('comic', comic.id, comic.title, comic.locked, () => { if (!startBackgroundOpen(comic, refresh)) router.push(`/reader/${comic.id}`); });
 
   const comicMenu = (comic: ReaderComic) => setSheet({
     title: coverHidden(comic) ? 'Locked comic' : comic.title,
@@ -253,6 +254,14 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   const parentName = openFolder ? folders.find((f) => f.id === folders.find((x) => x.id === openFolder)?.parentId)?.name : undefined;
   const backLabel = segment === 'collections' ? 'Collections' : parentName ?? 'Library';
   const goBack = () => { if (segment === 'collections') setOpenCollection(null); else setOpenFolder(folders.find((f) => f.id === openFolder)?.parentId ?? null); };
+  // Inside a folder, Back (the header button, the edge swipe) steps out one level; only at the top does it leave the page.
+  const stepOut = (): boolean => { if (!(segment === 'collections' ? openCollection : openFolder)) return false; goBack(); return true; };
+  const stepOutRef = useRef(stepOut); stepOutRef.current = stepOut;
+  const navigation = useNavigation();
+  useEffect(() => navigation.addListener('beforeRemove', (e) => {
+    const type = e.data.action.type;
+    if ((type === 'GO_BACK' || type === 'POP') && stepOutRef.current()) e.preventDefault();
+  }), [navigation]);
 
   // Covers normally fill in when a comic is first opened. This fetches every waiting comic once, so it says how much that is first.
   const loadCoversNow = async () => {
@@ -511,7 +520,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   };
 
   return (
-    <AppShell active="library" back title={mode === 'collections' ? 'Collections' : onMyDevice()} right={<HeaderActions><HeaderButton icon="search" label="Search" active={searchOpen} onPress={() => { setSearchOpen((o) => !o); if (searchOpen) setQuery(''); }} /><HeaderButton icon="add" label="Add" disabled={busy || job.running} onPress={addMenu} /></HeaderActions>}>
+    <AppShell active="library" back onBack={stepOut} title={mode === 'collections' ? 'Collections' : onMyDevice()} right={<HeaderActions><HeaderButton icon="search" label="Search" active={searchOpen} onPress={() => { setSearchOpen((o) => !o); if (searchOpen) setQuery(''); }} /><HeaderButton icon="add" label="Add" disabled={busy || job.running} onPress={addMenu} /></HeaderActions>}>
       <GestureHandlerRootView style={styles.frame}>
       <View ref={frameRef} collapsable={false} style={styles.frame}>
       <Animated.View entering={FadeIn.duration(220)} style={[styles.header, styles.stickyHead]}>

@@ -107,13 +107,21 @@ export default function ScanScreen() {
     const r = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 1 });
     if (!r.canceled && r.assets?.[0]) await runDevice(r.assets[0].uri);
   };
+  // Several photos at once: each is read and reviewed on its own, one after another; the rest wait in `queue`.
+  const [queue, setQueue] = useState<string[]>([]);
+  const [shelfNo, setShelfNo] = useState({ n: 1, total: 1 });
+  const startShelves = async (uris: string[]) => {
+    if (!uris.length) return;
+    setQueue(uris.slice(1)); setShelfNo({ n: 1, total: uris.length });
+    await runDevice(uris[0]);
+  };
   const shelfFromGallery = async () => {
-    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });
-    if (!r.canceled && r.assets?.[0]) await runDevice(r.assets[0].uri);
+    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsMultipleSelection: true, selectionLimit: 0, quality: 1 });
+    if (!r.canceled && r.assets?.length) await startShelves(r.assets.map((a) => a.uri));
   };
   const shelfFromFiles = async () => {
-    const r = await DocumentPicker.getDocumentAsync({ type: 'image/*', copyToCacheDirectory: true });
-    if (!r.canceled && r.assets?.[0]) await runDevice(r.assets[0].uri);
+    const r = await DocumentPicker.getDocumentAsync({ type: 'image/*', multiple: true, copyToCacheDirectory: true });
+    if (!r.canceled && r.assets?.length) await startShelves(r.assets.map((a) => a.uri));
   };
   const resume = (id: string) => {
     const d = loadDraft(id);
@@ -161,9 +169,10 @@ export default function ScanScreen() {
   const onFinish = (keepPhoto: boolean) => {
     if (stage.name !== 'done') return;
     if (afterImport(keepPhoto) === 'keep') keepDraft(stage.draftId); else deleteDraft(stage.draftId);
+    if (queue.length) { const [next, ...rest] = queue; setQueue(rest); setItems([]); setShelfNo((s) => ({ ...s, n: s.n + 1 })); void runDevice(next); return; }
     router.replace('/library');
   };
-  const discard = () => { if (draftFor) deleteDraft(draftFor); setItems([]); setStage({ name: 'intro' }); };
+  const discard = () => { if (draftFor) deleteDraft(draftFor); setItems([]); setQueue([]); setStage({ name: 'intro' }); };
 
   const fromCamera = async () => {
     if (!(await perms.ensure('camera'))) return;
@@ -196,7 +205,7 @@ export default function ScanScreen() {
         <View style={styles.reviewBar}>
           <Pressable accessibilityRole="button" accessibilityLabel="Leave; your scan is saved" hitSlop={10} onPress={() => router.back()}><Text style={[styles.reviewLink, { color: c.primary, fontFamily: typography.bodySemibold }]}>‹ Back</Text></Pressable>
           <Text style={[styles.reviewTitle, { color: c.textPrimary, fontFamily: typography.display }]}>Shelf scan</Text>
-          <Text style={[styles.note, { color: c.textMuted, fontFamily: typography.body }]}>{items.length} detected</Text>
+          <Text style={[styles.note, { color: c.textMuted, fontFamily: typography.body }]}>{shelfNo.total > 1 ? `Photo ${shelfNo.n} of ${shelfNo.total} · ` : ''}{items.length} detected</Text>
         </View>
         <View style={styles.reviewBody}>
           <ShelfReview
@@ -217,8 +226,8 @@ export default function ScanScreen() {
             Take a photo of a shelf with the spines facing you, about 10 to 15 comics at a time, in good light. ComicPill reads the spines on this device — nothing is uploaded and you don’t need an account or a key — then shows you what it found. Nothing is added until you say so.
           </Text>
           <Button onPress={shelfFromCamera}>Take a photo</Button>
-          <Button kind="secondary" onPress={shelfFromGallery}>Choose from my photos</Button>
-          <Button kind="secondary" onPress={shelfFromFiles}>Choose from Files</Button>
+          <Button kind="secondary" onPress={shelfFromGallery}>Choose from my photos (one or many)</Button>
+          <Button kind="secondary" onPress={shelfFromFiles}>Choose from Files (one or many)</Button>
           <Text style={[styles.note, { color: c.textMuted, fontFamily: typography.body }]}>Photograph the spines of your comics. Keep titles visible and avoid glare. You can correct any book before it is added, and add one the scan missed.</Text>
           {resumable ? <Button kind="ghost" onPress={() => resume(resumable.id)}>Continue my last scan</Button> : null}
           {hasKey ? (
@@ -265,7 +274,7 @@ export default function ScanScreen() {
         <View style={styles.center}><ActivityIndicator color={c.primary} size="large" /><Text style={[styles.body, { color: c.textSecondary, fontFamily: typography.body }]}>Adding to your library…</Text></View>
       ) : null}
 
-      {stage.name === 'done' ? <ImportResult items={items} onRetry={() => { void onRetry(); }} onFinish={onFinish} retrying={retrying} /> : null}
+      {stage.name === 'done' ? <ImportResult items={items} onRetry={() => { void onRetry(); }} onFinish={onFinish} retrying={retrying} finishLabel={queue.length ? `Next photo (${shelfNo.n + 1} of ${shelfNo.total})` : undefined} /> : null}
 
       {stage.name === 'results' ? (
         <Results

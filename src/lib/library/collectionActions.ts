@@ -1,7 +1,9 @@
 // What My Collection can do to the comics you pick: see which are downloaded, put the downloads away, or take comics out of the collection.
+import { Alert } from 'react-native';
 import { sqlite } from '../db/client';
 import { upsertLibraryEntry } from '../db/queries/library';
 import { ensureLocalCopy, freeSpaceFor, isCached, planDownloads, readyComics } from '../reader/cloudCache';
+import { runJob } from '../reader/importJob';
 import { eachWithProgress, emptyResult, reasonOf, removeComics, type ImportProgress, type ImportResult } from '../reader/importComics';
 import { getReaderComic, type ReaderComic } from '../reader/readerLibrary';
 import type { RoomPlan } from '../reader/makeRoom';
@@ -61,4 +63,24 @@ export async function downloadComics(comics: ReaderComic[], progress: ImportProg
     catch (e) { result.failed.push({ name: comic.title, reason: reasonOf(e, 'Could not download this comic') }); }
   }, 'Downloading');
   return result;
+}
+
+/** Download comics as the app's background job: the bar at the bottom shows the progress and the app stays usable meanwhile. */
+export function downloadInBackground(comics: ReaderComic[], onDone?: () => void): void {
+  void runJob('Downloading', async (p) => ({ verb: 'Downloaded', result: await downloadComics(comics, p) })).then((started) => {
+    if (!started) Alert.alert('Another import is running', 'Wait for it to finish, or press Stop on the bar at the bottom.');
+    onDone?.();
+  });
+}
+
+/**
+ * Tapping a comic that is not on the device yet: if it fits within the limit it downloads in the background and you carry on; the comic opens
+ * when you tap it again. Returns false when the reader should take over instead (the comic is here already, or something has to be put away first).
+ */
+export function startBackgroundOpen(comic: ReaderComic, onDone?: () => void): boolean {
+  if (!comic.sourceUri || isCached(comic.id)) return false;
+  const plan = planDownloads([comic]);
+  if (plan.over > 0 || plan.overCount > 0) return false;
+  downloadInBackground([comic], onDone);
+  return true;
 }

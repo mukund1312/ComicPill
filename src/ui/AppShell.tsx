@@ -125,7 +125,7 @@ function Sidebar({ active, side }: { active: Tab; side: 'left' | 'right' }) {
   );
 }
 
-export function AppShell({ active, title, children, logo = false, right, back = false, bleed, scrollY }: PropsWithChildren<{ active: Tab; title?: string; logo?: boolean; right?: ReactNode; back?: boolean; bleed?: ReactNode; scrollY?: SharedValue<number> }>) {
+export function AppShell({ active, title, children, logo = false, right, back = false, onBack, bleed, scrollY }: PropsWithChildren<{ active: Tab; title?: string; logo?: boolean; right?: ReactNode; back?: boolean; /** Called first by the Back button; return true when the screen took the step itself (leaving a folder, say), so the page is not left. */ onBack?: () => boolean; bleed?: ReactNode; scrollY?: SharedValue<number> }>) {
   const { theme, typography } = useAppearance(); const c = theme.colors;
   const layout = useLayout(); const insetTop = useSafeAreaInsets().top; const side = useSidebar((st) => st.side); const toggleMenu = useSidebar((st) => st.toggle);
   // As the page scrolls the wordmark rises a little and shrinks, and the avatar follows.
@@ -142,7 +142,7 @@ export function AppShell({ active, title, children, logo = false, right, back = 
       {back ? (
         <>
           <View style={styles.topBar}>
-            <HeaderButton icon="chevron-back" label="Back" onPress={() => router.back()} />
+            <HeaderButton icon="chevron-back" label="Back" onPress={() => { if (!onBack?.()) router.back(); }} />
             <View style={styles.headerRight}>{layout.railCapable && !layout.rail ? <HeaderButton icon="menu" label="Show menu" onPress={toggleMenu} /> : null}{right}</View>
           </View>
           <Text accessibilityRole="header" numberOfLines={1} style={[styles.pageTitle, { color: c.textPrimary, fontFamily: typography.display }]}>{title}</Text>

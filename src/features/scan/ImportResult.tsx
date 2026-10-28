@@ -9,7 +9,7 @@ import { needsAttention, summarize, type ScanItem } from '../../lib/scan/session
 const nameOf = (i: ScanItem) => (i.selected ? (i.selected.kind === 'catalog' ? i.selected.title : i.selected.comic.title) : i.read.title || 'Unknown book');
 
 /** What happened to each book: added, already there, failed (with a retry for just those), or still waiting on the reader. */
-export function ImportResult({ items, onRetry, onFinish, retrying }: { items: ScanItem[]; onRetry: () => void; onFinish: (keepPhoto: boolean) => void; retrying: boolean }) {
+export function ImportResult({ items, onRetry, onFinish, retrying, finishLabel = 'OK, open my library' }: { items: ScanItem[]; onRetry: () => void; onFinish: (keepPhoto: boolean) => void; retrying: boolean; finishLabel?: string }) {
   const { theme, typography } = useAppearance(); const c = theme.colors;
   const [keep, setKeep] = useState(false);
   const s = summarize(items);
@@ -50,7 +50,7 @@ export function ImportResult({ items, onRetry, onFinish, retrying }: { items: Sc
           <Switch value={keep} onValueChange={setKeep} accessibilityLabel="Keep the shelf photo for 7 days" />
         </View>
       </View>
-      <Button onPress={() => onFinish(keep)}>OK, open my library</Button>
+      <Button onPress={() => onFinish(keep)}>{finishLabel}</Button>
     </View>
   );
 }
