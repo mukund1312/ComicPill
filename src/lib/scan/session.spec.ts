@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { chooseMatch, confirmAllMatched, duplicateWithinScan, excludeItem, importItems, isReady, itemFromDetected, replace, summarize, type ImportDeps, type ScanItem } from './session';
+import { chooseMatch, confirmAllMatched, duplicateWithinScan, excludeItem, flagRepeats, importItems, isReady, itemFromDetected, repeatNumber, replace, summarize, type ImportDeps, type ScanItem } from './session';
 import { decide } from './candidates';
 import { validateManual } from './manual';
 
@@ -61,6 +61,27 @@ describe('correcting', () => {
   it('confirms every confident match in one go without touching the uncertain ones', () => {
     const items = confirmAllMatched(make());
     expect(items.map((i) => i.status)).toEqual(['manually_verified', 'manually_verified', 'needs_review', 'unmatched']);
+  });
+});
+
+describe('a later spine that matches the same book as an earlier one', () => {
+  it('goes back to the reader as a question, naming the book it repeats, instead of being added silently', () => {
+    const items = flagRepeats([
+      itemFromDetected(det('k1', [cand('knightfall-1', 'Batman: Knightfall Vol. 1', 1)]), defaults),
+      itemFromDetected(det('k2', [cand('knightfall-1', 'Batman: Knightfall Vol. 1', 1)]), defaults),
+      itemFromDetected(det('k3', [cand('knightfall-1', 'Batman: Knightfall Vol. 1', 1)]), defaults),
+      itemFromDetected(det('w', [cand('wm', 'Watchmen', 1)]), defaults),
+    ]);
+    expect(items.map((i) => i.status)).toEqual(['matched', 'needs_review', 'needs_review', 'matched']);
+    expect(items[1].selected).toBeNull();
+    expect(items[1].candidates[0].id).toBe('knightfall-1'); // still offered as a candidate
+    expect(repeatNumber(items, items[1])).toBe(1);
+    expect(repeatNumber(items, items[0])).toBeNull();
+    expect(summarize(items).ready).toBe(2);
+  });
+  it('leaves a match the reader confirmed or chose themselves alone', () => {
+    const confirmed = chooseMatch([itemFromDetected(det('a', [cand('hush', 'Batman: Hush', 1)]), defaults), itemFromDetected(det('b', [cand('hush', 'Batman: Hush', 1)]), defaults)], 'b', { kind: 'catalog', workId: 'hush', title: 'Batman: Hush' });
+    expect(flagRepeats(confirmed)[1].status).toBe('manually_verified');
   });
 });
 

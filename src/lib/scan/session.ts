@@ -31,6 +31,8 @@ export type ScanItem = {
   reading: ReadingState;
   /** Already in the reader's library: skip it, or update the entry they have. */
   onDuplicate: 'skip' | 'update';
+  /** Matched the same catalog comic as an earlier book in this scan: probably another volume, so the reader is asked rather than told. */
+  repeatOf: string | null;
   importState: ImportState;
   error: string | null;
 };
@@ -45,8 +47,23 @@ export function itemFromDetected(d: Detected, defaults: { ownership: Ownership; 
     strength: d.decision.strength, editionUncertain: d.decision.editionUncertain,
     selected: confident && d.decision.best ? { kind: 'catalog', workId: d.decision.best.id, title: d.decision.best.title } : null,
     status: confident ? 'matched' : d.decision.best ? 'needs_review' : 'unmatched',
-    customCoverUri: null, ownership: defaults.ownership, reading: defaults.reading, onDuplicate: 'skip', importState: 'pending', error: null,
+    customCoverUri: null, ownership: defaults.ownership, reading: defaults.reading, onDuplicate: 'skip', repeatOf: null, importState: 'pending', error: null,
   };
+}
+
+/**
+ * A shelf hardly ever holds the same book twice, so when a later spine automatically matches the same catalog comic as an earlier one, it is most
+ * likely another volume of a series the catalog only knows one volume of (three Knightfall spines, one Knightfall record). Those later ones are not
+ * trusted: they go back to the reader as "choose which", keeping their candidates, and say which book they repeat.
+ */
+export function flagRepeats(items: ScanItem[]): ScanItem[] {
+  const first = new Map<string, string>();
+  return items.map((i) => {
+    if (i.status !== 'matched' || i.selected?.kind !== 'catalog') return i;
+    const seen = first.get(i.selected.workId);
+    if (!seen) { first.set(i.selected.workId, i.scanId); return i; }
+    return { ...i, selected: null, status: 'needs_review', repeatOf: seen };
+  });
 }
 
 export const replace = (items: ScanItem[], scanId: string, patch: Partial<ScanItem>): ScanItem[] => items.map((i) => (i.scanId === scanId ? { ...i, ...patch } : i));
@@ -63,6 +80,8 @@ export const confirmAllMatched = (items: ScanItem[]): ScanItem[] => items.map((i
 
 export const isReady = (i: ScanItem): boolean => !!i.selected && (i.status === 'matched' || i.status === 'manually_verified') && i.importState !== 'imported' && i.importState !== 'updated';
 export const needsAttention = (i: ScanItem): boolean => i.status === 'needs_review' || i.status === 'unmatched' || (i.status === 'matched' && i.editionUncertain);
+/** Which book number (1-based) this one repeats, or null. */
+export const repeatNumber = (items: ScanItem[], i: ScanItem): number | null => (i.repeatOf ? items.findIndex((x) => x.scanId === i.repeatOf) + 1 || null : null);
 
 export function summarize(items: ScanItem[]): { total: number; ready: number; needsAttention: number; excluded: number; imported: number; failed: number; skipped: number } {
   return {

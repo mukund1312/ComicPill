@@ -30,7 +30,7 @@ import { createCustomComic } from '../../lib/db/queries/customComic';
 import { setCustomCover } from '../../lib/covers/custom';
 import { createDraft, deleteDraft, draftPhoto, keepDraft, loadDraft, openDrafts, saveDraftState } from '../../lib/scan/draft';
 import { afterImport } from '../../lib/scan/draftModel';
-import { importItems, itemFromDetected, type Box, type ScanItem } from '../../lib/scan/session';
+import { flagRepeats, importItems, itemFromDetected, type Box, type ScanItem } from '../../lib/scan/session';
 import { mergeOwn } from '../../lib/util/own';
 import type { Own, ReadStatus } from '../../lib/types/domain';
 import { ShelfReview } from './ShelfReview';
@@ -93,7 +93,7 @@ export default function ScanScreen() {
     try {
       draftId = await createDraft(photoUri);
       const scan = await scanShelfOnDevice(photoUri, draftId, catalogIndex(), (st, done, total) => setStage({ name: 'detecting', stage: st, done, total }));
-      setItems(scan.detected.map((d) => itemFromDetected(d, { ownership: 'physical', reading: 'unread' })));
+      setItems(flagRepeats(scan.detected.map((d) => itemFromDetected(d, { ownership: 'physical', reading: 'unread' }))));
       feedback.success();
       setStage({ name: 'review', draftId, scan: { photoUri: scan.photoUri, photoWidth: scan.photoWidth, photoHeight: scan.photoHeight } });
     } catch (e) {
@@ -125,7 +125,7 @@ export default function ScanScreen() {
   const addMissed = async (box: Box) => {
     if (stage.name !== 'review') return;
     const d = await readRegion(stage.scan.photoUri, stage.scan.photoWidth, stage.scan.photoHeight, box, stage.draftId, catalogIndex());
-    setItems((cur) => [...cur, itemFromDetected(d, { ownership: 'physical', reading: 'unread' })]);
+    setItems((cur) => flagRepeats([...cur, itemFromDetected(d, { ownership: 'physical', reading: 'unread' })]));
   };
 
   // ---- importing: each book on its own, so one failure never spoils the rest ----

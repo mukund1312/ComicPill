@@ -8,7 +8,7 @@ import { columnPersistence, findEdges, partitionShelf, transpose, verticalExtent
 export type SpineLine = { text: string; x: number; y: number; w: number; h: number; conf?: number; dir?: 'down' | 'up' };
 /** One read of the photo. `turn` is how the image was turned before reading: 0 as taken, 180 upside down (to read text that runs upward). */
 export type ReadPass = { turn: 0 | 180; lines: SpineLine[] };
-export type Spine = { lines: SpineLine[]; box: { x: number; y: number; w: number; h: number } };
+export type Spine = { lines: SpineLine[]; box: { x: number; y: number; w: number; h: number }; /** A volume number printed on the spine on a line of its own (the “1”, “2”, “3” at the foot of a spine). */ volumeHint?: string };
 export type SpineBook = ScannedBook & { box: Spine['box']; rawText: string; /** Which way the lettering runs: down the spine (most books), or up it. */ dir: 'down' | 'up' };
 
 type Box = { x: number; y: number; w: number; h: number };
@@ -48,6 +48,30 @@ const isPublisher = (t: string) => PUBLISHERS.includes(t.toLowerCase().replace(/
 const WORD_NUMBER: Record<string, string> = { one: '1', two: '2', three: '3', four: '4', five: '5', six: '6', seven: '7', eight: '8', nine: '9', ten: '10' };
 // "Vol. 3", "Volume 12", "Book Two", "#7", "No. 4" at the end of a line, or a line that is nothing else.
 const VOLUME = /(?:^|\s)(?:vol(?:ume)?\.?|book|part|no\.?|#)\s*(\d{1,3}|[ivx]{1,4}|one|two|three|four|five|six|seven|eight|nine|ten)\b\.?/i;
+
+const ROMAN: Record<string, number> = { I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6, VII: 7, VIII: 8, IX: 9, X: 10 };
+
+/** Lines that are only a volume number (“2”, “II”): too short to count as lettering, but they tell volumes of one series apart. */
+export function volumeMarkers(lines: SpineLine[]): { line: SpineLine; volume: string }[] {
+  const out: { line: SpineLine; volume: string }[] = [];
+  for (const l of lines) {
+    const t = l.text.trim().replace(/[.,]+$/, '');
+    if ((l.conf ?? 1) < 0.6) continue;
+    const n = /^\d{1,2}$/.test(t) ? Number(t) : ROMAN[t.toUpperCase()] && /^[IVX]+$/.test(t) ? ROMAN[t.toUpperCase()] : 0;
+    if (n > 0 && n <= 30 && !out.some((o) => overlap(o.line, l) > 0)) out.push({ line: l, volume: `Vol. ${n}` });
+  }
+  return out;
+}
+
+/** Give each book the volume number printed on its own spine, if there is one. */
+export function attachVolumes(spines: Spine[], markers: { line: SpineLine; volume: string }[], vertical: boolean): void {
+  for (const s of spines) {
+    const [a, b] = vertical ? [s.box.x, s.box.x + s.box.w] : [s.box.y, s.box.y + s.box.h];
+    const mine = markers.filter((m) => { const c = vertical ? m.line.x + m.line.w / 2 : m.line.y + m.line.h / 2; return c >= a && c <= b; });
+    // Several candidates (a page number on a stray line, say): trust the one nearest the foot of the spine, where publishers print it.
+    if (mine.length) s.volumeHint = [...mine].sort((p, q) => (vertical ? q.line.y - p.line.y : q.line.x - p.line.x))[0].volume;
+  }
+}
 
 /** A volume or issue marker, and the text with it taken out. */
 export function splitVolume(text: string): { rest: string; volume: string | null } {
@@ -121,6 +145,7 @@ export function readSpine(spine: Spine): SpineBook | null {
   }
   const title = titleParts.map((l) => l.text).join(' ').replace(/\s+/g, ' ').trim();
   if (alnum(title) < 2) return null;
+  if (!volume && spine.volumeHint) volume = spine.volumeHint;
   const conf = Math.min(...titleParts.map((l) => l.conf ?? 1));
   const up = spine.lines.filter((l) => l.dir === 'up').length > spine.lines.filter((l) => l.dir !== 'up').length;
   return { title, volume, creators: creators.slice(0, 3), confidence: conf >= 0.9 && alnum(title) >= 4 ? 'high' : conf >= 0.6 ? 'medium' : 'low', seenAs: 'spine', box: spine.box, rawText, dir: up ? 'up' : 'down' };
@@ -221,8 +246,11 @@ export function groupByPartition(lines: SpineLine[], gray: Gray, tune: { cutCost
  * edges in the picture (and each book's box covers its whole spine); without them, books are grouped by their lettering alone.
  */
 export function readShelf(passes: ReadPass[], gray?: Gray): SpineBook[] {
-  const lines = dedupeLines(toPhotoFrame(passes));
+  const framed = toPhotoFrame(passes);
+  const markers = volumeMarkers(framed);
+  const lines = dedupeLines(framed);
   if (lines.length === 0) return [];
-  if (gray) return groupByPartition(lines, gray).map((g) => readSpine(g.spine)).filter((b): b is SpineBook => b !== null);
-  return groupSpines(lines).map(readSpine).filter((b): b is SpineBook => b !== null);
+  const spines = gray ? groupByPartition(lines, gray).map((g) => g.spine) : groupSpines(lines);
+  attachVolumes(spines, markers, shelfIsVertical(lines));
+  return spines.map(readSpine).filter((b): b is SpineBook => b !== null);
 }

@@ -7,7 +7,8 @@ import { space } from '../../ui/tokens';
 import { useAppearance } from '../../ui/theme';
 import { SpineOverlay } from './SpineOverlay';
 import { EditMatchSheet } from './EditMatchSheet';
-import { chooseMatch, confirmAllMatched, duplicateWithinScan, excludeItem, needsAttention, replace, summarize, type Box, type Ownership, type ReadingState, type ScanItem } from '../../lib/scan/session';
+import { SpinePeek } from './SpinePeek';
+import { chooseMatch, confirmAllMatched, duplicateWithinScan, excludeItem, needsAttention, repeatNumber, replace, summarize, type Box, type Ownership, type ReadingState, type ScanItem } from '../../lib/scan/session';
 
 type Props = {
   scan: { photoUri: string; photoWidth: number; photoHeight: number };
@@ -26,6 +27,7 @@ export function ShelfReview({ scan, items, onItems, alreadyOwned, onImport, onAd
   const wide = width >= 900; // an iPad: the photo beside the list
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [peekIndex, setPeekIndex] = useState<number | null>(null); // the book being looked at large
   const [onlyAttention, setOnlyAttention] = useState(false);
   const [drawing, setDrawing] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -80,7 +82,9 @@ export function ShelfReview({ scan, items, onItems, alreadyOwned, onImport, onAd
         const owned = !!workId && alreadyOwned(workId);
         const excluded = item.status === 'excluded';
         const best = item.candidates[0];
+        const repeats = repeatNumber(items, item);
         const status = excluded ? { text: 'Left out', tone: c.textMuted }
+          : repeats ? { text: `Same title as book ${repeats}. Another volume? Choose which.`, tone: c.warning }
           : dupes.has(item.scanId) ? { text: 'Same book as another in this scan. It will be added once.', tone: c.warning }
           : item.status === 'manually_verified' ? { text: sel?.kind === 'custom' ? 'Added by you' : 'Confirmed', tone: c.success }
           : item.status === 'matched' ? { text: `Catalog match · ${item.strength === 'strong' ? 'Strong' : 'Likely'}`, tone: c.success }
@@ -91,7 +95,11 @@ export function ShelfReview({ scan, items, onItems, alreadyOwned, onImport, onAd
             style={[styles.card, { borderColor: selectedId === item.scanId ? c.primary : c.border, backgroundColor: c.surface, opacity: excluded ? 0.55 : 1 }]}>
             <View style={styles.top}>
               <View style={[styles.num, { backgroundColor: c.surfaceRaised }]}><Text style={[styles.numText, { color: c.textPrimary }]}>{index + 1}</Text></View>
-              {item.cropUri ? <Image source={{ uri: item.cropUri }} style={[styles.spine, { backgroundColor: c.surfaceRaised }]} contentFit="cover" /> : <View style={[styles.spine, { backgroundColor: c.surfaceRaised }]} />}
+              {/* Tap the spine to see it large, with its place on the shelf, and decide there. */}
+              <Pressable accessibilityRole="button" accessibilityLabel={`Enlarge book ${index + 1}`} hitSlop={6} onPress={() => setPeekIndex(index)}>
+                {item.cropUri ? <Image source={{ uri: item.cropUri }} style={[styles.spine, { backgroundColor: c.surfaceRaised }]} contentFit="cover" /> : <View style={[styles.spine, { backgroundColor: c.surfaceRaised }]} />}
+                <View pointerEvents="none" style={[styles.zoomBadge, { backgroundColor: '#000000AA' }]}><Text style={styles.zoomText}>⤢</Text></View>
+              </Pressable>
               <Text style={[styles.arrow, { color: c.textMuted }]}>→</Text>
               {item.customCoverUri ? <Image source={{ uri: item.customCoverUri }} style={styles.cover} contentFit="cover" /> : <ComicCover title={title} workId={workId} size="list" recyclingKey={`scan-${item.scanId}`} />}
               <View style={styles.flex}>
@@ -126,6 +134,15 @@ export function ShelfReview({ scan, items, onItems, alreadyOwned, onImport, onAd
       <ScrollView ref={scroll} contentContainerStyle={styles.page} scrollEnabled={!drawing}>
         {wide ? <View style={styles.cols}>{photo}{list}</View> : <>{photo}{list}</>}
       </ScrollView>
+      {peekIndex !== null ? (
+        <SpinePeek
+          items={items} index={Math.min(peekIndex, items.length - 1)} photo={scan} alreadyOwned={alreadyOwned}
+          onIndex={(i) => { setPeekIndex(i); setSelectedId(items[i]?.scanId ?? null); }} onClose={() => setPeekIndex(null)}
+          onConfirm={(id) => onItems(replace(items, id, { status: 'manually_verified' }))}
+          onEdit={(id) => setEditingId(id)}
+          onExclude={(id, ex) => onItems(excludeItem(items, id, ex))}
+        />
+      ) : null}
       {editing ? (
         <EditMatchSheet
           item={editing} number={items.findIndex((i) => i.scanId === editing.scanId) + 1}
@@ -157,6 +174,8 @@ const styles = StyleSheet.create({
   num: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   numText: { fontSize: 12, fontWeight: '700' },
   spine: { width: 40, height: 100, borderRadius: 6 },
+  zoomBadge: { position: 'absolute', right: 2, bottom: 2, width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  zoomText: { color: '#fff', fontSize: 11 },
   cover: { width: 58, height: 86, borderRadius: 9 },
   arrow: { fontSize: 18 },
   flex: { flex: 1, minWidth: 0, gap: 3 },

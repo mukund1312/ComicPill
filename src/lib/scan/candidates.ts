@@ -103,6 +103,8 @@ export function rankCandidates(read: Reading, index: CatalogIndex, limit = 5): C
     if (words.length <= 2 && !words.every((w) => titleWords.some((t) => wordSimilarity(w, t) > 0))) score *= 0.7;
     // The spine's own title should mostly be explained by this catalog title: "Batman" alone isn't "Batman: Year One".
     const explained = titleWords.length ? titleWords.filter((t) => words.some((w) => wordSimilarity(w, t) > 0)).length / titleWords.length : 1;
+    // A catalog title of one very common word (“Batman”) only fits a spine that says little more than that word.
+    if (words.length === 1 && explained < 0.8) continue;
     score *= 0.75 + 0.25 * explained;
     // Numbers: the right volume helps, a different one is a different book.
     if (numbers.size && docNumbers.size) {
