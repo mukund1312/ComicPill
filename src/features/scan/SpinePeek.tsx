@@ -17,7 +17,9 @@ export function SpinePeek({ items, index, photo, alreadyOwned, onIndex, onClose,
   onConfirm: (scanId: string) => void; onEdit: (scanId: string) => void; onExclude: (scanId: string, excluded: boolean) => void;
 }) {
   const { theme, typography } = useAppearance(); const c = theme.colors;
-  const { height } = useWindowDimensions();
+  const { height, width } = useWindowDimensions();
+  // Two equal columns under the shelf: the suggested cover (2:3) on the left, the upright spine filling the right at the cover's height.
+  const colW = Math.floor((width - space.lg * 2 - space.md) / 2); const colH = Math.round(colW * 1.5);
   const item = items[index];
   if (!item) return null;
   const sel = item.selected;
@@ -48,17 +50,17 @@ export function SpinePeek({ items, index, photo, alreadyOwned, onIndex, onClose,
           </View>
 
           <View style={styles.row}>
-            <View style={styles.left}>
-              <View style={styles.bigCover}><ComicCover title={title} workId={workId} size="fluid" recyclingKey={`peek-${item.scanId}`} /></View>
+            <View style={[styles.left, { width: colW }]}>
+              <View><ComicCover title={title} workId={workId} size="fluid" recyclingKey={`peek-${item.scanId}`} /></View>
               <Text style={[styles.title, { color: c.textPrimary, fontFamily: typography.display }]}>{title}</Text>
               <Text style={[styles.status, { color: repeats || item.status === 'needs_review' || item.status === 'unmatched' ? c.warning : c.success, fontFamily: typography.bodyMedium }]}>{status}</Text>
               {item.editionUncertain && !excluded ? <Text style={[styles.status, { color: c.warning, fontFamily: typography.bodySemibold }]}>Edition uncertain. Confirm which one you have.</Text> : null}
               {workId && alreadyOwned(workId) && !excluded ? <Text style={[styles.status, { color: c.warning, fontFamily: typography.bodySemibold }]}>Already in your library</Text> : null}
               <Text style={[styles.hint, { color: c.textMuted, fontFamily: typography.body }]}>The scan read: {item.extractedText.join(' · ') || 'nothing readable'}</Text>
             </View>
-            <View style={[styles.spine, { backgroundColor: c.surfaceRaised }]}>
+            <View style={[styles.spine, { width: colW, height: colH, backgroundColor: c.surfaceRaised }]}>
               {item.cropUri
-                ? <Image source={{ uri: item.cropUri }} style={styles.spineImage} contentFit="contain" accessibilityLabel={`Spine of book ${index + 1}`} />
+                ? <Image source={{ uri: item.cropUri }} style={{ position: 'absolute', width: colH, height: colW, transform: [{ rotate: '-90deg' }] }} contentFit="contain" accessibilityLabel={`Spine of book ${index + 1}`} />
                 : <Text style={{ color: c.textMuted, fontSize: 12 }}>No picture of this spine.</Text>}
             </View>
           </View>
@@ -83,11 +85,9 @@ const styles = StyleSheet.create({
   shelf: { borderRadius: 14, overflow: 'hidden' },
   hint: { fontSize: 12, lineHeight: 17 },
   row: { flexDirection: 'row', gap: space.md, alignItems: 'flex-start', marginTop: space.sm },
-  left: { flex: 1, gap: space.xs },
-  bigCover: { width: '78%', maxWidth: 300 },
+  left: { gap: space.xs },
   // The spine stands upright, as it does on the shelf: the strip is turned a quarter so its lettering reads up the page.
-  spine: { width: 120, height: 380, borderRadius: 14, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
-  spineImage: { width: 370, height: 110, transform: [{ rotate: '-90deg' }] },
+  spine: { borderRadius: 14, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 22, marginTop: space.sm },
   status: { fontSize: 14, lineHeight: 20 },
   actions: { gap: space.sm, marginTop: space.md },
