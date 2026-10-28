@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dedupeLines, groupSpines, readShelf, splitVolume, toPhotoFrame, type ReadPass } from './spines';
+import { dedupeLines, groupSpines, readShelf, repeatedSeriesCuts, splitVolume, toPhotoFrame, type ReadPass, type SpineLine } from './spines';
 import shelf from './__fixtures__/shelf-synthetic.json';
 
 describe('splitVolume', () => {
@@ -57,5 +57,33 @@ describe('a shelf read by the device (12 spines, text running down)', () => {
     expect(find('last man')?.volume).toBe('Vol. 2');
     expect(find('hellboy')?.volume).toBe('Vol. 1');
     for (const b of books) expect(b.title).not.toMatch(/\b(marvel|dc comics|image comics|dark horse)\b/i);
+  });
+});
+
+describe('repeatedSeriesCuts', () => {
+  const ln = (text: string, c: number, w = 0.028): SpineLine => ({ text, x: c - w / 2, y: 0.2, w, h: 0.3, dir: 'down' });
+  it('cuts between two titles that start with the same series word, even with a credits line between them', () => {
+    const cuts = repeatedSeriesCuts([ln('BATMAN THE CITY OF OWLS', 0.871), ln('SCOTT SNYDER - GREG CAPULLO', 0.885, 0.017), ln('BATMAN DEATH OF THE FAMILY', 0.893)], true);
+    expect(cuts).toHaveLength(1);
+    expect(cuts[0]).toBeCloseTo(0.882, 3);
+  });
+  it('cuts between each pair when three books share a series word', () => {
+    expect(repeatedSeriesCuts([ln('BATMAN: YEAR ONE', 0.60), ln('BATMAN: EGO AND OTHER TAILS', 0.632), ln('BATMAN: GORDON OF GOTHAM', 0.657)], true)).toHaveLength(2);
+  });
+  it('leaves one book’s own lines alone: a title and its subtitle, credits, publisher', () => {
+    expect(repeatedSeriesCuts([ln('INJUSTICE GODS AMONG US: YEAR ONE', 0.40), ln('THE COMPLETE COLLECTION', 0.41), ln('TAYLOR • RAAPACK • MILLER', 0.42, 0.015), ln('DC COMICS', 0.43, 0.013)], true)).toEqual([]);
+    expect(repeatedSeriesCuts([ln('BATMAN', 0.5, 0.05), ln('KNIGHTFALL', 0.52)], true)).toEqual([]); // a one-word series line is not a second title
+  });
+  it('does not cut the same words read twice', () => {
+    expect(repeatedSeriesCuts([ln('BATMAN THE LONG HALLOWEEN', 0.30), ln('BATMAN THE LONG HALLOWEEN', 0.318)], true)).toEqual([]);
+  });
+});
+
+describe('a spine with one line holding both the title and the credits', () => {
+  it('keeps that line as its title instead of vanishing', () => {
+    const lines: SpineLine[] = [{ text: 'BATMAN: YEAR ONE OMILLER • MAZZUCCHELLI • LEWIS', x: 0.60, y: 0.2, w: 0.02, h: 0.6, dir: 'down' }, { text: 'DC COMICS', x: 0.605, y: 0.85, w: 0.012, h: 0.07, dir: 'down' }];
+    const books = readShelf([{ turn: 0, lines }]);
+    expect(books).toHaveLength(1);
+    expect(books[0].title).toContain('YEAR ONE');
   });
 });

@@ -1,4 +1,4 @@
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { Button } from '../../ui/primitives';
 import { ComicCover } from '../../ui/comic';
@@ -17,6 +17,7 @@ export function SpinePeek({ items, index, photo, alreadyOwned, onIndex, onClose,
   onConfirm: (scanId: string) => void; onEdit: (scanId: string) => void; onExclude: (scanId: string, excluded: boolean) => void;
 }) {
   const { theme, typography } = useAppearance(); const c = theme.colors;
+  const { height } = useWindowDimensions();
   const item = items[index];
   if (!item) return null;
   const sel = item.selected;
@@ -40,23 +41,27 @@ export function SpinePeek({ items, index, photo, alreadyOwned, onIndex, onClose,
           <Pressable accessibilityRole="button" accessibilityLabel="Next book" hitSlop={12} onPress={() => go(1)}><Text style={[styles.nav, { color: c.primary, fontFamily: typography.bodySemibold }]}>Next ›</Text></Pressable>
         </View>
         <ScrollView contentContainerStyle={styles.body}>
-          <ScrollView style={[styles.zoom, { backgroundColor: c.surfaceRaised }]} maximumZoomScale={4} minimumZoomScale={1} bouncesZoom centerContent contentContainerStyle={styles.zoomInner}>
-            {item.cropUri ? <Image source={{ uri: item.cropUri }} style={styles.crop} contentFit="contain" accessibilityLabel={`Spine of book ${index + 1}`} /> : <Text style={{ color: c.textMuted }}>No picture of this spine.</Text>}
-          </ScrollView>
-          <Text style={[styles.hint, { color: c.textMuted, fontFamily: typography.body }]}>Pinch to zoom. The scan read: {item.extractedText.join(' · ') || 'nothing readable'}</Text>
+          <View style={[styles.shelf, { maxHeight: Math.round(height * 0.45), backgroundColor: c.surfaceRaised }]}>
+            <ScrollView nestedScrollEnabled showsVerticalScrollIndicator>
+              <SpineOverlay uri={photo.photoUri} width={photo.photoWidth} height={photo.photoHeight} items={items} selectedId={item.scanId} onSelect={(id) => { const i = items.findIndex((x) => x.scanId === id); if (i >= 0) onIndex(i); }} drawing={false} onDrawn={() => undefined} />
+            </ScrollView>
+          </View>
 
           <View style={styles.row}>
-            <View style={styles.miniWrap}>
-              <SpineOverlay uri={photo.photoUri} width={photo.photoWidth} height={photo.photoHeight} items={items} selectedId={item.scanId} onSelect={(id) => { const i = items.findIndex((x) => x.scanId === id); if (i >= 0) onIndex(i); }} drawing={false} onDrawn={() => undefined} />
+            <View style={styles.left}>
+              <View style={styles.bigCover}><ComicCover title={title} workId={workId} size="fluid" recyclingKey={`peek-${item.scanId}`} /></View>
+              <Text style={[styles.title, { color: c.textPrimary, fontFamily: typography.display }]}>{title}</Text>
+              <Text style={[styles.status, { color: repeats || item.status === 'needs_review' || item.status === 'unmatched' ? c.warning : c.success, fontFamily: typography.bodyMedium }]}>{status}</Text>
+              {item.editionUncertain && !excluded ? <Text style={[styles.status, { color: c.warning, fontFamily: typography.bodySemibold }]}>Edition uncertain. Confirm which one you have.</Text> : null}
+              {workId && alreadyOwned(workId) && !excluded ? <Text style={[styles.status, { color: c.warning, fontFamily: typography.bodySemibold }]}>Already in your library</Text> : null}
+              <Text style={[styles.hint, { color: c.textMuted, fontFamily: typography.body }]}>The scan read: {item.extractedText.join(' · ') || 'nothing readable'}</Text>
             </View>
-            <View style={styles.flex}>
-              <ComicCover title={title} workId={workId} size="list" recyclingKey={`peek-${item.scanId}`} />
+            <View style={[styles.spine, { backgroundColor: c.surfaceRaised }]}>
+              {item.cropUri
+                ? <Image source={{ uri: item.cropUri }} style={styles.spineImage} contentFit="contain" accessibilityLabel={`Spine of book ${index + 1}`} />
+                : <Text style={{ color: c.textMuted, fontSize: 12 }}>No picture of this spine.</Text>}
             </View>
           </View>
-          <Text style={[styles.title, { color: c.textPrimary, fontFamily: typography.display }]}>{title}</Text>
-          <Text style={[styles.status, { color: repeats || item.status === 'needs_review' || item.status === 'unmatched' ? c.warning : c.success, fontFamily: typography.bodyMedium }]}>{status}</Text>
-          {item.editionUncertain && !excluded ? <Text style={[styles.status, { color: c.warning, fontFamily: typography.bodySemibold }]}>Edition uncertain. Confirm which one you have.</Text> : null}
-          {workId && alreadyOwned(workId) && !excluded ? <Text style={[styles.status, { color: c.warning, fontFamily: typography.bodySemibold }]}>Already in your library</Text> : null}
 
           <View style={styles.actions}>
             {item.status === 'matched' && !excluded ? <Button onPress={() => { onConfirm(item.scanId); go(1); }}>Confirm and go to the next</Button> : null}
@@ -75,13 +80,14 @@ const styles = StyleSheet.create({
   bar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: space.lg, paddingBottom: space.sm },
   nav: { fontSize: 16 }, count: { fontSize: 16 },
   body: { padding: space.lg, gap: space.sm, paddingBottom: 30 },
-  zoom: { height: 360, borderRadius: 14 },
-  zoomInner: { flexGrow: 1, alignItems: 'center', justifyContent: 'center' },
-  crop: { width: 300, height: 340 },
+  shelf: { borderRadius: 14, overflow: 'hidden' },
   hint: { fontSize: 12, lineHeight: 17 },
   row: { flexDirection: 'row', gap: space.md, alignItems: 'flex-start', marginTop: space.sm },
-  miniWrap: { width: '68%' },
-  flex: { flex: 1, alignItems: 'flex-end' },
+  left: { flex: 1, gap: space.xs },
+  bigCover: { width: '78%', maxWidth: 300 },
+  // The spine stands upright, as it does on the shelf: the strip is turned a quarter so its lettering reads up the page.
+  spine: { width: 120, height: 380, borderRadius: 14, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  spineImage: { width: 370, height: 110, transform: [{ rotate: '-90deg' }] },
   title: { fontSize: 22, marginTop: space.sm },
   status: { fontSize: 14, lineHeight: 20 },
   actions: { gap: space.sm, marginTop: space.md },

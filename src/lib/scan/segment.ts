@@ -16,7 +16,10 @@ export function transpose(g: Gray): Gray {
  * Spines lean a little in a photo, so each column is also tried along slightly tilted lines and the best is kept. A change counts as an edge when
  * it is strong in absolute terms or strong compared with how bright that spot is, so a dark spine against another dark spine still shows.
  */
-export function columnPersistence(g: Gray, from = 0, to = 1): Float32Array {
+export function columnPersistence(g: Gray, from = 0, to = 1): Float32Array { return columnEdges(g, from, to).persistence; }
+
+/** Edge strength per column, and how much the edge there leans (pixels sideways per pixel down, positive when the foot is to the right). */
+export function columnEdges(g: Gray, from = 0, to = 1): { persistence: Float32Array; tilt: Float32Array } {
   const y0 = Math.max(1, Math.floor(from * g.height)); const y1 = Math.min(g.height - 1, Math.ceil(to * g.height));
   const rows = Math.max(1, y1 - y0);
   const sample: number[] = [];
@@ -30,7 +33,7 @@ export function columnPersistence(g: Gray, from = 0, to = 1): Float32Array {
     const d = Math.abs(right - left); const level = Math.max(left, right, 24);
     if (d >= absolute || (d >= 8 && d / level >= 0.2)) edge[i] = 1;
   }
-  const out = new Float32Array(g.width);
+  const out = new Float32Array(g.width); const bestTilt = new Float32Array(g.width); const straight = new Float32Array(g.width);
   const midY = (y0 + y1) / 2;
   for (const tilt of TILTS) {
     for (let x0 = 2; x0 < g.width - 2; x0++) {
@@ -42,14 +45,23 @@ export function columnPersistence(g: Gray, from = 0, to = 1): Float32Array {
         if (on) { hits++; run++; if (run > best) best = run; } else if (run > 0) run = Math.max(0, run - 2); // short gaps don't end a line
       }
       const v = (0.5 * hits + 0.5 * best) / rows; // both how much of the height has the edge and how long the longest unbroken stretch is
-      if (v > out[x0]) out[x0] = v;
+      if (tilt === 0) straight[x0] = v;
+      if (v > out[x0]) { out[x0] = v; bestTilt[x0] = tilt; }
     }
   }
-  return out;
+  // Spines near each other lean alike: the lean at a column is the strength-weighted average of the lean found around it.
+  const lean = new Float32Array(g.width);
+  for (let x = 0; x < g.width; x++) {
+    let sum = 0; let weight = 0;
+    // A lean counts only where the tilted line is clearly stronger than the straight one; anywhere else the edge is taken as upright.
+    for (let k = Math.max(0, x - 12); k <= Math.min(g.width - 1, x + 12); k++) { const w = out[k] * out[k]; sum += w * (out[k] - straight[k] >= 0.08 ? bestTilt[k] : 0); weight += w; }
+    lean[x] = weight > 0 ? Math.max(-0.1, Math.min(0.1, sum / weight)) : 0;
+  }
+  return { persistence: out, tilt: lean };
 }
 
-/** How far a spine's edge may lean, as pixels sideways per pixel down (about 0 to 3.5 degrees each way). */
-const TILTS = [0, -0.03, 0.03, -0.06, 0.06];
+/** How far a spine's edge may lean, as pixels sideways per pixel down (up to about 9 degrees each way: books at the edge of a wide photo lean a lot). */
+const TILTS = [0, -0.03, 0.03, -0.06, 0.06, -0.09, 0.09, -0.12, 0.12, -0.16, 0.16];
 
 /** The columns that look like the edge between two books, as fractions of the width, left to right. */
 export function findEdges(persistence: Float32Array, opts: { minStrength?: number; minGap?: number } = {}): number[] {
@@ -76,7 +88,7 @@ export type Segment = { from: number; to: number };
  * width. A dynamic programme finds the set of cuts with the best total, so a missing edge is filled in by the lettering and a stray edge inside a
  * book is ignored. `persistence` is the edge strength per pixel column (see `columnPersistence`).
  */
-export function partitionShelf(persistence: Float32Array, marks: Mark[], opts: { minWidth?: number; maxWidth?: number; cutCost?: number } = {}): Segment[] {
+export function partitionShelf(persistence: Float32Array, marks: Mark[], opts: { minWidth?: number; maxWidth?: number; cutCost?: number; gapFactor?: number } = {}): Segment[] {
   const n = persistence.length;
   if (marks.length === 0 || n < 8) return [];
   const sorted = [...marks].sort((a, b) => a.centre - b.centre);
@@ -97,7 +109,7 @@ export function partitionShelf(persistence: Float32Array, marks: Mark[], opts: {
   // Lettering: a cut through the middle of a line is wrong; a cut in a wide empty gap between lines is right.
   const cut = new Float32Array(n); const gap = new Float32Array(n);
   for (const m of sorted) for (let x = at(m.centre - 0.3 * m.size); x <= at(m.centre + 0.3 * m.size); x++) cut[x] = 1;
-  const gapWanted = 0.7 * typical; // the same gap the grouping by lettering uses
+  const gapWanted = (opts.gapFactor ?? 0.7) * typical; // how wide an empty stretch between two lines of lettering must be to suggest a cut
   for (let i = 1; i < sorted.length; i++) {
     const a = sorted[i - 1].centre; const b = sorted[i].centre; const g = b - a;
     if (g > gapWanted) { const bonus = Math.min(0.45, 0.2 + 0.25 * (g / (2 * gapWanted))); for (let x = at(a + 0.35 * g); x <= at(b - 0.35 * g); x++) gap[x] = Math.max(gap[x], bonus); }
@@ -135,7 +147,7 @@ export function partitionShelf(persistence: Float32Array, marks: Mark[], opts: {
  * own: the top is the strongest horizontal edge just above the lettering (the top of the book), the bottom the strongest just below it (the foot of
  * the book, or the shelf). If no edge stands out, a small margin around the lettering is used. All values are fractions of the picture's height.
  */
-export function verticalExtent(g: Gray, from: number, to: number, textTop: number, textBottom: number): { top: number; bottom: number; topFound: boolean; bottomFound: boolean } {
+export function verticalExtent(g: Gray, from: number, to: number, textTop: number, textBottom: number, reach = 0.07): { top: number; bottom: number; topFound: boolean; bottomFound: boolean } {
   const x0 = Math.max(1, Math.floor((from + 0.15 * (to - from)) * g.width)); const x1 = Math.min(g.width - 2, Math.ceil((to - 0.15 * (to - from)) * g.width));
   const cols = Math.max(1, x1 - x0);
   const sample: number[] = [];
@@ -149,8 +161,9 @@ export function verticalExtent(g: Gray, from: number, to: number, textTop: numbe
     return best;
   };
   const H = g.height;
-  const top = strongest((textTop - 0.18) * H, (textTop + 0.004) * H);
-  const bottom = strongest((textBottom - 0.004) * H, (textBottom + 0.18) * H);
+  // Only a little way beyond the lettering: further up is a shelf board or the wall, and further down the shelf below, not this book.
+  const top = strongest((textTop - reach) * H, (textTop + 0.004) * H);
+  const bottom = strongest((textBottom - 0.004) * H, (textBottom + reach) * H);
   const topFound = top.v >= 0.32; const bottomFound = bottom.v >= 0.32;
   return { top: topFound ? top.y / H : Math.max(0, textTop - 0.015), bottom: bottomFound ? bottom.y / H : Math.min(1, textBottom + 0.015), topFound, bottomFound };
 }

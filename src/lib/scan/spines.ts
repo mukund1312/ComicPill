@@ -2,14 +2,14 @@
 // engine reads in place); this works out which lines belong to which spine and what each spine says: title, volume, publisher.
 // Pure arithmetic on boxes and strings, so it is the same on every platform and easy to test.
 import type { ScannedBook } from './schema';
-import { columnPersistence, findEdges, partitionShelf, transpose, verticalExtent, type Gray } from './segment';
+import { columnEdges, columnPersistence, findEdges, partitionShelf, transpose, verticalExtent, type Gray } from './segment';
 
 /** A line of text and its box, as fractions (0..1) of the photo, origin top-left. */
 export type SpineLine = { text: string; x: number; y: number; w: number; h: number; conf?: number; dir?: 'down' | 'up' };
 /** One read of the photo. `turn` is how the image was turned before reading: 0 as taken, 180 upside down (to read text that runs upward). */
 export type ReadPass = { turn: 0 | 180; lines: SpineLine[] };
-export type Spine = { lines: SpineLine[]; box: { x: number; y: number; w: number; h: number }; /** A volume number printed on the spine on a line of its own (the “1”, “2”, “3” at the foot of a spine). */ volumeHint?: string };
-export type SpineBook = ScannedBook & { box: Spine['box']; rawText: string; /** Which way the lettering runs: down the spine (most books), or up it. */ dir: 'down' | 'up' };
+export type Spine = { lines: SpineLine[]; box: { x: number; y: number; w: number; h: number }; /** Pixels sideways per pixel down: the lean of this book's edges in the photo. */ lean?: number; /** A volume number printed on the spine on a line of its own (the “1”, “2”, “3” at the foot of a spine). */ volumeHint?: string };
+export type SpineBook = ScannedBook & { box: Spine['box']; /** How much the spine leans in the photo: sideways per down, both as fractions of the photo's sides' pixels. 0 for an upright spine. */ lean: number; rawText: string; /** Which way the lettering runs: down the spine (most books), or up it. */ dir: 'down' | 'up' };
 
 type Box = { x: number; y: number; w: number; h: number };
 const area = (b: Box) => b.w * b.h;
@@ -143,12 +143,19 @@ export function readSpine(spine: Spine): SpineBook | null {
     const credits = (candidates.length > 1 && lettering(p.l, vertical) < 0.72 * biggest) || /[•·]/.test(p.rest) || (looksLikeName(p.rest) && candidates.length > 1 && lettering(p.l, vertical) < 0.85 * biggest);
     if (credits) creators.push(p.rest); else titleParts.push({ ...p.l, text: p.rest });
   }
+  // A spine whose only text is one line carrying both title and credits (“BATMAN: YEAR ONE ▸ MILLER • MAZZUCCHELLI”) must not lose its title:
+  // the biggest line stands in as the title, and the matching copes with the credits being in it.
+  if (titleParts.length === 0 && candidates.length > 0) {
+    const biggestLine = [...candidates].sort((x, y) => lettering(y.l, vertical) - lettering(x.l, vertical))[0];
+    titleParts.push({ ...biggestLine.l, text: biggestLine.rest });
+    const at = creators.indexOf(biggestLine.rest); if (at >= 0) creators.splice(at, 1);
+  }
   const title = titleParts.map((l) => l.text).join(' ').replace(/\s+/g, ' ').trim();
   if (alnum(title) < 2) return null;
   if (!volume && spine.volumeHint) volume = spine.volumeHint;
   const conf = Math.min(...titleParts.map((l) => l.conf ?? 1));
   const up = spine.lines.filter((l) => l.dir === 'up').length > spine.lines.filter((l) => l.dir !== 'up').length;
-  return { title, volume, creators: creators.slice(0, 3), confidence: conf >= 0.9 && alnum(title) >= 4 ? 'high' : conf >= 0.6 ? 'medium' : 'low', seenAs: 'spine', box: spine.box, rawText, dir: up ? 'up' : 'down' };
+  return { title, volume, creators: creators.slice(0, 3), confidence: conf >= 0.9 && alnum(title) >= 4 ? 'high' : conf >= 0.6 ? 'medium' : 'low', seenAs: 'spine', box: spine.box, rawText, dir: up ? 'up' : 'down', lean: spine.lean ?? 0 };
 }
 
 const hasTitleLine = (s: Spine) => s.lines.some((l) => !isPublisher(l.text) && splitVolume(l.text).rest.length >= 3);
@@ -196,22 +203,75 @@ export function splitAtEdges(spines: Spine[], edges: number[], vertical: boolean
   return out;
 }
 
+const SERIES_STOP = new Set(['the', 'a', 'an', 'of', 'and', 'dc', 'comics', 'vol', 'volume', 'book', 'by']);
+const firstWord = (text: string): string => (text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().match(/[a-z0-9]+/g) ?? []).find((w) => !SERIES_STOP.has(w)) ?? '';
+const wordCount = (text: string) => (text.match(/[A-Za-z0-9]+/g) ?? []).length;
+
+/**
+ * Where a stretch the picture couldn't cut should be cut anyway. A spine says its series name once, so two lines inside one stretch that each
+ * start with the same series word and then say something different (“BATMAN THE CITY OF OWLS”, “BATMAN DEATH OF THE FAMILY”) are two books side
+ * by side. Returns the positions along the shelf (fractions) between such pairs, between the two lines' centres. Credits and publisher names never count.
+ */
+export function repeatedSeriesCuts(lines: SpineLine[], vertical: boolean, centre: (l: SpineLine) => number = (l) => crossCentre(l, vertical)): number[] {
+  const titles = lines.filter((l) => !isPublisher(l.text) && !/[•·|]/.test(l.text) && wordCount(l.text) >= 3 && alnum(l.text) >= 10).sort((a, b) => centre(a) - centre(b));
+  // Lines that start with the same series word, in order along the shelf (a credits line may sit between two of them).
+  const bySeries = new Map<string, SpineLine[]>();
+  for (const l of titles) { const w = firstWord(l.text); if (w.length >= 4) bySeries.set(w, [...(bySeries.get(w) ?? []), l]); }
+  const cuts: number[] = [];
+  for (const same of bySeries.values()) {
+    for (let i = 1; i < same.length; i++) {
+      const a = same[i - 1]; const b = same[i];
+      const gap = centre(b) - centre(a);
+      // far enough apart to be separate lines of lettering, and not the same words read twice
+      if (gap < 0.4 * Math.min(lettering(a, vertical), lettering(b, vertical))) continue;
+      if (a.text.toLowerCase().replace(/[^a-z0-9]/g, '') === b.text.toLowerCase().replace(/[^a-z0-9]/g, '')) continue;
+      cuts.push((centre(a) + centre(b)) / 2);
+    }
+  }
+  cuts.sort((x, y) => x - y);
+  return cuts;
+}
+
 /**
  * Group lines into books by the best partition of the shelf (see `partitionShelf`): lines whose centre falls in the same stretch belong to one book.
  * Returns the books and the stretch each one occupies along the shelf, so the box can span the whole spine and not just the lettering.
  */
-export function groupByPartition(lines: SpineLine[], gray: Gray, tune: { cutCost?: number; minWidth?: number } = {}): { spine: Spine; from: number; to: number }[] {
+export function groupByPartition(lines: SpineLine[], gray: Gray, tune: { cutCost?: number; minWidth?: number; gapFactor?: number } = {}): { spine: Spine; from: number; to: number }[] {
   const vertical = shelfIsVertical(lines);
   const along = lines.filter((l) => (l.h > l.w) === vertical);
   if (along.length === 0) return [];
   const picture = vertical ? gray : transpose(gray);
   const spans = along.map((l) => (vertical ? [l.y, l.y + l.h] : [l.x, l.x + l.w])).sort((a, b) => a[0] - b[0]);
-  const persistence = columnPersistence(picture, spans[Math.floor(spans.length * 0.1)][0], Math.min(1, spans[Math.floor(spans.length * 0.9)][1]));
-  const marks = along.map((l) => ({ centre: crossCentre(l, vertical), size: lettering(l, vertical) }));
-  const segments = partitionShelf(persistence, marks, tune);
+  const fromRow = spans[Math.floor(spans.length * 0.1)][0]; const toRow = Math.min(1, spans[Math.floor(spans.length * 0.9)][1]);
+  const { persistence, tilt } = columnEdges(picture, fromRow, toRow);
+  // Spines lean in a photo (perspective), so the lettering near the top or foot of a leaning spine sits to one side of the straight cut at mid-height.
+  // Each line is moved back along the lean to where it would be at mid-height, so it is judged against the cut that really belongs to its book.
+  const midPx = (Math.max(1, Math.floor(fromRow * picture.height)) + Math.min(picture.height - 1, Math.ceil(toRow * picture.height))) / 2;
+  const slopeAt = (xNorm: number) => (vertical ? tilt[Math.min(tilt.length - 1, Math.max(0, Math.round(xNorm * picture.width)))] : 0);
+  const centre = (l: SpineLine) => { const c = crossCentre(l, vertical); const row = (vertical ? l.y + l.h / 2 : l.x + l.w / 2) * picture.height; return c - (slopeAt(c) * (row - midPx)) / picture.width; };
+  const marks = along.map((l) => ({ centre: centre(l), size: lettering(l, vertical) }));
+  const cuts0 = partitionShelf(persistence, marks, tune);
+  // Stretches that still hold two books' worth of series names are cut where the lettering says.
+  // Books lying flat in a pile are all about as thick as each other, so a thin sliver between two cuts is a piece of a book (a line of credits), not a book.
+  const mergeSlivers = (segs: { from: number; to: number }[]): { from: number; to: number }[] => {
+    if (vertical || segs.length < 3) return segs;
+    const med = [...segs].map((x) => x.to - x.from).sort((a, b) => a - b)[Math.floor(segs.length / 2)];
+    const out: { from: number; to: number }[] = [];
+    for (const seg of segs) {
+      const prev = out[out.length - 1];
+      if (prev && seg.to - seg.from < 0.5 * med && seg.to - prev.from <= 1.5 * med) prev.to = seg.to; else out.push({ ...seg });
+    }
+    return out;
+  };
+  const segments = mergeSlivers(cuts0).flatMap((seg) => {
+    const inside = along.filter((l) => { const c = centre(l); return c >= seg.from && c < seg.to + 1e-9; });
+    const at = repeatedSeriesCuts(inside, vertical, centre).filter((x) => x > seg.from && x < seg.to);
+    const edges = [seg.from, ...at, seg.to];
+    return edges.slice(1).map((to, i) => ({ from: edges[i], to }));
+  });
   // Each book's lettering, and the top and bottom of its spine as far as the picture shows them.
   const parts = segments.map((seg) => {
-    const inside = along.filter((l) => { const c = crossCentre(l, vertical); return c >= seg.from && c < seg.to + 1e-9; });
+    const inside = along.filter((l) => { const c = centre(l); return c >= seg.from && c < seg.to + 1e-9; });
     if (inside.length === 0) return { seg, inside, ext: null as ReturnType<typeof verticalExtent> | null, text: null as Box | null };
     const text = boxOf(inside);
     const [lo, hi] = vertical ? [text.y, text.y + text.h] : [text.x, text.x + text.w];
@@ -224,9 +284,14 @@ export function groupByPartition(lines: SpineLine[], gray: Gray, tune: { cutCost
   // Standing books all rest on the shelf, so they share one bottom; books lying flat have no such line, so each keeps its own.
   const shelfBottom = vertical ? (bottoms.length >= 3 ? median(bottoms) : Math.min(1, Math.max(...found.map((p) => (vertical ? p.text!.y + p.text!.h : p.text!.x + p.text!.w))) + 0.02)) : null;
   const typicalTop = tops.length >= 3 ? median(tops) : null;
+  // A pile of flat books shares its left and right edges: use the stack's edges for every book, and ignore lettering beyond them (another object beside the pile).
+  const quantile = (xs: number[], q: number) => { const s = [...xs].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(q * s.length))]; };
+  const stackLeft = !vertical && tops.length >= 3 ? quantile(tops, 0.25) : null;
+  const stackRight = !vertical && bottoms.length >= 3 ? quantile(bottoms, 0.75) : null;
   return parts.filter((p) => p.inside.length > 0).map(({ seg, inside, ext }) => {
-    // Lettering below the shelf belongs to whatever is on the shelf underneath, not to this book.
-    const onShelf = shelfBottom === null ? inside : inside.filter((l) => l.y + l.h / 2 <= shelfBottom + 0.03);
+    // Lettering below the shelf belongs to whatever is on the shelf underneath, not to this book; beside a flat pile, to the next object.
+    let onShelf = shelfBottom === null ? inside : inside.filter((l) => l.y + l.h / 2 <= shelfBottom + 0.03);
+    if (stackRight !== null) onShelf = onShelf.filter((l) => l.x + l.w / 2 <= stackRight + 0.03);
     const lines = onShelf.length ? onShelf : inside;
     const text = boxOf(lines);
     const [lo, hi] = vertical ? [text.y, text.y + text.h] : [text.x, text.x + text.w];
@@ -234,10 +299,18 @@ export function groupByPartition(lines: SpineLine[], gray: Gray, tune: { cutCost
     if (shelfBottom !== null) bottom = Math.max(hi + 0.01, shelfBottom);
     // The top: an edge found above the lettering, if it is near where the other books' tops are (artwork gives false ones); otherwise a typical top, but not far above the lettering.
     const plausible = ext!.topFound && (typicalTop === null || Math.abs(ext!.top - typicalTop) <= 0.07);
-    if (!plausible) top = typicalTop !== null ? Math.min(lo - 0.015, Math.max(typicalTop, lo - 0.25)) : Math.max(0, lo - 0.015);
+    if (!plausible) top = typicalTop !== null ? Math.min(lo - 0.015, Math.max(typicalTop, lo - 0.10)) : Math.max(0, lo - 0.015);
+    if (stackLeft !== null) top = Math.min(stackLeft, lo - 0.005);
+    if (stackRight !== null) bottom = Math.max(stackRight, hi + 0.005);
     top = Math.min(top, lo - 0.005); bottom = Math.max(bottom, hi + 0.005);
-    const box = vertical ? { x: seg.from, y: top, w: seg.to - seg.from, h: bottom - top } : { x: top, y: seg.from, w: bottom - top, h: seg.to - seg.from };
-    return { spine: { lines, box }, from: seg.from, to: seg.to };
+    // A leaning spine's box must contain the whole slanted spine: widen it by how far the lean carries the top and the foot sideways.
+    const lean = slopeAt((seg.from + seg.to) / 2);
+    const shift = (rowNorm: number) => (lean * (rowNorm * picture.height - midPx)) / picture.width;
+    const [s0, s1] = [shift(top), shift(bottom)];
+    // (Only half the sideways carry is added: the box is a rectangle around a slanted spine, and a full allowance would swallow its neighbours.)
+    const x0 = seg.from + 0.5 * Math.min(0, s0, s1); const x1 = seg.to + 0.5 * Math.max(0, s0, s1);
+    const box = vertical ? { x: x0, y: top, w: x1 - x0, h: bottom - top } : { x: top, y: seg.from, w: bottom - top, h: seg.to - seg.from };
+    return { spine: { lines, box, lean: vertical ? lean : 0 }, from: seg.from, to: seg.to };
   });
 }
 

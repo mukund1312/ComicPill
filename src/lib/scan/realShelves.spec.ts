@@ -36,6 +36,14 @@ describe('real shelf photos', () => {
 });
 
 describe('real shelf photos: cutting the shelf from the picture', () => {
+  it('finds exactly the books on shelves of standing books where every spine is visible (12 and 18)', () => {
+    expect(readShelf(fx(22).passes, gray(22))).toHaveLength(12);
+    const shelf24 = readShelf(fx(24).passes, gray(24));
+    expect(shelf24).toHaveLength(18);
+    // the three thin Owls books and Year One are separate books, not merged
+    const titles = shelf24.map((b) => b.title.toLowerCase());
+    for (const t of ['court of owls', 'city of owls', 'death of the family', 'year one']) expect(titles.some((x) => x.includes(t)), t).toBe(true);
+  });
   it('finds at least as many books overall as grouping by lettering alone', () => {
     const withEdges = [22, 23, 24, 25].reduce((n, p) => n + recall(p, true).found, 0);
     const lettering = [22, 23, 24, 25].reduce((n, p) => n + recall(p, false).found, 0);
@@ -77,6 +85,6 @@ describe('real shelf photos: matching to the catalog', () => {
     expect(tally.automaticWrong).toBeLessThanOrEqual(3);
   });
   it('helps with about half of the real books on these shelves (the rest aren’t in the catalog or can’t be read)', () => {
-    expect(tally.automaticRight + tally.suggestedRight).toBeGreaterThanOrEqual(33);
+    expect(tally.automaticRight + tally.suggestedRight).toBeGreaterThanOrEqual(35);
   });
 });
