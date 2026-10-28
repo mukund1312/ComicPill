@@ -424,7 +424,7 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
           ? <WebtoonPage source={source} page={item[0]} width={width} height={strip.known ? strip.heights[item[0]] : undefined} bg={bg} onTap={() => setOverlay((o) => !o)} />
           : (
             <TransitionPage index={index} width={width} scrollX={scrollX} kind={display.pageAnimation}>
-              <PagedUnit register={registerZoom} source={source} unit={item} sizes={sizeList} width={width} height={height} rtl={rtl} fit={fit} bg={bg} crop={display.trimBorders && item.length === 1 ? trimBoxes[item[0]] ?? null : null} onTap={onTap} />
+              <PagedUnit register={registerZoom} source={source} unit={item} sizes={sizeList} width={width} height={height} rtl={rtl} fit={fit} bg={bg} crop={display.trimBorders && item.length === 1 ? trimBoxes[item[0]] ?? null : null} onTap={onTap} onPullDown={() => router.back()} />
             </TransitionPage>
           )}
       />
@@ -510,7 +510,7 @@ function PageImage({ source, page, width, height, crop }: { source: ComicSource;
 }
 
 /** One screen of paged reading: a single page, or two side by side (landscape). Zoom applies to the whole unit. */
-function PagedUnit({ register, source, unit, sizes, width, height, rtl, fit, bg, crop, onTap }: { register: (page: number, handle: ZoomHandle | null) => void; source: ComicSource; unit: number[]; sizes: Sizes; width: number; height: number; rtl: boolean; fit: Fit; bg: string; crop: Panel | null; onTap: (x: number) => void }) {
+function PagedUnit({ register, source, unit, sizes, width, height, rtl, fit, bg, crop, onTap, onPullDown }: { register: (page: number, handle: ZoomHandle | null) => void; source: ComicSource; unit: number[]; sizes: Sizes; width: number; height: number; rtl: boolean; fit: Fit; bg: string; crop: Panel | null; onTap: (x: number) => void; onPullDown?: () => void }) {
   const known = unit.every((p) => sizes[p]);
   const ratios = unit.map((p) => (sizes[p] ? sizes[p]!.width / sizes[p]!.height : DEFAULT_RATIO));
   const sumRatio = ratios.reduce((a, b) => a + b, 0);
@@ -521,7 +521,7 @@ function PagedUnit({ register, source, unit, sizes, width, height, rtl, fit, bg,
   const widths = known ? ratios.map((r) => r * fitH) : unit.map(() => width / unit.length);
   const contentW = widths.reduce((a, b) => a + b, 0);
   return (
-    <ZoomableView ref={(h) => register(unit[0], h)} width={width} height={height} contentWidth={contentW} contentHeight={fitH} background={bg} onTap={onTap}>
+    <ZoomableView ref={(h) => register(unit[0], h)} width={width} height={height} contentWidth={contentW} contentHeight={fitH} background={bg} onTap={onTap} onPullDown={onPullDown}>
       <View style={{ flexDirection: rtl ? 'row-reverse' : 'row', width: contentW, height: fitH }}>
         {unit.map((p, i) => <PageImage key={p} source={source} page={p} width={widths[i]} height={fitH} crop={crop} />)}
       </View>
