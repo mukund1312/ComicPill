@@ -265,8 +265,8 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   const addMenu = () => setSheet({
     options: [
       { label: openFolder ? `Import files into “${insideName ?? 'this folder'}”…` : 'Import files…', onPress: importHere },
-      { label: 'Link from Drive or Dropbox (saves space)…', onPress: () => runImport('Linking', 'Linked', (p) => linkWithCovers(() => pickAndLinkComics({ folderId: openFolder ?? undefined, ...p }), p)) },
-      { label: 'Link a whole folder from Drive or Dropbox…', onPress: () => runImport('Linking folder', 'Linked', (p) => linkWithCovers(() => pickAndLinkFolder({ parentId: openFolder ?? undefined, ...p }), p)) },
+      { label: 'Link a whole folder (Drive, iCloud, Files)…', onPress: () => runImport('Linking folder', 'Linked', (p) => linkWithCovers(() => pickAndLinkFolder({ parentId: openFolder ?? undefined, ...p }), p)) },
+      { label: 'Link individual comic files…', onPress: () => runImport('Linking', 'Linked', (p) => linkWithCovers(() => pickAndLinkComics({ folderId: openFolder ?? undefined, ...p }), p)) },
       ...(unpreparedLinkIds().length ? [{ label: `Download covers for linked comics (${unpreparedLinkIds().length} left)…`, onPress: () => { void loadCoversNow(); } }] : []),
       { label: `Comics kept on this device: ${keepLimit()}…`, onPress: keepMenu },
       { label: 'Browse an OPDS server…', onPress: () => router.push('/reader/opds') },

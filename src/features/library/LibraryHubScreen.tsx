@@ -40,8 +40,8 @@ export default function LibraryHubScreen() {
     { icon: 'folder-open-outline', label: 'Collections', sub: plural(counts.collections, 'collection', 'collections'), onPress: () => router.push('/reader/collections') },
   ];
   const imports: Row[] = [
-    { icon: 'cloud-outline', label: running ? 'An import is running…' : 'Link from Drive or Dropbox', sub: 'Saves space: the comic stays in the cloud', tint: '#3B82F6', onPress: () => { if (!running) void runImport('Linking', 'Linked', (p) => linkWithCovers(() => pickAndLinkComics(p), p)); } },
-    { icon: 'cloud-download-outline', label: 'Link a whole folder', sub: 'Every comic inside, with its folders; nothing is copied', tint: '#3B82F6', onPress: () => { if (!running) void runImport('Linking folder', 'Linked', (p) => linkWithCovers(() => pickAndLinkFolder(p), p)); } },
+    { icon: 'cloud-download-outline', label: 'Link a whole folder (Drive, iCloud, Files)', sub: 'Open the folder’s parent, tap the folder, press Open. Every comic inside comes in', tint: '#3B82F6', onPress: () => { if (!running) void runImport('Linking folder', 'Linked', (p) => linkWithCovers(() => pickAndLinkFolder(p), p)); } },
+    { icon: 'cloud-outline', label: running ? 'An import is running…' : 'Link comic files', sub: 'Pick individual files; they stay in the cloud', tint: '#3B82F6', onPress: () => { if (!running) void runImport('Linking', 'Linked', (p) => linkWithCovers(() => pickAndLinkComics(p), p)); } },
     { icon: 'document-outline', label: 'Import from Files', sub: 'Keeps a copy on this device', tint: '#3B82F6', onPress: () => { if (!running) void runImport('Importing', 'Imported', (p) => pickAndImportComics(p)); } },
     { icon: 'folder-outline', label: 'Import a folder', tint: '#3B82F6', onPress: () => { if (!running) void runImport('Importing folder', 'Imported', (p) => pickAndImportFolder(p)); } },
     { icon: 'server-outline', label: 'Connect a server (OPDS)', onPress: () => router.push('/reader/opds') },
