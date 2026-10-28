@@ -267,21 +267,43 @@ function scanForComics(dir: Directory, path: string[] = []): Found[] {
   return out;
 }
 
+type FoundFile = { name: string; size?: number; /** Folder names from the picked folder down, then the file name. */ path: string[]; uri: string };
+
 /** Pick a folder in Drive, Dropbox or any cloud app and link every comic inside it, keeping its folders. Nothing is downloaded yet. */
 export async function pickAndLinkFolder(opts: { parentId?: string } & ImportProgress = {}): Promise<ImportResult> {
   const result = emptyResult();
-  let dir: Directory;
-  try { dir = await Directory.pickDirectoryAsync(); } catch { return result; } // cancelled
   const native = optionalNative();
+  let folderName = 'Linked comics';
   let bookmark: string | null = null;
-  try {
-    if (Platform.OS === 'ios') bookmark = native?.makeBookmark?.(dir.uri) ?? null;
-    else native?.persistUriPermission?.(dir.uri);
-  } catch { /* handled below on iOS; Android then keeps the link for this session */ }
-  if (Platform.OS === 'ios' && !bookmark) { result.failed.push({ name: dir.name || 'Folder', reason: 'This cloud app doesn’t let ComicPill keep a link to a folder.' }); return result; }
+  let found: FoundFile[];
+  if (Platform.OS === 'ios' && native?.pickFolderInPlace && native.listFolderComics) {
+    // Our own picker and lister: they work for cloud folders that the stock ones quietly treat as cancelled or empty.
+    let picked: Awaited<ReturnType<NonNullable<typeof native.pickFolderInPlace>>>[number] | undefined;
+    try { [picked] = await native.pickFolderInPlace(); } catch (e) { result.failed.push({ name: 'Folder', reason: reasonOf(e, 'Could not open the folder picker') }); return result; }
+    if (!picked) return result; // cancelled
+    folderName = picked.name || folderName;
+    if (!picked.bookmark) { result.failed.push({ name: folderName, reason: 'This cloud app doesn’t let ComicPill keep a link to a folder.' }); return result; }
+    bookmark = picked.bookmark;
+    opts.onProgress?.({ done: 0, total: 0, name: 'Looking through the folder…' });
+    try {
+      found = (await native.listFolderComics(bookmark, LINK_EXT, MAX_LINK_DEPTH)).map((e) => ({ name: e.name, size: e.size || undefined, path: [...e.path.slice(0, -1), e.name], uri: '' }));
+    } catch (e) { result.failed.push({ name: folderName, reason: reasonOf(e, 'Could not read this folder') }); return result; }
+  } else {
+    let dir: Directory;
+    try { dir = await Directory.pickDirectoryAsync(); } catch { return result; } // cancelled
+    folderName = dir.name || folderName;
+    try {
+      if (Platform.OS === 'ios') bookmark = native?.makeBookmark?.(dir.uri) ?? null;
+      else native?.persistUriPermission?.(dir.uri);
+    } catch { /* handled below on iOS; Android then keeps the link for this session */ }
+    if (Platform.OS === 'ios' && !bookmark) { result.failed.push({ name: folderName, reason: 'This cloud app doesn’t let ComicPill keep a link to a folder.' }); return result; }
+    opts.onProgress?.({ done: 0, total: 0, name: 'Looking through the folder…' });
+    try { found = scanForComics(dir).map(({ file, path }) => ({ name: file.name, size: sizeOf(file), path, uri: file.uri })); }
+    catch (e) { result.failed.push({ name: folderName, reason: reasonOf(e, 'Could not read this folder') }); return result; }
+  }
+  // Say so when there is nothing to add; a silent finish looks like the button did nothing.
+  if (!found.length) { result.failed.push({ name: folderName, reason: 'No comic files (CBZ, CBR, CB7, ZIP, PDF or EPUB) were found in this folder.' }); return result; }
 
-  opts.onProgress?.({ done: 0, total: 0, name: 'Looking through the folder…' });
-  const found = scanForComics(dir);
   const root = comicsRoot();
   if (!root.exists) root.create({ intermediates: true });
 
@@ -289,7 +311,7 @@ export async function pickAndLinkFolder(opts: { parentId?: string } & ImportProg
   const folderIds = new Map<string, string>();
   const folderFor = (names: string[]): string => {
     let parent: string | null = opts.parentId ?? null; let key = '';
-    for (const name of [dir.name || 'Linked comics', ...names]) {
+    for (const name of [folderName, ...names]) {
       key += `/${name}`;
       let id = folderIds.get(key);
       if (!id) { id = createFolder(name, parent); folderIds.set(key, id); }
@@ -298,13 +320,11 @@ export async function pickAndLinkFolder(opts: { parentId?: string } & ImportProg
     return parent as string;
   };
 
-  await eachWithProgress(found, opts, (f) => f.file.name, async ({ file, path }) => {
+  await eachWithProgress(found, opts, (f) => f.name, async (file) => {
     try {
-      const size = sizeOf(file);
-      if (size && isDuplicateSource(file.name, size, titleOf(file.name))) { result.skipped.push(file.name); return; }
-      const source = bookmark ? `${BOOKMARK_PREFIX}${bookmark}|${path.join('/')}` : file.uri;
-      if (size && isDuplicateSource(file.name, size, titleOf(file.name))) { result.skipped.push(file.name); return; }
-      linkWithoutDownloading({ name: file.name, size, source, folderId: folderFor(path.slice(0, -1)) }, result);
+      if (file.size && isDuplicateSource(file.name, file.size, titleOf(file.name))) { result.skipped.push(file.name); return; }
+      const source = bookmark ? `${BOOKMARK_PREFIX}${bookmark}|${file.path.join('/')}` : file.uri;
+      linkWithoutDownloading({ name: file.name, size: file.size, source, folderId: folderFor(file.path.slice(0, -1)) }, result);
     } catch { result.failed.push({ name: file.name, reason: 'Could not link this file.' }); }
   });
   return result;

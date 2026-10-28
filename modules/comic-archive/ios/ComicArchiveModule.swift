@@ -100,6 +100,47 @@ public class ComicArchiveModule: Module {
       }
     }
 
+    // The same for a folder. Expo's own folder picker counts a folder as "cancelled" when iOS says it needs no security scope, which is
+    // what Google Drive's folders do, so choosing one there seemed to do nothing. This one takes the folder either way.
+    AsyncFunction("pickFolderInPlace") { (promise: Promise) in
+      DispatchQueue.main.async {
+        guard let presenter = self.appContext?.utilities?.currentViewController() else { promise.reject("PICKER", "Cannot show the folder picker"); return }
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [UTType.folder], asCopy: false)
+        picker.allowsMultipleSelection = false
+        let delegate = InPlacePickerDelegate(promise: promise) { Self.activePicker = nil }
+        Self.activePicker = delegate
+        picker.delegate = delegate
+        presenter.present(picker, animated: true)
+      }
+    }
+
+    // Every comic file inside a bookmarked folder, however deep: its path below the folder, name and size. Read through file coordination, so a
+    // cloud app lists what it has even when nothing is downloaded. Names are listed; no file is fetched.
+    AsyncFunction("listFolderComics") { (bookmark: String, extensions: [String], maxDepth: Int) -> [[String: Any]] in
+      guard let data = Data(base64Encoded: bookmark) else { throw Exception(name: "BOOKMARK", description: "Invalid link") }
+      var stale = false
+      let root = try URL(resolvingBookmarkData: data, options: [], relativeTo: nil, bookmarkDataIsStale: &stale)
+      let scoped = root.startAccessingSecurityScopedResource()
+      defer { if scoped { root.stopAccessingSecurityScopedResource() } }
+      var out: [[String: Any]] = []
+      func walk(_ dir: URL, _ path: [String], _ depth: Int) {
+        if depth > maxDepth { return }
+        var entries: [URL] = []
+        var coordError: NSError?
+        NSFileCoordinator().coordinate(readingItemAt: dir, options: [], error: &coordError) { readable in
+          entries = (try? FileManager.default.contentsOfDirectory(at: readable, includingPropertiesForKeys: [.isDirectoryKey, .fileSizeKey], options: [.skipsHiddenFiles])) ?? []
+        }
+        for entry in entries {
+          let values = try? entry.resourceValues(forKeys: [.isDirectoryKey, .fileSizeKey])
+          let name = entry.lastPathComponent
+          if values?.isDirectory == true { walk(entry, path + [name], depth + 1) }
+          else if extensions.contains(entry.pathExtension.lowercased()) { out.append(["path": path + [name], "name": name, "size": values?.fileSize ?? 0]) }
+        }
+      }
+      walk(root, [], 0)
+      return out
+    }
+
     // A cloud file (Drive, Dropbox…) picked without copying: iOS only lets the app reopen it later through a bookmark.
     Function("makeBookmark") { (uri: String) -> String? in
       let url = Self.fileURL(uri)
