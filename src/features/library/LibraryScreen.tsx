@@ -130,7 +130,7 @@ export default function LibraryScreen() {
       { label: 'Add individual comic files…', onPress: () => { void link('Adding comics', (p) => linkWithCovers(() => pickAndLinkComics(p), p)); } },
       { label: 'Scan a shelf of physical comics', onPress: () => router.push('/scan') },
     ]} />
-    <ActionSheet visible={moreOpen} title="Library" onClose={() => setMoreOpen(false)} options={[{ label: 'Playlists', onPress: () => router.push('/playlists') }, { label: 'Compare comics', onPress: () => router.push('/compare') }, { label: 'Mind Space', onPress: () => router.push('/mind') }, { label: 'Comic Wallet', onPress: () => router.push('/wallet') }]} />
+    <ActionSheet visible={moreOpen} title="Library" onClose={() => setMoreOpen(false)} options={[{ label: 'Playlists', onPress: () => router.push('/playlists') }, { label: 'Reading orders (what to read first)', onPress: () => router.push('/reading-orders') }, { label: 'Compare comics', onPress: () => router.push('/compare') }, { label: 'Mind Space', onPress: () => router.push('/mind') }, { label: 'Comic Wallet', onPress: () => router.push('/wallet') }]} />
     {filtersOpen ? <View style={styles.overlay}><Sheet title="Filter library" onClose={() => setFiltersOpen(false)}>
       <Text style={styles.filterHeading}>Publisher</Text>
       <View style={styles.sheetPills}>
