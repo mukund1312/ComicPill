@@ -5,6 +5,7 @@ import { randomUUID } from 'expo-crypto';
 import { Directory, File } from 'expo-file-system';
 import { authHeaders } from '../opds/client';
 import { crawlCatalog, type FoundComic } from '../opds/crawl';
+import { groupSeries, looksFlat } from '../opds/seriesName';
 import { opdsSourceFor } from '../opds/source';
 import type { OpdsServer } from '../opds/servers';
 import { cachedFileFor } from './cloudCache';
@@ -14,11 +15,31 @@ import { sqlite } from '../db/client';
 import { addWorksToCollection, createCollection, createFolder, hasSourceKey, insertReaderComic } from './readerLibrary';
 import { comicsRoot, eachWithProgress, emptyResult, FORMAT_OF, reasonOf, type ImportProgress, type ImportResult } from './importComics';
 
+/** The file's own name when the server's link carries it (Komga's does), else the title it shows. */
+const nameOf = ({ entry, acquisition }: FoundComic): string => {
+  const m = /\/file\/([^/?#]+)/.exec(acquisition.href);
+  if (m) { try { return decodeURIComponent(m[1]); } catch { return m[1]; } }
+  return entry.title;
+};
+
+/** A server series that is really one big folder of many series gets split by the series each comic's name says; real series are left as they are. */
+export function regroupFlatSeries(found: FoundComic[]): FoundComic[] {
+  const byPath = new Map<string, FoundComic[]>();
+  for (const f of found) { const k = f.path.join('\u0000'); byPath.set(k, [...(byPath.get(k) ?? []), f]); }
+  const out: FoundComic[] = [];
+  for (const list of byPath.values()) {
+    const groups = groupSeries(list.map(nameOf));
+    if (!looksFlat(groups)) { out.push(...list); continue; }
+    for (const f of list) out.push({ ...f, path: [...f.path, groups.get(nameOf(f)) as string] });
+  }
+  return out;
+}
+
 /** Put every comic from the server's catalog on the shelf, with its cover, filed in folders like the server's series. Comics already added are skipped. */
 export async function linkOpdsLibrary(server: OpdsServer, startUrl: string, opts: { parentId?: string } & ImportProgress = {}): Promise<ImportResult> {
   const result = emptyResult();
   let found: FoundComic[];
-  try { found = await crawlCatalog(server, startUrl, opts); }
+  try { found = regroupFlatSeries(await crawlCatalog(server, startUrl, opts)); }
   catch (e) { result.failed.push({ name: server.name, reason: reasonOf(e, 'Could not read the catalog') }); return result; }
   if (!found.length) { result.failed.push({ name: server.name, reason: 'No comics were found in this catalog.' }); return result; }
 
