@@ -18,6 +18,7 @@ import { ReaderDisplaySheet, supportsViewFilters, type Display } from './ReaderD
 import { Thumb, ThumbnailStrip } from './ThumbnailStrip';
 import { TransitionPage, useStackedCells } from './PageTransition';
 import { PageCurlLayer } from './pageCurl/PageCurlLayer';
+import { BookFlipLayer } from './BookFlipLayer';
 import { UnlockGate } from './UnlockGate';
 import { ZoomableView, type ZoomHandle } from './ZoomableView';
 import { detectPagePanels, guidedAvailable, resetPagePanels, saveEditedPanels } from '../../lib/reader/guided/detect';
@@ -247,7 +248,9 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
   const unitPages = useMemo(() => units[unitIndexOf(units, page)] ?? [page], [units, page]);
   const slots = useMemo(() => unitSlots(unitPages, sizeList, rtl), [unitPages, sizeList, rtl]);
   // The real curl is built for one page; on a two-page spread "Page curl" turns as the open-book flip, which is verified there.
-  const turnKind = display.pageAnimation === 'curl' && spread ? 'flip' : display.pageAnimation;
+  // On a two-page spread, Page flip and Page curl both turn as an open book, drawn by BookFlipLayer over the pager; the pages themselves just slide.
+  const bookActive = spread && !webtoon && (display.pageAnimation === 'flip' || display.pageAnimation === 'curl');
+  const turnKind = bookActive ? 'slide' : display.pageAnimation;
   // The 3-D curl needs whole single pages sitting on the page-sized frame, left to right.
   const curlActive = display.pageAnimation === 'curl' && !webtoon && !spread && !rtl && !guidedActive && fit === 'contain';
   const stackedCells = useStackedCells(units.length, turnKind === 'flip');
@@ -757,14 +760,13 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
         renderItem={({ item, index }) => webtoon
           ? <WebtoonPage source={source} page={item[0]} width={width} height={strip.known ? strip.heights[item[0]] : undefined} bg={bg} onTap={() => setOverlay((o) => !o)} />
           : (
-            <TransitionPage index={index} width={width} scrollX={scrollX} kind={turnKind} paired={spread && item.length === 2}
-              ghost={turnKind === 'flip' && spread && item.length === 2 ? <PagedUnit passive register={registerZoom} source={source} unit={item} sizes={sizeList} width={width} height={height} rtl={rtl} fit={fit} bg={bg} crop={null} onTap={onTap} /> : null}
-              nextGhost={turnKind === 'flip' && spread && item.length === 2 && data[index + 1] ? <PagedUnit passive register={registerZoom} source={source} unit={data[index + 1]} sizes={sizeList} width={width} height={height} rtl={rtl} fit={fit} bg={bg} crop={null} onTap={onTap} /> : null}>
+            <TransitionPage index={index} width={width} scrollX={scrollX} kind={turnKind}>
               <PagedUnit register={registerZoom} source={source} unit={item} sizes={sizeList} width={width} height={height} rtl={rtl} fit={fit} bg={bg} crop={display.trimBorders && item.length === 1 ? trimBoxes[item[0]] ?? null : null} onTap={onTap} onDoubleTap={display.doubleTapPanel && guidedAvailable() && !webtoon && !bubbleActive ? onDoubleTap : undefined} onPullDown={() => router.back()} />
             </TransitionPage>
           )}
       />
       {guidedActive && mask.view && mask.panel ? <PanelMaskLayer style={display.guidedMask} panel={mask.panel === FULL_PAGE ? null : mask.panel} camera={mask.view.camera} content={mask.view.content} view={mask.view.view} background={bg} amount={maskAmount} /> : null}
+      {bookActive ? <BookFlipLayer data={data} current={visualIndex(page)} scrollX={scrollX} width={width} height={height} bg={bg} render={(u) => <PagedUnit passive register={registerZoom} source={source} unit={u} sizes={sizeList} width={width} height={height} rtl={rtl} fit={fit} bg={bg} crop={null} onTap={onTap} />} /> : null}
       {curlActive ? <PageCurlLayer source={source} units={units} current={unitIndexOf(units, page)} scrollX={scrollX} width={width} height={height} bg={bg} /> : null}
       </View>
       {display.filter === 'sepia' ? <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#C99A5B', mixBlendMode: 'multiply' }]} /> : null}
