@@ -1,3 +1,4 @@
+import onnxruntime_objc
 import ExpoModulesCore
 import Foundation
 import PDFKit
@@ -71,6 +72,15 @@ public class ComicArchiveModule: Module {
       }
       guard let jpeg = image.jpegData(compressionQuality: 0.9) else { throw Exception(name: "DECODE", description: "Could not encode page") }
       try jpeg.write(to: Self.fileURL(dest))
+    }
+
+    // Speech balloons and captions on a page, found by a small neural detector (bubble-detector.onnx) run on the phone.
+    // Boxes are fractions of the image (origin top left): class 0 = balloon, 1 = text inside a balloon, 2 = lettering outside balloons.
+    AsyncFunction("detectBubbles") { (path: String, minScore: Double, promise: Promise) in
+      DispatchQueue.global(qos: .userInitiated).async {
+        do { promise.resolve(try Self.detectBubbles(path: path, minScore: Float(minScore))) }
+        catch { promise.reject("DETECT", error.localizedDescription) }
+      }
     }
 
     // A small grayscale copy of an image for panel detection: { width, height, data: base64 of w*h bytes }.
@@ -308,5 +318,58 @@ struct TranslateHost: View {
     Color.clear
       .translationPresentation(isPresented: $showing, text: text)
       .onChange(of: showing) { _, now in if !now { finished() } }
+  }
+}
+
+
+// The detector is loaded once and kept; it is small, and every page read reuses it.
+private var bubbleOrtEnv: ORTEnv?
+private var bubbleOrtSession: ORTSession?
+
+extension ComicArchiveModule {
+  static func detectBubbles(path: String, minScore: Float) throws -> [[String: Any]] {
+    guard let cg = UIImage(contentsOfFile: Self.fileURL(path).path)?.cgImage else { throw Exception(name: "DECODE", description: "Cannot decode image") }
+    let size = 640
+    var rgba = [UInt8](repeating: 0, count: size * size * 4)
+    let space = CGColorSpaceCreateDeviceRGB()
+    guard let ctx = CGContext(data: &rgba, width: size, height: size, bitsPerComponent: 8, bytesPerRow: size * 4, space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { throw Exception(name: "DECODE", description: "No context") }
+    ctx.interpolationQuality = .high
+    ctx.draw(cg, in: CGRect(x: 0, y: 0, width: size, height: size))
+    var input = [Float](repeating: 0, count: 3 * size * size)
+    for i in 0..<(size * size) {
+      input[i] = Float(rgba[i * 4]) / 255
+      input[size * size + i] = Float(rgba[i * 4 + 1]) / 255
+      input[2 * size * size + i] = Float(rgba[i * 4 + 2]) / 255
+    }
+    if bubbleOrtSession == nil {
+      guard let model = Bundle.main.path(forResource: "bubble-detector", ofType: "onnx") ?? Bundle(for: ComicArchiveModule.self).path(forResource: "bubble-detector", ofType: "onnx") else { throw Exception(name: "MODEL", description: "Detector model missing") }
+      let env = try ORTEnv(loggingLevel: .warning)
+      bubbleOrtEnv = env
+      bubbleOrtSession = try ORTSession(env: env, modelPath: model, sessionOptions: nil)
+    }
+    guard let session = bubbleOrtSession else { throw Exception(name: "MODEL", description: "Detector not ready") }
+    let imageData = NSMutableData(bytes: input, length: input.count * MemoryLayout<Float>.size)
+    var sizes: [Int64] = [1, 1] // asking for 1×1 makes the model return fractions of the image
+    let sizeData = NSMutableData(bytes: &sizes, length: sizes.count * MemoryLayout<Int64>.size)
+    let imageTensor = try ORTValue(tensorData: imageData, elementType: .float, shape: [1, 3, NSNumber(value: size), NSNumber(value: size)])
+    let sizeTensor = try ORTValue(tensorData: sizeData, elementType: .int64, shape: [1, 2])
+    let out = try session.run(withInputs: ["images": imageTensor, "orig_target_sizes": sizeTensor], outputNames: ["labels", "boxes", "scores"], runOptions: nil)
+    guard let labelsV = out["labels"], let boxesV = out["boxes"], let scoresV = out["scores"] else { return [] }
+    let labels = try labelsV.tensorData() as Data, boxes = try boxesV.tensorData() as Data, scores = try scoresV.tensorData() as Data
+    let n = scores.count / MemoryLayout<Float>.size
+    var found: [[String: Any]] = []
+    labels.withUnsafeBytes { (lb: UnsafeRawBufferPointer) in
+      boxes.withUnsafeBytes { (bb: UnsafeRawBufferPointer) in
+        scores.withUnsafeBytes { (sb: UnsafeRawBufferPointer) in
+          let l = lb.bindMemory(to: Int64.self), b = bb.bindMemory(to: Float.self), s = sb.bindMemory(to: Float.self)
+          for i in 0..<n where s[i] >= minScore {
+            let x0 = min(max(b[i * 4], 0), 1), y0 = min(max(b[i * 4 + 1], 0), 1), x1 = min(max(b[i * 4 + 2], 0), 1), y1 = min(max(b[i * 4 + 3], 0), 1)
+            if x1 <= x0 || y1 <= y0 { continue }
+            found.append(["c": Int(l[i]), "s": Double(s[i]), "x": Double(x0), "y": Double(y0), "w": Double(x1 - x0), "h": Double(y1 - y0)])
+          }
+        }
+      }
+    }
+    return found
   }
 }

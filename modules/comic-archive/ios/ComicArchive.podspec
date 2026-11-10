@@ -14,7 +14,10 @@ Pod::Spec.new do |s|
   s.dependency 'ExpoModulesCore'
   s.dependency 'UnrarKit'
   s.dependency 'SWCompression'
+  # Speech-balloon detector (an 11 MB RT-DETR model, Apache-2.0) run on the phone.
+  s.dependency 'onnxruntime-objc', '~> 1.30.0'
 
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'SWIFT_COMPILATION_MODE' => 'wholemodule' }
   s.source_files = '**/*.{h,m,mm,swift}'
+  s.resources = ['bubble-detector.onnx']
 end
