@@ -740,7 +740,8 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
         initialNumToRender={webtoon ? 4 : 2}
         windowSize={webtoon ? 7 : 5}
         maxToRenderPerBatch={2}
-        removeClippedSubviews
+        // The turning effects move a page on screen with an animation while its layout position stays put, so the list must not detach "offscreen" pages.
+        removeClippedSubviews={display.pageAnimation === 'slide' || webtoon}
         showsHorizontalScrollIndicator={false}
         showsVerticalScrollIndicator={false}
         onViewableItemsChanged={onViewable}
