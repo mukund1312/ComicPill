@@ -11,6 +11,7 @@ android {
   defaultConfig {
     versionCode 1
     versionName "1.0.0"
+    consumerProguardFiles "consumer-rules.pro"
   }
 }
 
@@ -22,4 +23,6 @@ dependencies {
   implementation "org.tukaani:xz:1.10"
   // On-device text recognition (bundled model, no network, no Google Play services needed) for the Mind Space privacy gate.
   implementation "com.google.mlkit:text-recognition:16.0.1"
+  // Speech-balloon detector (an 11 MB RT-DETR model, Apache-2.0, from ogkalu/comic-text-and-bubble-detector) run on the phone.
+  implementation "com.microsoft.onnxruntime:onnxruntime-android:1.22.0"
 }

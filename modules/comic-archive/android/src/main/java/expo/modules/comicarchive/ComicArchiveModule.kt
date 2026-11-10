@@ -8,6 +8,11 @@ import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.ParcelFileDescriptor
 import android.util.Base64
+import ai.onnxruntime.OnnxTensor
+import ai.onnxruntime.OrtEnvironment
+import ai.onnxruntime.OrtSession
+import java.nio.FloatBuffer
+import java.nio.LongBuffer
 import com.github.junrar.Archive
 import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.vision.common.InputImage
@@ -27,6 +32,18 @@ import java.io.OutputStream
  * Reads page entries out of RAR4 (CBR) and 7z (CB7) archives and renders PDF pages. JS decides the kind from magic
  * bytes and passes "rar" or "7z"; entry names come back exactly as stored.
  */
+// The detector is loaded once and kept; it is small, and every page read reuses it.
+private var bubbleOrt: OrtSession? = null
+private fun bubbleSession(context: android.content.Context): OrtSession {
+  bubbleOrt?.let { return it }
+  synchronized(ComicArchiveModule::class.java) {
+    bubbleOrt?.let { return it }
+    val bytes = context.assets.open("bubble-detector.onnx").use { it.readBytes() }
+    val opts = OrtSession.SessionOptions().apply { setIntraOpNumThreads(2) }
+    return OrtEnvironment.getEnvironment().createSession(bytes, opts).also { bubbleOrt = it }
+  }
+}
+
 class ComicArchiveModule : Module() {
   private fun fileOf(uri: String): File = File(Uri.parse(uri).path ?: uri)
 
@@ -220,6 +237,59 @@ class ComicArchiveModule : Module() {
       if (scaled !== decoded) scaled.recycle()
       decoded.recycle()
       return@AsyncFunction mapOf("width" to w, "height" to h, "data" to Base64.encodeToString(gray, Base64.NO_WRAP))
+    }
+
+    // Speech balloons and captions on a page, found by a small neural detector (bubble-detector.onnx) run on the phone.
+    // Returns boxes as fractions of the image (origin top left): class 0 = balloon, 1 = text inside a balloon, 2 = lettering outside balloons.
+    AsyncFunction("detectBubbles") { path: String, minScore: Double ->
+      val context = appContext.reactContext ?: throw CodedException("NO_CONTEXT", "No Android context", null)
+      val file = fileOf(path)
+      val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+      BitmapFactory.decodeFile(file.path, bounds)
+      if (bounds.outWidth <= 0 || bounds.outHeight <= 0) throw CodedException("DECODE", "Cannot decode image", null)
+      var sample = 1
+      while (bounds.outWidth / (sample * 2) >= 1280 && bounds.outHeight / (sample * 2) >= 1280) sample *= 2
+      val decoded = BitmapFactory.decodeFile(file.path, BitmapFactory.Options().apply { inSampleSize = sample })
+        ?: throw CodedException("DECODE", "Cannot decode image", null)
+      val size = 640
+      val scaled = Bitmap.createScaledBitmap(decoded, size, size, true)
+      val pixels = IntArray(size * size)
+      scaled.getPixels(pixels, 0, size, 0, 0, size, size)
+      val input = FloatArray(3 * size * size)
+      for (i in pixels.indices) {
+        val p = pixels[i]
+        input[i] = ((p shr 16) and 255) / 255f
+        input[size * size + i] = ((p shr 8) and 255) / 255f
+        input[2 * size * size + i] = (p and 255) / 255f
+      }
+      if (scaled !== decoded) scaled.recycle()
+      decoded.recycle()
+
+      val session = bubbleSession(context)
+      val env = OrtEnvironment.getEnvironment()
+      val imageTensor = OnnxTensor.createTensor(env, FloatBuffer.wrap(input), longArrayOf(1, 3, size.toLong(), size.toLong()))
+      // The model scales its boxes to the "original" size it is given; asking for 1×1 gives fractions of the image directly.
+      val sizeTensor = OnnxTensor.createTensor(env, LongBuffer.wrap(longArrayOf(1, 1)), longArrayOf(1, 2))
+      try {
+        session.run(mapOf("images" to imageTensor, "orig_target_sizes" to sizeTensor)).use { out ->
+          val labels = (out[0].value as Array<LongArray>)[0]
+          val boxes = (out[1].value as Array<Array<FloatArray>>)[0]
+          val scores = (out[2].value as Array<FloatArray>)[0]
+          val found = ArrayList<Map<String, Any>>()
+          for (i in scores.indices) {
+            if (scores[i] < minScore) continue
+            val b = boxes[i]
+            val x0 = b[0].coerceIn(0f, 1f); val y0 = b[1].coerceIn(0f, 1f)
+            val x1 = b[2].coerceIn(0f, 1f); val y1 = b[3].coerceIn(0f, 1f)
+            if (x1 <= x0 || y1 <= y0) continue
+            found.add(mapOf("c" to labels[i].toInt(), "s" to scores[i].toDouble(), "x" to x0.toDouble(), "y" to y0.toDouble(), "w" to (x1 - x0).toDouble(), "h" to (y1 - y0).toDouble()))
+          }
+          return@AsyncFunction found
+        }
+      } finally {
+        imageTensor.close()
+        sizeTensor.close()
+      }
     }
 
     // Text in a screenshot, read on the phone. Accepts file:// paths and content:// MediaStore uris.

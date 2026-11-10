@@ -14,6 +14,8 @@ type Native = {
   renderPdfPage(path: string, index: number, dest: string, targetWidth: number): Promise<void>;
   grayThumbnail?(path: string, maxWidth: number): Promise<{ width: number; height: number; data: string }>;
   recognizeText?(path: string): Promise<string>;
+  /** Speech balloons found by an on-device neural detector: boxes as fractions of the image; c 0 = balloon, 1 = text in a balloon, 2 = lettering outside one. */
+  detectBubbles?(path: string, minScore: number): Promise<Array<{ c: number; s: number; x: number; y: number; w: number; h: number }>>;
   /** Every line of text on an image with its box (fractions of the image, origin top left). Reading order is worked out in JavaScript. */
   recognizeLines?(path: string): Promise<{ text: string; x: number; y: number; w: number; h: number; conf?: number }[]>;
   /** iOS 17.4+: show Apple's on-device translation sheet for `text`. Resolves false when it can't be shown. */
