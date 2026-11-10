@@ -75,9 +75,10 @@ export function TransitionPage({ index, width, scrollX, kind, paired, ghost, nex
   });
 
   // ---- open book: the cell's own picture keeps only its left half while it turns, and a sheet about the spine is drawn over its right ----
-  const main = useAnimatedStyle(() => {
+  // While this unit turns, the next unit's right page is shown under the sheet (the real right half is covered by it).
+  const cover = useAnimatedStyle(() => {
     const p = (scrollX.value - index * width) / width;
-    return { width: book && p > 0.001 && p < 1 ? half : width };
+    return { opacity: book && p > 0.001 && p < 1 ? 1 : 0 };
   });
   const sheet = useAnimatedStyle(() => {
     const p = (scrollX.value - index * width) / width;
@@ -105,7 +106,10 @@ export function TransitionPage({ index, width, scrollX, kind, paired, ghost, nex
     return (
       <View style={{ width, flex: 1 }}>
         <Animated.View style={[{ flex: 1 }, style]}>
-          <Animated.View style={[styles.clip, main]}><View style={{ width, height: '100%' }}>{children}</View></Animated.View>
+          <View style={styles.clip}><View style={{ width, height: '100%' }}>{children}</View></View>
+          <Animated.View pointerEvents="none" style={[styles.cover, { left: half, width: half }, cover]}>
+            <Half node={nextGhost} width={width} half={half} side="right" />
+          </Animated.View>
           {/* The sheet: this unit's right page on its front, the next unit's left page on its back. */}
           <Animated.View pointerEvents="none" style={[styles.sheet, { left: half, width: half }, sheet]}>
             <View style={styles.face}>
@@ -164,6 +168,7 @@ const styles = StyleSheet.create({
   // 56px strip that starts at the free edge of the page above and fades out to the right.
   cast: { position: 'absolute', top: 0, bottom: 0, left: 0, width: 56 },
   clip: { overflow: 'hidden', height: '100%' },
+  cover: { position: 'absolute', top: 0, bottom: 0 },
   sheet: { position: 'absolute', top: 0, bottom: 0, transformOrigin: 'left center' },
   face: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backfaceVisibility: 'hidden' },
   backFace: { transform: [{ rotateY: '180deg' }] },

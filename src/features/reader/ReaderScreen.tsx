@@ -753,9 +753,9 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
         renderItem={({ item, index }) => webtoon
           ? <WebtoonPage source={source} page={item[0]} width={width} height={strip.known ? strip.heights[item[0]] : undefined} bg={bg} onTap={() => setOverlay((o) => !o)} />
           : (
-            <TransitionPage index={index} width={width} scrollX={scrollX} kind={turnKind} paired={false}
-              ghost={false ? <PagedUnit passive register={registerZoom} source={source} unit={item} sizes={sizeList} width={width} height={height} rtl={rtl} fit={fit} bg={bg} crop={null} onTap={onTap} /> : null}
-              nextGhost={false ? <PagedUnit passive register={registerZoom} source={source} unit={data[index + 1]} sizes={sizeList} width={width} height={height} rtl={rtl} fit={fit} bg={bg} crop={null} onTap={onTap} /> : null}>
+            <TransitionPage index={index} width={width} scrollX={scrollX} kind={turnKind} paired={spread && item.length === 2}
+              ghost={turnKind === 'flip' && spread && item.length === 2 ? <PagedUnit passive register={registerZoom} source={source} unit={item} sizes={sizeList} width={width} height={height} rtl={rtl} fit={fit} bg={bg} crop={null} onTap={onTap} /> : null}
+              nextGhost={turnKind === 'flip' && spread && item.length === 2 && data[index + 1] ? <PagedUnit passive register={registerZoom} source={source} unit={data[index + 1]} sizes={sizeList} width={width} height={height} rtl={rtl} fit={fit} bg={bg} crop={null} onTap={onTap} /> : null}>
               <PagedUnit register={registerZoom} source={source} unit={item} sizes={sizeList} width={width} height={height} rtl={rtl} fit={fit} bg={bg} crop={display.trimBorders && item.length === 1 ? trimBoxes[item[0]] ?? null : null} onTap={onTap} onDoubleTap={display.doubleTapPanel && guidedAvailable() && !webtoon && !bubbleActive ? onDoubleTap : undefined} onPullDown={() => router.back()} />
             </TransitionPage>
           )}
