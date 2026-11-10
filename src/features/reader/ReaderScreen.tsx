@@ -546,9 +546,11 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
   const unitBubbles = useMemo(() => combineUnit(unitPages, slots, perHere), [unitPages, slots, perHere]);
   const here = { list: unitBubbles.items, done: bubbles.page === page && bubbles.done };
   // Focus belongs to the unit it was made on, so turning the page drops it without any resetting.
-  const [focusAt, setFocusAt] = useState({ page: -1, i: -1 });
-  const focus = focusAt.page === page ? focusAt.i : -1;
-  const setFocus = useCallback((i: number) => setFocusAt({ page, i }), [page]);
+  // It also belongs to the screen size it was made at: turning the phone drops it, since its place on screen is no longer where it was.
+  const sizeKey = `${Math.round(width)}x${Math.round(height)}`;
+  const [focusAt, setFocusAt] = useState({ page: -1, i: -1, size: '' });
+  const focus = focusAt.page === page && focusAt.size === sizeKey ? focusAt.i : -1;
+  const setFocus = useCallback((i: number) => setFocusAt({ page, i, size: sizeKey }), [page, sizeKey]);
   const focusRef = useRef(-1);
   const bubblesRef = useRef<{ page: number; per: Record<number, Bubble[]>; done: boolean; list: Bubble[]; meta: Origin[] }>({ page: -1, per: NO_BUBBLES, done: false, list: [], meta: [] });
   useEffect(() => { focusRef.current = focus; bubblesRef.current = { page: bubbles.page, per: bubbles.per, done: bubbles.done, list: unitBubbles.items, meta: unitBubbles.meta }; });
@@ -655,8 +657,8 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
     setBubbles({ page, per, done: true });
     setManualBox(null);
     const { meta } = combineUnit(unitPages, slots, per);
-    setFocusAt({ page, i: Math.max(0, meta.findIndex((m) => m.page === slot.page && m.local === at)) });
-  }, [page, rtl, comic.id, setDrawing, slots, unitPages]);
+    setFocusAt({ page, i: Math.max(0, meta.findIndex((m) => m.page === slot.page && m.local === at)), size: sizeKey });
+  }, [page, rtl, comic.id, setDrawing, slots, unitPages, sizeKey]);
   /** Drop the balloon that is up close (a false detection) and remember that. */
   const removeBubble = useCallback(() => {
     const i = focusRef.current; const { meta, per } = bubblesRef.current; const m = meta[i];
@@ -664,8 +666,8 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
     const next = (per[m.page] ?? []).filter((_, n) => n !== m.local);
     saveCorrectedBubbles(comic.id, m.page, rtl, next);
     setBubbles({ page, per: { ...per, [m.page]: next }, done: true });
-    setFocusAt({ page, i: -1 });
-  }, [page, rtl, comic.id]);
+    setFocusAt({ page, i: -1, size: sizeKey });
+  }, [page, rtl, comic.id, sizeKey]);
   const toggleBubbleMode = () => { const on = !bubbleMode; setBubbleMode(on); setDrawing(false); saveReaderSettings({ bubbleZoom: on }); setOverlay(false); if (!on) setFocus(-1); };
 
   /** A tap while bubble zoom is on. True when it was used (a balloon picked, or zoomed back out). */

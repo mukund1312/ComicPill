@@ -13,9 +13,34 @@ const overlap = (a: Bubble, b: Bubble) => {
   return w > 0 && h > 0 ? (w * h) / Math.min(a.w * a.h, b.w * b.h) : 0;
 };
 
+/**
+ * The detector sometimes draws one box around two balloons stacked on each other. The text boxes (class 1) inside a balloon box tell them apart:
+ * if they fall into separate vertical groups with a clear gap, the box is cut at the middle of each gap, into one box per group.
+ */
+export function splitStacked(balloon: Detection, texts: Detection[]): Detection[] {
+  const inside = texts
+    .filter((t) => t.c === 1 && t.x + t.w / 2 >= balloon.x && t.x + t.w / 2 <= balloon.x + balloon.w && t.y + t.h / 2 >= balloon.y && t.y + t.h / 2 <= balloon.y + balloon.h)
+    .sort((a, b) => a.y - b.y);
+  if (inside.length < 2) return [balloon];
+  const groups: Detection[][] = [[inside[0]]];
+  for (let i = 1; i < inside.length; i++) {
+    const prev = groups[groups.length - 1]; const last = prev[prev.length - 1];
+    const gap = inside[i].y - (last.y + last.h);
+    const ref = Math.min(last.h, inside[i].h);
+    // A real break between balloons is a gap at least as tall as a line of lettering; between lines of one balloon it is small.
+    if (gap > ref * 0.5 && inside[i].y > last.y + last.h) groups.push([inside[i]]); else prev.push(inside[i]);
+  }
+  if (groups.length < 2) return [balloon];
+  const cuts = groups.slice(0, -1).map((g, i) => { const lo = Math.max(...g.map((t) => t.y + t.h)); const hi = Math.min(...groups[i + 1].map((t) => t.y)); return (lo + hi) / 2; });
+  const edges = [balloon.y, ...cuts, balloon.y + balloon.h];
+  return groups.map((_, i) => ({ ...balloon, y: edges[i], h: edges[i + 1] - edges[i] }));
+}
+
 export function bubblesFromDetections(dets: Detection[], rtl: boolean): Bubble[] {
   // Class 0 is the balloon (captions included). Lettering outside a balloon (sound effects, titles) is left alone.
   const found = dets
+    .filter((d) => d.c === 0)
+    .flatMap((d) => splitStacked(d, dets))
     .filter((d) => d.c === 0 && d.s >= MIN_SCORE && d.w > 0.012 && d.h > 0.006 && d.w * d.h <= MAX_SHARE)
     .sort((a, b) => b.s - a.s);
   const kept: Bubble[] = [];

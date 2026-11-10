@@ -18,3 +18,18 @@ describe('bubblesFromDetections', () => {
     expect(bubblesFromDetections([d(0, 0.99, 0, 0, 0.9, 0.9)], false)).toHaveLength(0);
   });
 });
+
+import { splitStacked } from './fromModel';
+
+describe('splitStacked', () => {
+  const balloon = d(0, 0.95, 0.4, 0.2, 0.3, 0.3);
+  it('cuts one box that holds two stacked balloons into two, between their lettering', () => {
+    const out = splitStacked(balloon, [d(1, 0.9, 0.45, 0.22, 0.2, 0.05), d(1, 0.9, 0.45, 0.28, 0.2, 0.05), d(1, 0.9, 0.45, 0.40, 0.2, 0.05), d(1, 0.9, 0.45, 0.46, 0.2, 0.04)]);
+    expect(out).toHaveLength(2);
+    expect(out[0].y + out[0].h).toBeCloseTo(out[1].y, 6);
+    expect(out[0].y + out[0].h).toBeGreaterThan(0.33); expect(out[0].y + out[0].h).toBeLessThan(0.40);
+  });
+  it('leaves a balloon with several close lines of lettering alone', () => {
+    expect(splitStacked(balloon, [d(1, 0.9, 0.45, 0.22, 0.2, 0.05), d(1, 0.9, 0.45, 0.28, 0.2, 0.05), d(1, 0.9, 0.45, 0.34, 0.2, 0.05)])).toHaveLength(1);
+  });
+});

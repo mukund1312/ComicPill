@@ -78,7 +78,9 @@ async function cut(uri: string, box: Bubble): Promise<Extracted | null> {
     if (tight) { read = tight; found = null; }
   }
   const { rgba, w, h } = read;
-  return build(rgba, w, h, found, crop);
+  // Where the detected balloon sits inside the crop: nothing outside it (plus a hair) may be part of this cut-out, whatever touches it.
+  const win = { x0: (box.x - crop.x) / crop.w, y0: (box.y - crop.y) / crop.h, x1: (box.x + box.w - crop.x) / crop.w, y1: (box.y + box.h - crop.y) / crop.h };
+  return build(rgba, w, h, found, crop, win);
 }
 
 type Silhouette = { alpha: Uint8Array; sw: number; sh: number };
@@ -102,7 +104,10 @@ function findSilhouette(rgba: Uint8Array, w: number, h: number): Silhouette | nu
   return mask ? { alpha: mask.alpha, sw, sh } : null;
 }
 
-function build(rgba: Uint8Array, w: number, h: number, mask: Silhouette | null, crop: Bubble): Extracted | null {
+function build(rgba: Uint8Array, w: number, h: number, mask: Silhouette | null, crop: Bubble, win?: { x0: number; y0: number; x1: number; y1: number }): Extracted | null {
+  const padX = 0.02; const padY = 0.03;
+  const wx0 = win ? Math.max(0, win.x0 - padX) * w : 0; const wx1 = win ? Math.min(1, win.x1 + padX) * w : w;
+  const wy0 = win ? Math.max(0, win.y0 - padY) * h : 0; const wy1 = win ? Math.min(1, win.y1 + padY) * h : h;
 
   const out = new Uint8Array(w * h * 4);
   for (let y = 0; y < h; y++) {
@@ -116,7 +121,8 @@ function build(rgba: Uint8Array, w: number, h: number, mask: Silhouette | null, 
         const m = mask.alpha;
         const v = (m[y0 * sw + x0] * (1 - tx) + m[y0 * sw + x1] * tx) * (1 - ty) + (m[y1 * sw + x0] * (1 - tx) + m[y1 * sw + x1] * tx) * ty;
         a = Math.max(0, Math.min(255, (v - 128) * 3 + 128)); // steepen the soft upsampled edge so it is crisp but not stair-stepped
-      } else a = roundedAlpha(x, y, w, h);
+      } else a = roundedAlpha(x - wx0, y - wy0, wx1 - wx0, wy1 - wy0);
+      if (x < wx0 || x >= wx1 || y < wy0 || y >= wy1) a = 0;
       const i = (y * w + x) * 4;
       out[i] = (rgba[i] * a) / 255; out[i + 1] = (rgba[i + 1] * a) / 255; out[i + 2] = (rgba[i + 2] * a) / 255; out[i + 3] = a; // premultiplied
     }
