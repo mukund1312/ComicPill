@@ -18,6 +18,10 @@ uniform float a;
 uniform float R;
 uniform float t;
 uniform half3 bg;
+uniform half3 paper;
+uniform float tilt;
+
+float hash(float2 p) { return fract(sin(dot(p, float2(12.9898, 78.233))) * 43758.5453); }
 
 const float PI = 3.14159265;
 
@@ -27,24 +31,27 @@ half4 main(float2 xy) {
   float W = size.x;
   float x = xy.x;
   float y = xy.y;
-  half3 paper = half3(0.945, 0.925, 0.875);
+  // The fold is not quite upright: it leans like a page lifted from a lower corner, and straightens as the turn completes.
+  float xr = x + tilt * W * (y / size.y - 0.5);
+  // A faint paper grain for the back of the sheet.
+  float grain = (hash(floor(xy / 1.5)) - 0.5) * 0.035;
 
   // Next page underneath; it is darkened by the sheet above it, less so as the sheet lifts away.
   half3 under = opaque(toImg.eval(xy));
   float ex = a + R;
   float leaving = 1.0 - smoothstep(0.82, 1.0, t);
-  float shadow = 0.42 * clamp(t * 6.0, 0.0, 1.0) * leaving * exp(-max(x - ex, 0.0) / (0.11 * W));
-  if (x > ex) { return half4(under * (1.0 - shadow), 1.0); }
+  float shadow = 0.42 * clamp(t * 6.0, 0.0, 1.0) * leaving * exp(-max(xr - ex, 0.0) / (0.11 * W));
+  if (xr > ex) { return half4(under * (1.0 - shadow), 1.0); }
 
-  if (x >= a) {
-    float s = clamp((x - a) / R, 0.0, 1.0);
+  if (xr >= a) {
+    float s = clamp((xr - a) / R, 0.0, 1.0);
     float th1 = asin(s);
     float u1 = a + th1 * R;
     float u2 = a + (PI - th1) * R;
     if (u2 <= W) {
       // The far half of the cylinder: the back of the paper, lit more as it faces us.
       half3 art = opaque(fromImg.eval(float2(u2, y)));
-      half3 col = mix(paper, art, 0.13) * 0.985;
+      half3 col = (mix(paper, art, 0.13) + grain) * 0.985;
       float facing = sqrt(max(1.0 - s * s, 0.0));
       float lit = 0.55 + 0.45 * facing + 0.17 * exp(-pow((s - 0.5) / 0.18, 2.0));
       return half4(col * lit, 1.0);
@@ -59,19 +66,19 @@ half4 main(float2 xy) {
   }
 
   // Flat part, left of the cylinder.
-  float ub = 2.0 * a + PI * R - x;
+  float ub = 2.0 * a + PI * R - xr;
   if (ub <= W) {
     half3 art = opaque(fromImg.eval(float2(ub, y)));
-    half3 col = mix(paper, art, 0.13) * 0.985;
+    half3 col = (mix(paper, art, 0.13) + grain) * 0.985;
     // Gently darker the further the flat sheet lies from the fold.
-    col *= 1.0 - 0.09 * smoothstep(0.0, 0.5 * W, a - x);
+    col *= 1.0 - 0.09 * smoothstep(0.0, 0.5 * W, a - xr);
     // The sheet's own edge: a thin bright line, as paper has thickness.
     float edge = smoothstep(W - 2.0, W, ub);
     col = mix(col, half3(0.99), edge * 0.85);
     return half4(col, 1.0);
   }
   half3 art = opaque(fromImg.eval(xy));
-  float contact = 0.30 * clamp(t * 8.0, 0.0, 1.0) * exp(-(a - x) / (0.06 * W));
+  float contact = 0.30 * clamp(t * 8.0, 0.0, 1.0) * exp(-(a - xr) / (0.06 * W));
   return half4(art * (1.0 - contact), 1.0);
 }
 `;
@@ -79,6 +86,13 @@ half4 main(float2 xy) {
 export const curlEffect = Skia.RuntimeEffect.Make(SKSL);
 
 /** Where the cylinder is, and how fat, at turn progress `t` (0 = flat, 1 = gone off the left edge). */
+/** The paper colour for the back of the sheet: warm cream on a light reader, a dim warm grey on a dark one, so it never glares. */
+export function paperFor(bg: [number, number, number]): [number, number, number] {
+  'worklet';
+  const lum = 0.299 * bg[0] + 0.587 * bg[1] + 0.114 * bg[2];
+  return lum > 0.5 ? [0.945, 0.925, 0.875] : [0.20 + bg[0] * 0.3, 0.19 + bg[1] * 0.3, 0.17 + bg[2] * 0.3];
+}
+
 export function curlGeometry(t: number, width: number) {
   'worklet';
   const R = width * (0.1 + 0.1 * Math.sin(Math.PI * t));

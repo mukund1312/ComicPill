@@ -62,7 +62,7 @@ export function ReaderDisplaySheet({ visible, value, onChange, onClose }: { visi
             <Chip label="Two pages (open book)" active={value.landscapeLayout === 'spread'} onPress={() => onChange({ landscapeLayout: 'spread' })} />
             <Chip label="One page" active={value.landscapeLayout === 'single'} onPress={() => onChange({ landscapeLayout: 'single' })} />
           </View>
-          <Text style={styles.note}>Guided reading, balloon zoom and the page curl work on both layouts.</Text>
+          <Text style={styles.note}>Guided reading and balloon zoom work on both layouts. On two pages, Page curl turns as the open-book page flip.</Text>
 
           <Text style={styles.label}>Bubble zoom size · {Math.round(value.bubbleSize * 100)}%</Text>
           <Slider value={value.bubbleSize} min={0.5} max={1.6} onChange={(bubbleSize) => onChange({ bubbleSize })} />

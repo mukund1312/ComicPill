@@ -246,9 +246,10 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
   // The page (or two pages) on screen now, and where each sits across it.
   const unitPages = useMemo(() => units[unitIndexOf(units, page)] ?? [page], [units, page]);
   const slots = useMemo(() => unitSlots(unitPages, sizeList, rtl), [unitPages, sizeList, rtl]);
-  const turnKind = display.pageAnimation;
+  // The real curl is built for one page; on a two-page spread "Page curl" turns as the open-book flip, which is verified there.
+  const turnKind = display.pageAnimation === 'curl' && spread ? 'flip' : display.pageAnimation;
   // The 3-D curl needs whole single pages sitting on the page-sized frame, left to right.
-  const curlActive = display.pageAnimation === 'curl' && !webtoon && !rtl && !guidedActive && fit === 'contain';
+  const curlActive = display.pageAnimation === 'curl' && !webtoon && !spread && !rtl && !guidedActive && fit === 'contain';
   const stackedCells = useStackedCells(units.length, turnKind === 'flip');
   const data = useMemo(() => (rtl ? [...units].reverse() : units), [units, rtl]);
   const visualIndex = useCallback((p: number) => { const i = unitIndexOf(units, p); return rtl ? units.length - 1 - i : i; }, [units, rtl]);

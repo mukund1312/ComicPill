@@ -3,7 +3,7 @@ import { StyleSheet } from 'react-native';
 import { Canvas, Fill, ImageShader, Shader, Skia, type SkImage } from '@shopify/react-native-skia';
 import Animated, { useAnimatedStyle, useDerivedValue, type SharedValue } from 'react-native-reanimated';
 import type { ComicSource } from '../../../lib/reader/ComicSource';
-import { curlEffect, curlGeometry } from './curlShader';
+import { curlEffect, curlGeometry, paperFor } from './curlShader';
 
 /** '#rrggbb' → 0..1 channels. Anything else reads as black. */
 function rgb(hex: string): [number, number, number] {
@@ -24,6 +24,9 @@ type Props = {
   bg: string;
 };
 
+// A snapshot taken from an offscreen surface is only valid while that surface lives, so the recent ones are held here (and dropped oldest first).
+const liveSurfaces: unknown[] = [];
+
 /** A unit as one picture: a single page as it is, a spread as its pages laid side by side at the same height. */
 async function unitImage(source: ComicSource, unit: number[]): Promise<SkImage | null> {
   const decoded: SkImage[] = [];
@@ -43,6 +46,7 @@ async function unitImage(source: ComicSource, unit: number[]): Promise<SkImage |
   let x = 0;
   decoded.forEach((d, i) => { canvas.drawImageRect(d, Skia.XYWHRect(0, 0, d.width(), d.height()), Skia.XYWHRect(x, 0, widths[i], H), paint); x += widths[i]; });
   surface.flush();
+  liveSurfaces.push(surface); if (liveSurfaces.length > 10) liveSurfaces.shift();
   return surface.makeImageSnapshot();
 }
 
@@ -94,7 +98,7 @@ function Sheet({ from, to, turning, scrollX, width, height, color }: { from: SkI
   const uniforms = useDerivedValue(() => {
     const t = progress.value;
     const { a, R } = curlGeometry(t, width);
-    return { size: [width, height], a, R, t, bg: color };
+    return { size: [width, height], a, R, t, bg: color, paper: paperFor(color), tilt: 0.1 * (1 - t) };
   }, [width, height, color]);
 
   const style = useAnimatedStyle(() => ({ opacity: progress.value > 0 ? 1 : 0 }));
