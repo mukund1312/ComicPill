@@ -23,7 +23,11 @@ export function balloonMask(gray: Uint8Array, w: number, h: number, outlinePx = 
   // The balloon's shade: the lightest common one in the centre (lettering is dark, so it is never the most common).
   const hist = new Uint32Array(64);
   for (let y = sy0; y < sy1; y++) for (let x = sx0; x < sx1; x++) hist[gray[y * w + x] >> 2]++;
+  // The paper is the lightest shade there is a good amount of in the middle (not simply the commonest: a balloon over a big patch of coloured art
+  // would otherwise be mistaken for the art), and lettering is dark so it is never the lightest.
+  const centre = (sx1 - sx0) * (sy1 - sy0);
   let bin = 0; for (let v = 0; v < 64; v++) if (hist[v] > hist[bin] || (hist[v] === hist[bin] && v > bin)) bin = v;
+  for (let v = 63; v > bin; v--) if (hist[v] >= centre * 0.1) { bin = v; break; }
   const shade = bin * 4 + 2;
   const near = (v: number) => Math.abs(v - shade) <= SHADE_TOLERANCE;
 
@@ -111,7 +115,8 @@ function soften(src: Uint8Array, w: number, h: number): Uint8Array {
 
 /** Where the balloon crop sits on the page, in page fractions: the detected box opened up a little so the outline and tail tip are inside. */
 export function cropAround(box: Bubble): Bubble {
-  const px = box.w * 0.06 + 0.004; const py = box.h * 0.06 + 0.004;
+  // Room for the outline and the tail to sit inside the crop with paper-free art around it, so the silhouette finder can see where the balloon ends.
+  const px = box.w * 0.16 + 0.008; const py = box.h * 0.22 + 0.008;
   const x = Math.max(0, box.x - px); const y = Math.max(0, box.y - py);
   return { x, y, w: Math.min(1, box.x + box.w + px) - x, h: Math.min(1, box.y + box.h + py) - y };
 }
