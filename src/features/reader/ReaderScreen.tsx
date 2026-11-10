@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, AppState, Dimensions, FlatList, Modal, Pressable, StyleSheet, Text, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent, type ViewToken } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { ActivityIndicator, Alert, AppState, BackHandler, Dimensions, FlatList, Modal, Pressable, StyleSheet, Text, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent, type ViewToken } from 'react-native';
 import { Image } from 'expo-image';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as Sharing from 'expo-sharing';
-import Animated, { FadeInDown, FadeInUp, FadeOutDown, FadeOutUp, useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { FadeIn, FadeInDown, FadeInUp, FadeOut, FadeOutDown, FadeOutUp, useAnimatedScrollHandler, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 import { StatusBar } from 'expo-status-bar';
 import { useKeepAwake } from 'expo-keep-awake';
 import * as ScreenOrientation from 'expo-screen-orientation';
@@ -15,13 +16,23 @@ import { ActionSheet, type SheetOption } from './dialogs';
 import { PageTextSheet, type PageText } from './PageTextSheet';
 import { ReaderDisplaySheet, supportsViewFilters, type Display } from './ReaderDisplaySheet';
 import { Thumb, ThumbnailStrip } from './ThumbnailStrip';
-import { TransitionPage } from './PageTransition';
+import { TransitionPage, useStackedCells } from './PageTransition';
+import { PageCurlLayer } from './pageCurl/PageCurlLayer';
 import { UnlockGate } from './UnlockGate';
 import { ZoomableView, type ZoomHandle } from './ZoomableView';
-import { detectPagePanels, guidedAvailable } from '../../lib/reader/guided/detect';
+import { detectPagePanels, guidedAvailable, resetPagePanels, saveEditedPanels } from '../../lib/reader/guided/detect';
 import { contentBox, decodeBase64, FULL_PAGE, type Panel } from '../../lib/reader/guided/panels';
 import { isUnlocked } from '../../lib/reader/lock';
 import { readPageText as readText } from '../../lib/reader/ocr/readPage';
+import { panelAt, tapDirection } from '../../lib/reader/guided/camera';
+import { PanelMaskLayer } from './PanelMaskLayer';
+import { boxFromCorners, bubbleAt, insertInOrder, manualBubble, type Bubble } from '../../lib/reader/bubbles/bubbles';
+import { detectPageBubbles, saveCorrectedBubbles } from '../../lib/reader/bubbles/detect';
+import { BubbleGestureLayer } from './BubbleGestureLayer';
+import { BubbleFloatLayer, type FloatTarget } from './BubbleFloatLayer';
+import { extractBubble } from '../../lib/reader/bubbles/extract';
+import { BUBBLE_SIZE_STEP, clampBubbleSize, settleRect } from '../../lib/reader/bubbles/pop';
+import { combineUnit, fromUnit, slotAt, slotFor, toUnit, unitPanels, unitSlots, type Origin } from '../../lib/reader/unitLayout';
 import { optionalNative } from '../../lib/reader/nativeArchive';
 import { CloudFetchError, ensureLocalCopy, freeSpaceFor, isCached, planFetch, readyComics } from '../../lib/reader/cloudCache';
 import { budgetMode, cloudBudgetBytes } from '../../lib/reader/cloudBudget';
@@ -163,6 +174,24 @@ function displayFilter(f: Display['filter']) {
   return undefined;
 }
 
+const NO_BUBBLES: Record<number, Bubble[]> = {};
+
+/**
+ * A button on the floating bar. It uses the gesture system, like the page does: the page's own handlers see every touch inside the screen and, when
+ * one activates, cancel ordinary buttons that sit over it, so a plain Pressable here would never fire.
+ */
+function BarButton({ label, onPress, children }: { label: string; onPress: () => void; children: ReactNode }) {
+  const tap = useMemo(() => Gesture.Tap().runOnJS(true).maxDuration(600).onEnd((_e, ok) => { if (ok) onPress(); }), [onPress]);
+  return (
+    <GestureDetector gesture={tap}>
+      <View accessible accessibilityRole="button" accessibilityLabel={label} style={styles.barButton}>{children}</View>
+    </GestureDetector>
+  );
+}
+
+/** Shared-value writes live outside the component so the compiler lint (which cannot tell a shared value from a plain object) leaves it alone. */
+function fadeTo(sv: SharedValue<number>, to: number, ms: number) { sv.value = withTiming(to, { duration: ms }); }
+
 function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComic; source: ComicSource; sizes: Sizes | null; reading: Reading; settings: ReaderSettings }) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -170,13 +199,14 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
   const [mode, setMode] = useState<ReaderMode>(reading.mode);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [guided, setGuided] = useState(false);
+  const [bubbleMode, setBubbleMode] = useState(settings.bubbleZoom);
   const bg = BACKGROUND_COLORS[reading.background];
   const fit = reading.fit;
   const [overlay, setOverlay] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [displayOpen, setDisplayOpen] = useState(false);
   const [pageText, setPageText] = useState<PageText>(null);
-  const [display, setDisplay] = useState<Display>({ brightness: settings.brightness, filter: settings.filter, pageAnimation: settings.pageAnimation, trimBorders: settings.trimBorders });
+  const [display, setDisplay] = useState<Display>({ brightness: settings.brightness, filter: settings.filter, pageAnimation: settings.pageAnimation, trimBorders: settings.trimBorders, guidedMask: settings.guidedMask, landscapeLayout: settings.landscapeLayout, bubbleSize: settings.bubbleSize, guidedMs: settings.guidedMs, bridgeMs: settings.bridgeMs, doubleTapPanel: settings.doubleTapPanel });
   const [trimBoxes, setTrimBoxes] = useState<Record<number, Panel | null>>({});
   const trimAsked = useRef(new Set<number>());
   const scrollX = useSharedValue(0);
@@ -204,12 +234,22 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
 
   const rtl = mode === 'rtl'; const webtoon = mode === 'webtoon';
   const landscape = width > height;
-  const spread = landscape && !webtoon;
-  // Guided view reads one page at a time, panel by panel — not in spreads or webtoon strips.
-  const guidedActive = guided && guidedAvailable() && !webtoon && !spread;
+  // Turned sideways the reader shows two pages side by side like an open book, or one page, as the reader prefers. Guided reading and balloon zoom work
+  // on either: on a spread they treat the two pages as one picture.
+  const spread = landscape && !webtoon && display.landscapeLayout === 'spread';
+  const guidedActive = guided && guidedAvailable() && !webtoon;
+  // Bubble zoom: not while panels or trimmed margins already steer the view.
+  const bubbleActive = bubbleMode && !webtoon && !guidedActive && !display.trimBorders;
   const sizeList: Sizes = useMemo(() => sizes ?? Array.from({ length: total }, () => null), [sizes, total]);
 
   const units = useMemo(() => buildUnits(sizeList, spread), [sizeList, spread]);
+  // The page (or two pages) on screen now, and where each sits across it.
+  const unitPages = useMemo(() => units[unitIndexOf(units, page)] ?? [page], [units, page]);
+  const slots = useMemo(() => unitSlots(unitPages, sizeList, rtl), [unitPages, sizeList, rtl]);
+  const turnKind = display.pageAnimation;
+  // The 3-D curl needs whole single pages sitting on the page-sized frame, left to right.
+  const curlActive = display.pageAnimation === 'curl' && !webtoon && !rtl && !guidedActive && fit === 'contain';
+  const stackedCells = useStackedCells(units.length, turnKind === 'flip');
   const data = useMemo(() => (rtl ? [...units].reverse() : units), [units, rtl]);
   const visualIndex = useCallback((p: number) => { const i = unitIndexOf(units, p); return rtl ? units.length - 1 - i : i; }, [units, rtl]);
 
@@ -269,43 +309,170 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
 
   // ---- guided view: which panel of the current page is showing ----
   const zoomRefs = useRef(new Map<number, ZoomHandle>());
-  const panelState = useRef<{ page: number; panels: Panel[]; index: number }>({ page: -1, panels: [], index: 0 });
+  // `panels` are in the unit's coordinates; `per` holds each page's own list and `meta` says which page and place each came from.
+  type PanelState = { page: number; panels: Panel[]; index: number; per?: Record<number, Panel[]>; meta?: Origin[] };
+  const panelState = useRef<PanelState>({ page: -1, panels: [], index: 0 });
   const landOnLast = useRef(false);
   const registerZoom = useCallback((p: number, handle: ZoomHandle | null) => {
     if (handle) zoomRefs.current.set(p, handle); else zoomRefs.current.delete(p);
   }, []);
 
-  const showPanel = (p: number, panel: Panel) => zoomRefs.current.get(p)?.zoomToPanel(panel === FULL_PAGE ? null : panel);
+  // Camera settings are read through a ref so changing one never restarts the panel that is up.
+  const guideCfg = useRef(display);
+  useEffect(() => { guideCfg.current = display; });
+  const maskAmount = useSharedValue(0);
+  const [mask, setMask] = useState<{ panel: Panel | null; view: { camera: ZoomHandle['camera']; content: ZoomHandle['content']; view: ZoomHandle['view'] } | null }>({ panel: null, view: null });
+  const [panelInfo, setPanelInfo] = useState({ page: -1, index: 0, count: 0 });
+  const [barVisible, setBarVisible] = useState(true);
+  const barTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Show the guided controls, and hide them again after a few quiet seconds. */
+  const showBar = useCallback(() => {
+    setBarVisible(true);
+    if (barTimer.current) clearTimeout(barTimer.current);
+    barTimer.current = setTimeout(() => setBarVisible(false), 3200);
+  }, []);
+  useEffect(() => () => { if (barTimer.current) clearTimeout(barTimer.current); }, []);
+
+  // Page-to-panel bridge: the page whose first (or, going back, last) panel the camera is about to enter, so taps wait and the pause is honoured.
+  const bridgeTo = useRef<number | null>(null);
+  const pendingFocus = useRef<{ page: number; x: number; y: number } | null>(null);
+  const timers = useRef<Array<ReturnType<typeof setTimeout>>>([]);
+  const later = useCallback((fn: () => void, ms: number) => { timers.current.push(setTimeout(fn, ms)); }, []);
+  useEffect(() => () => { timers.current.forEach(clearTimeout); }, []);
+
+  /** Move the camera to a panel (or back to the whole page) and bring the mask with it. */
+  const showPanel = useCallback((p: number, panel: Panel, index = 0, count = 1) => {
+    const handle = zoomRefs.current.get(p);
+    if (!handle) return;
+    const ms = guideCfg.current.guidedMs;
+    const whole = panel === FULL_PAGE;
+    handle.zoomToPanel(whole ? null : panel, ms, guideCfg.current.guidedMask === 'none');
+    setPanelInfo({ page: p, index, count });
+    if (whole) fadeTo(maskAmount, 0, ms);
+    else { setMask({ panel, view: { camera: handle.camera, content: handle.content, view: handle.view } }); fadeTo(maskAmount, 1, ms); }
+  }, [maskAmount]);
 
   /** Next (+1) or previous (-1): a panel inside the page when guided, otherwise a whole page/spread. */
   const advance = useCallback((delta: number) => {
     if (guidedActive) {
+      if (bridgeTo.current !== null) return; // the camera is already on its way to another page
       const st = panelState.current;
       // Panels for this page are still being found: swallow the tap rather than skipping a page.
       if (st.page !== position.current.page) return;
-      if (st.panels.length) {
-        const ni = st.index + delta;
-        if (ni >= 0 && ni < st.panels.length) { st.index = ni; showPanel(st.page, st.panels[ni]); return; }
-      }
-      if (delta < 0) landOnLast.current = true; // going back lands on the previous page's last panel
+      const ni = st.index + delta;
+      if (ni >= 0 && ni < st.panels.length) { st.index = ni; showPanel(st.page, st.panels[ni], ni, st.panels.length); return; }
+      // Past the last (or before the first) panel: pull the camera back to the whole page, turn to the neighbouring page, hold on it, then go in.
+      const at = position.current.page; const ui = unitIndexOf(units, at);
+      if (delta > 0 ? ui >= units.length - 1 : ui <= 0) return; // the end of the comic: stay on this panel
+      bridgeTo.current = units[ui + (delta > 0 ? 1 : -1)][0];
+      if (delta < 0) landOnLast.current = true;
+      zoomRefs.current.get(at)?.zoomToPanel(null, guideCfg.current.guidedMs);
+      fadeTo(maskAmount, 0, guideCfg.current.guidedMs);
+      later(() => step(delta), guideCfg.current.guidedMs + 40);
+      return;
     }
     step(delta);
-  }, [guidedActive, step]);
+  }, [guidedActive, step, units, later, maskAmount, showPanel]);
 
   useEffect(() => {
-    if (!guidedActive) { zoomRefs.current.get(page)?.zoomToPanel(null); return; }
+    if (!guidedActive) { bridgeTo.current = null; panelState.current = { page: -1, panels: [], index: 0 }; zoomRefs.current.get(page)?.zoomToPanel(null); fadeTo(maskAmount, 0, 200); return; }
     let live = true;
     const wantLast = landOnLast.current; landOnLast.current = false;
+    const bridged = bridgeTo.current === page;
+    if (!bridged) bridgeTo.current = null;
     (async () => {
-      const uri = await source.getPageUri(page);
-      const panels = await detectPagePanels(comic.id, page, uri, rtl);
+      // Each page of the unit is read on its own, then they are laid side by side as one set of panels.
+      const per: Record<number, Panel[]> = {};
+      for (const p of unitPages) per[p] = await detectPagePanels(comic.id, p, await source.getPageUri(p), rtl);
       if (!live) return;
-      const index = wantLast ? panels.length - 1 : 0;
-      panelState.current = { page, panels, index };
-      showPanel(page, panels[index]);
-    })().catch(() => undefined);
+      const { items: panels, meta } = unitPanels(unitPages, slots, per);
+      // A double-tap on a panel starts here, on that panel; otherwise the first (or, coming back, the last).
+      const focus = pendingFocus.current?.page === page ? pendingFocus.current : null; pendingFocus.current = null;
+      let index = wantLast ? panels.length - 1 : 0;
+      // Turning the phone re-runs this on the same page: stay on the panel being read rather than going back to the first.
+      if (!wantLast && !focus && panelState.current.page === page && panelState.current.panels.length) index = Math.min(panelState.current.index, panels.length - 1);
+      if (focus) { const hit = panelAt(panels, focus.x, focus.y); if (hit >= 0) index = hit; }
+      panelState.current = { page, panels, index, per, meta };
+      const go = () => { if (!live) return; showPanel(page, panels[index], index, panels.length); showBar(); bridgeTo.current = null; };
+      // Arriving from the previous page the whole page is shown first, so the reader sees the layout before the camera goes in.
+      if (bridged && guideCfg.current.bridgeMs > 0) later(go, guideCfg.current.bridgeMs); else go();
+    })().catch(() => { bridgeTo.current = null; });
     return () => { live = false; };
-  }, [page, guidedActive, source, comic.id, rtl]);
+  // The size is a dependency so turning the phone puts the camera back on the panel under the new layout.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, guidedActive, source, comic.id, rtl, width, height, unitPages, slots]);
+
+  // Double-tap: on the whole page it focuses the panel under the finger; while a panel is up it goes back to the whole page.
+  const onDoubleTap = useCallback((x: number, y: number) => {
+    if (guidedActive) { setGuided(false); return; }
+    const pt = zoomRefs.current.get(page)?.pointToContent(x, y);
+    if (pt) pendingFocus.current = { page, x: pt.x, y: pt.y };
+    setGuided(true); setOverlay(false);
+  }, [guidedActive, page]);
+
+  // ---- panels by hand, for pages the detector cannot read (splash pages, borderless or overlapping panels) ----
+  const [panelDrawing, setPanelDrawing] = useState(false);
+  const noSkim = useSharedValue(0);
+  /** Drag a box around a panel: it joins that page's panels in reading order, is kept for good, and the camera goes to it. */
+  const onPanelDraw = useCallback((x0: number, y0: number, x1: number, y1: number) => {
+    setPanelDrawing(false);
+    const handle = zoomRefs.current.get(page); const st = panelState.current;
+    if (!handle || st.page !== page || !st.per) return;
+    const a = handle.pointToContent(x0, y0); const b = handle.pointToContent(x1, y1);
+    const drawn = boxFromCorners(a.x, a.y, b.x, b.y);
+    if (!drawn) return;
+    // It belongs to the page it is mostly on, and is kept in that page's own coordinates.
+    const slot = slotAt(slots, drawn.x + drawn.w / 2);
+    const box = boxFromCorners(...(() => { const l = fromUnit(slot, drawn); return [l.x, l.y, l.x + l.w, l.y + l.h] as [number, number, number, number]; })());
+    if (!box) return;
+    // The "whole page" placeholder is not a real panel: the first drawn panel replaces it.
+    const mine = st.per[slot.page] ?? [];
+    const existing = mine.length === 1 && mine[0] === FULL_PAGE ? [] : mine;
+    const { list, index: at } = insertInOrder(existing, box, rtl);
+    saveEditedPanels(comic.id, slot.page, rtl, list);
+    const per = { ...st.per, [slot.page]: list };
+    const { items: panels, meta } = unitPanels(unitPages, slots, per);
+    const index = Math.max(0, meta.findIndex((m) => m.page === slot.page && m.local === at));
+    panelState.current = { page, panels, index, per, meta };
+    showPanel(page, panels[index], index, panels.length);
+    showBar();
+  }, [page, rtl, comic.id, showPanel, showBar, slots, unitPages]);
+  /** Throw away the panel that is up (a wrong detection). The last one on a page going leaves that whole page. */
+  const removePanel = useCallback(() => {
+    const st = panelState.current;
+    if (st.page !== page || !st.per || !st.meta || st.panels.length === 0) return;
+    const origin = st.meta[st.index]; const mine = st.per[origin.page] ?? [];
+    if (!origin || mine.length === 0 || mine[0] === FULL_PAGE) return;
+    const list = mine.filter((_, i) => i !== origin.local);
+    const next = list.length ? list : [FULL_PAGE];
+    saveEditedPanels(comic.id, origin.page, rtl, next);
+    const per = { ...st.per, [origin.page]: next };
+    const { items: panels, meta } = unitPanels(unitPages, slots, per);
+    const index = Math.min(st.index, panels.length - 1);
+    panelState.current = { page, panels, index, per, meta };
+    showPanel(page, panels[index], index, panels.length);
+  }, [page, rtl, comic.id, showPanel, slots, unitPages]);
+  /** Forget every edit on this page (or both pages of the spread) and read them again. */
+  const redetectPanels = useCallback(() => {
+    for (const p of unitPages) resetPagePanels(comic.id, p);
+    panelState.current = { page: -1, panels: [], index: 0 };
+    zoomRefs.current.get(page)?.zoomToPanel(null, 200);
+    fadeTo(maskAmount, 0, 200);
+    (async () => {
+      const per: Record<number, Panel[]> = {};
+      for (const p of unitPages) per[p] = await detectPagePanels(comic.id, p, await source.getPageUri(p), rtl);
+      const { items: panels, meta } = unitPanels(unitPages, slots, per);
+      panelState.current = { page, panels, index: 0, per, meta };
+      showPanel(page, panels[0], 0, panels.length);
+    })().catch(() => undefined);
+  }, [comic.id, page, rtl, source, showPanel, maskAmount, slots, unitPages]);
+
+  // The Android back button is the Escape key: it leaves guided reading before it leaves the comic.
+  useEffect(() => {
+    if (!guidedActive) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => { if (panelDrawing) setPanelDrawing(false); else setGuided(false); return true; });
+    return () => sub.remove();
+  }, [guidedActive, panelDrawing]);
 
   // ---- trim borders: find each single page's real content box on the phone, a page ahead and behind ----
   useEffect(() => {
@@ -335,9 +502,13 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
     try {
       if (!(await Sharing.isAvailableAsync())) { Alert.alert('Sharing isn’t available on this device.'); return; }
       let uri = await source.getPageUri(page);
-      const st = panelState.current; const size = sizeList[page];
+      const st = panelState.current;
+      // On a spread, the panel on screen belongs to one of its pages.
+      const origin = st.meta?.[st.index]; const sharePageNo = origin?.page ?? page; const size = sizeList[sharePageNo];
       if (guidedActive && st.page === page && size) {
-        const panel = st.panels[st.index];
+        uri = await source.getPageUri(sharePageNo);
+        const unitPanel = st.panels[st.index];
+        const panel = unitPanel && origin ? (unitPanel === FULL_PAGE ? FULL_PAGE : fromUnit(slotFor(slots, sharePageNo), unitPanel)) : unitPanel;
         if (panel && panel !== FULL_PAGE) {
           const ref = await ImageManipulator.manipulate(uri).crop({ originX: Math.round(panel.x * size.width), originY: Math.round(panel.y * size.height), width: Math.round(panel.w * size.width), height: Math.round(panel.h * size.height) }).renderAsync();
           uri = (await ref.saveAsync({ format: SaveFormat.JPEG, compress: 0.92 })).uri;
@@ -350,7 +521,14 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
   const rateThis = () => { if (comic.workId) router.push(`/check-in/${comic.workId}`); };
   const menuOptions: SheetOption[] = [
     ...(comic.workId ? [{ label: 'I’m done — rate this comic…', onPress: rateThis }] : []),
-    ...(guidedAvailable() && !webtoon && !spread ? [{ label: guided ? 'Turn off guided view' : 'Guided view (panel by panel)', onPress: () => { setGuided((g) => !g); setOverlay(false); } }] : []),
+    ...(guidedAvailable() && !webtoon ? [{ label: guided ? 'Turn off guided view' : 'Guided view (panel by panel)', onPress: () => { setGuided((g) => !g); setOverlay(false); } }] : []),
+    ...(guidedActive ? [
+      { label: 'Add a panel by hand…', onPress: () => { zoomRefs.current.get(page)?.zoomToPanel(null, 250); fadeTo(maskAmount, 0, 250); setPanelDrawing(true); setMenuOpen(false); } },
+      { label: 'Remove this panel', onPress: removePanel },
+      { label: 'Redo panel detection on this page', onPress: redetectPanels },
+    ] : []),
+    ...(!webtoon && !guidedActive ? [{ label: bubbleMode ? 'Turn off bubble zoom' : 'Bubble zoom (tap a speech balloon)', onPress: () => toggleBubbleMode() }] : []),
+    ...(landscape && !webtoon ? [{ label: display.landscapeLayout === 'spread' ? 'Landscape: show one page' : 'Landscape: show two pages (open book)', onPress: () => changeDisplay({ landscapeLayout: display.landscapeLayout === 'spread' ? 'single' : 'spread' }) }] : []),
     { label: 'All pages…', onPress: () => setGalleryOpen(true) },
     { label: 'Bookmarks…', onPress: () => setBookmarksOpen(true) },
     ...MODES.map(([m, label]) => ({ label: `Reading mode: ${label}`, checked: mode === m, onPress: () => changeMode(m) })),
@@ -360,14 +538,165 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
     { label: 'More reader settings…', onPress: () => router.push('/reader/settings') },
   ];
 
-  const onTap = useCallback((x: number) => {
+  // ---- bubble zoom: balloons on the page (or both pages of the spread), and which one is up close (-1 none, -2 a hand-picked spot) ----
+  // Balloons are found and saved per page; here they are laid side by side into the unit's coordinates so taps and the lift work across a spread.
+  const [bubbles, setBubbles] = useState<{ page: number; per: Record<number, Bubble[]>; done: boolean }>({ page: -1, per: NO_BUBBLES, done: false });
+  const perHere = bubbles.page === page ? bubbles.per : NO_BUBBLES;
+  const unitBubbles = useMemo(() => combineUnit(unitPages, slots, perHere), [unitPages, slots, perHere]);
+  const here = { list: unitBubbles.items, done: bubbles.page === page && bubbles.done };
+  // Focus belongs to the unit it was made on, so turning the page drops it without any resetting.
+  const [focusAt, setFocusAt] = useState({ page: -1, i: -1 });
+  const focus = focusAt.page === page ? focusAt.i : -1;
+  const setFocus = useCallback((i: number) => setFocusAt({ page, i }), [page]);
+  const focusRef = useRef(-1);
+  const bubblesRef = useRef<{ page: number; per: Record<number, Bubble[]>; done: boolean; list: Bubble[]; meta: Origin[] }>({ page: -1, per: NO_BUBBLES, done: false, list: [], meta: [] });
+  useEffect(() => { focusRef.current = focus; bubblesRef.current = { page: bubbles.page, per: bubbles.per, done: bubbles.done, list: unitBubbles.items, meta: unitBubbles.meta }; });
+  useEffect(() => {
+    if (!bubbleActive) return;
+    let live = true;
+    let idle: ReturnType<typeof setTimeout> | undefined;
+    (async () => {
+      const per: Record<number, Bubble[]> = {};
+      for (const p of unitPages) per[p] = await detectPageBubbles(comic.id, p, await source.getPageUri(p), rtl);
+      if (live) setBubbles({ page, per, done: true });
+      // Quietly read the next page(s) too, so they are ready by the time they are turned to — but only once the reader has settled here for a while
+      // and has no balloon up close, so the reading never competes with a zoom or a swipe.
+      const nextUnit = units[unitIndexOf(units, page) + 1];
+      if (live && nextUnit) {
+        idle = setTimeout(() => {
+          if (!live || focusRef.current !== -1) return;
+          for (const p of nextUnit) source.getPageUri(p).then((u) => detectPageBubbles(comic.id, p, u, rtl)).catch(() => undefined);
+        }, 6000);
+      }
+    })().catch(() => { if (live) setBubbles({ page, per: {}, done: true }); });
+    return () => { live = false; if (idle) clearTimeout(idle); };
+  }, [page, bubbleActive, source, comic.id, rtl, unitPages, units]);
+
+  // A hand-picked balloon (focus -2) lives here, in the unit's coordinates; detected ones live in the lists.
+  const [manualBox, setManualBox] = useState<Bubble | null>(null);
+  const focusBubble = useCallback((i: number, manual?: Bubble) => {
+    const target = manual ?? bubblesRef.current.list[i];
+    if (!target) return;
+    setManualBox(manual ?? null);
+    setFocus(manual ? -2 : i);
+  }, [setFocus]);
+  const leaveBubble = useCallback(() => { setFocus(-1); }, [setFocus]);
+  /** Next/previous balloon; stepping off either end returns to the whole page. */
+  const stepBubble = useCallback((delta: number) => {
+    const list = bubblesRef.current.list; const ni = focusRef.current + delta;
+    if (ni < 0 || ni >= list.length) { leaveBubble(); return; }
+    focusBubble(ni);
+  }, [focusBubble, leaveBubble]);
+  // The lifted balloon, and the ones either side of it: each is cut out of its page (once) and placed where it sits on screen now.
+  // `skim` is the finger's slide between them, written by the gesture layer.
+  const skim = useSharedValue(0);
+  // The size preference is read when a balloon is lifted; changing it re-lifts the ones in play (the float layer glides to the new size).
+  const bubbleSize = display.bubbleSize;
+  const sizeRef = useRef(bubbleSize);
+  useEffect(() => { sizeRef.current = bubbleSize; });
+  const nudgeBubbleSize = useCallback((delta: number) => changeDisplay({ bubbleSize: clampBubbleSize(sizeRef.current + delta) }), []);
+  const [floats, setFloats] = useState<{ cur: FloatTarget | null; prev: FloatTarget | null; next: FloatTarget | null }>({ cur: null, prev: null, next: null });
+  type LiftItem = { page: number; local: Bubble };
+  const itemAt = useCallback((i: number): LiftItem | null => {
+    const m = unitBubbles.meta[i]; const local = m ? perHere[m.page]?.[m.local] : undefined;
+    return m && local ? { page: m.page, local } : null;
+  }, [unitBubbles, perHere]);
+  const manualItem = useMemo<LiftItem | null>(() => {
+    if (!manualBox) return null;
+    const slot = slotAt(slots, manualBox.x + manualBox.w / 2);
+    return { page: slot.page, local: fromUnit(slot, manualBox) };
+  }, [manualBox, slots]);
+  const activeItem = useMemo(() => (focus >= 0 ? itemAt(focus) : focus === -2 ? manualItem : null), [focus, itemAt, manualItem]);
+  const prevItem = useMemo(() => (focus > 0 ? itemAt(focus - 1) : null), [focus, itemAt]);
+  const nextItem = useMemo(() => (focus >= 0 ? itemAt(focus + 1) : null), [focus, itemAt]);
+  useEffect(() => {
+    if (!bubbleActive || !activeItem) return;
+    let live = true;
+    (async () => {
+      const handle = zoomRefs.current.get(page);
+      if (!handle) return;
+      const lift = async (item: LiftItem | null): Promise<FloatTarget | null> => {
+        if (!item) return null;
+        const cut = await extractBubble(await source.getPageUri(item.page), item.local);
+        if (!cut) return null;
+        // The cut-out's place on its own page → on the unit → on the screen.
+        const c = toUnit(slotFor(slots, item.page), cut.crop);
+        const a = handle.contentToScreen(c.x, c.y); const b = handle.contentToScreen(c.x + c.w, c.y + c.h);
+        const from = { x: a.x, y: a.y, w: b.x - a.x, h: b.y - a.y };
+        return { key: `${item.page}:${item.local.x.toFixed(4)}:${item.local.y.toFixed(4)}`, image: cut.image, from, to: settleRect(from, { width, height }, { size: sizeRef.current }) };
+      };
+      // The one the reader asked for first, so it never waits on its neighbours.
+      const cur = await lift(activeItem);
+      if (!live) return;
+      setFloats({ cur, prev: null, next: null });
+      const [pv, nx] = await Promise.all([lift(prevItem), lift(nextItem)]);
+      if (live) setFloats({ cur, prev: pv, next: nx });
+    })().catch(() => { if (live) setFloats({ cur: null, prev: null, next: null }); });
+    return () => { live = false; };
+  }, [activeItem, prevItem, nextItem, bubbleActive, page, source, width, height, bubbleSize, slots]);
+  const [drawing, setDrawing] = useState(false);
+  /** Drag a box around a balloon by hand: it joins that page's balloons in reading order, and is kept. */
+  const onBubbleDraw = useCallback((x0: number, y0: number, x1: number, y1: number) => {
+    const handle = zoomRefs.current.get(page);
+    setDrawing(false);
+    if (!handle) return;
+    const a = handle.pointToContent(x0, y0); const b = handle.pointToContent(x1, y1);
+    const drawn = boxFromCorners(a.x, a.y, b.x, b.y);
+    if (!drawn) return;
+    // It belongs to the page it is mostly on, and is kept in that page's own coordinates.
+    const slot = slotAt(slots, drawn.x + drawn.w / 2); const l = fromUnit(slot, drawn);
+    const box = boxFromCorners(l.x, l.y, l.x + l.w, l.y + l.h);
+    if (!box) return;
+    const cur = bubblesRef.current.page === page ? bubblesRef.current.per : NO_BUBBLES;
+    const { list, index: at } = insertInOrder(cur[slot.page] ?? [], box, rtl);
+    saveCorrectedBubbles(comic.id, slot.page, rtl, list);
+    const per = { ...cur, [slot.page]: list };
+    setBubbles({ page, per, done: true });
+    setManualBox(null);
+    const { meta } = combineUnit(unitPages, slots, per);
+    setFocusAt({ page, i: Math.max(0, meta.findIndex((m) => m.page === slot.page && m.local === at)) });
+  }, [page, rtl, comic.id, setDrawing, slots, unitPages]);
+  /** Drop the balloon that is up close (a false detection) and remember that. */
+  const removeBubble = useCallback(() => {
+    const i = focusRef.current; const { meta, per } = bubblesRef.current; const m = meta[i];
+    if (!m) return;
+    const next = (per[m.page] ?? []).filter((_, n) => n !== m.local);
+    saveCorrectedBubbles(comic.id, m.page, rtl, next);
+    setBubbles({ page, per: { ...per, [m.page]: next }, done: true });
+    setFocusAt({ page, i: -1 });
+  }, [page, rtl, comic.id]);
+  const toggleBubbleMode = () => { const on = !bubbleMode; setBubbleMode(on); setDrawing(false); saveReaderSettings({ bubbleZoom: on }); setOverlay(false); if (!on) setFocus(-1); };
+
+  /** A tap while bubble zoom is on. True when it was used (a balloon picked, or zoomed back out). */
+  const bubbleTap = useCallback((x: number, y: number): boolean => {
+    const handle = zoomRefs.current.get(page);
+    if (!handle || bubblesRef.current.page !== page) return false;
+    const pt = handle.pointToContent(x, y);
+    const list = bubblesRef.current.list;
+    const hit = bubbleAt(list, pt.x, pt.y);
+    if (focusRef.current !== -1) { if (hit >= 0 && hit !== focusRef.current) focusBubble(hit); else leaveBubble(); return true; }
+    if (hit >= 0) { focusBubble(hit); return true; }
+    // Nothing found here: let the reader pick a spot by hand (middle of the screen only; the edges still turn the page).
+    if (bubblesRef.current.done && list.length === 0 && x > width * 0.3 && x < width * 0.7 && pt.x >= 0 && pt.x <= 1 && pt.y >= 0 && pt.y <= 1) {
+      focusBubble(-2, manualBubble(pt.x, pt.y, (handle.content.width / handle.content.height) * (handle.view.height / handle.view.width)));
+      return true;
+    }
+    return false;
+  }, [page, focusBubble, leaveBubble, width]);
+
+  const onTap = useCallback((x: number, y: number) => {
+    // A tap on the floating bar belongs to its buttons, not to the page under it.
+    if ((bubbleActive || (guidedActive && barVisible)) && y > height - insets.bottom - 96 && Math.abs(x - width / 2) < 260) return;
+    if (bubbleActive && bubbleTap(x, y)) return;
+    // Panel by panel: the left 30% steps back and the right 70% forward (mirrored for manga); any tap also brings the controls back.
+    if (guidedActive) { showBar(); if (settings.tapZones) advance(tapDirection(x, width, rtl, settings.invertTaps)); return; }
     const edge = width * 0.3;
     const flip = settings.invertTaps ? -1 : 1;
     // Outer thirds turn the page (direction-aware); the centre toggles the overlay.
     if (settings.tapZones && x < edge) advance((rtl ? 1 : -1) * flip);
     else if (settings.tapZones && x > width - edge) advance((rtl ? -1 : 1) * flip);
     else setOverlay((o) => !o);
-  }, [width, rtl, advance, settings.tapZones, settings.invertTaps]);
+  }, [width, height, insets.bottom, rtl, advance, settings.tapZones, settings.invertTaps, bubbleActive, bubbleTap, guidedActive, showBar, barVisible]);
 
   // Prefetch what's coming (and one back) and tell the source where we are so it never evicts them.
   useEffect(() => {
@@ -398,6 +727,7 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
       <Animated.FlatList
         key={listKey}
         ref={listRef as never}
+        CellRendererComponent={webtoon ? undefined : stackedCells as never}
         data={data}
         keyExtractor={(u) => String(u[0])}
         horizontal={!webtoon}
@@ -423,11 +753,15 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
         renderItem={({ item, index }) => webtoon
           ? <WebtoonPage source={source} page={item[0]} width={width} height={strip.known ? strip.heights[item[0]] : undefined} bg={bg} onTap={() => setOverlay((o) => !o)} />
           : (
-            <TransitionPage index={index} width={width} scrollX={scrollX} kind={display.pageAnimation}>
-              <PagedUnit register={registerZoom} source={source} unit={item} sizes={sizeList} width={width} height={height} rtl={rtl} fit={fit} bg={bg} crop={display.trimBorders && item.length === 1 ? trimBoxes[item[0]] ?? null : null} onTap={onTap} onPullDown={() => router.back()} />
+            <TransitionPage index={index} width={width} scrollX={scrollX} kind={turnKind} paired={false}
+              ghost={false ? <PagedUnit passive register={registerZoom} source={source} unit={item} sizes={sizeList} width={width} height={height} rtl={rtl} fit={fit} bg={bg} crop={null} onTap={onTap} /> : null}
+              nextGhost={false ? <PagedUnit passive register={registerZoom} source={source} unit={data[index + 1]} sizes={sizeList} width={width} height={height} rtl={rtl} fit={fit} bg={bg} crop={null} onTap={onTap} /> : null}>
+              <PagedUnit register={registerZoom} source={source} unit={item} sizes={sizeList} width={width} height={height} rtl={rtl} fit={fit} bg={bg} crop={display.trimBorders && item.length === 1 ? trimBoxes[item[0]] ?? null : null} onTap={onTap} onDoubleTap={display.doubleTapPanel && guidedAvailable() && !webtoon && !bubbleActive ? onDoubleTap : undefined} onPullDown={() => router.back()} />
             </TransitionPage>
           )}
       />
+      {guidedActive && mask.view && mask.panel ? <PanelMaskLayer style={display.guidedMask} panel={mask.panel === FULL_PAGE ? null : mask.panel} camera={mask.view.camera} content={mask.view.content} view={mask.view.view} background={bg} amount={maskAmount} /> : null}
+      {curlActive ? <PageCurlLayer source={source} units={units} current={unitIndexOf(units, page)} scrollX={scrollX} width={width} height={height} bg={bg} /> : null}
       </View>
       {display.filter === 'sepia' ? <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#C99A5B', mixBlendMode: 'multiply' }]} /> : null}
       {display.brightness < 1 ? <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#000', opacity: 1 - display.brightness }]} /> : null}
@@ -448,6 +782,49 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
           </View>
         </Animated.View>
       </> : null}
+      {bubbleActive ? <BubbleFloatLayer target={activeItem ? floats.cur : null} prev={activeItem ? floats.prev : null} next={activeItem ? floats.next : null} skim={skim} /> : null}
+      {guidedActive && barVisible && !overlay ? (
+        <Animated.View entering={FadeIn.duration(160)} exiting={FadeOut.duration(220)} pointerEvents="box-none" style={[styles.bubbleBar, { bottom: insets.bottom + space.lg }]}>
+          <View style={styles.bubblePill}>
+            <BarButton label="Previous panel" onPress={() => { showBar(); advance(-1); }}><Text style={styles.bubbleBtn}>‹</Text></BarButton>
+            <Text style={styles.bubbleCount}>{`Page ${page + 1} · ${panelInfo.page === page ? `${panelInfo.index + 1}/${panelInfo.count}` : '…'}`}</Text>
+            <BarButton label="Next panel" onPress={() => { showBar(); advance(1); }}><Text style={styles.bubbleBtn}>›</Text></BarButton>
+            <Pressable accessibilityRole="button" accessibilityLabel={`Other panels: ${display.guidedMask === 'dim' ? 'dimmed' : display.guidedMask === 'solid' ? 'hidden' : 'shown'}. Tap to change`} onPress={() => { showBar(); changeDisplay({ guidedMask: display.guidedMask === 'dim' ? 'solid' : display.guidedMask === 'solid' ? 'none' : 'dim' }); }} hitSlop={10}>
+              <Text style={styles.bubbleBtn}>{display.guidedMask === 'dim' ? '◐' : display.guidedMask === 'solid' ? '●' : '○'}</Text>
+            </Pressable>
+            <BarButton label="More" onPress={() => setMenuOpen(true)}><Text style={styles.bubbleBtn}>⋯</Text></BarButton>
+            <BarButton label="Leave guided reading" onPress={() => setGuided(false)}><Text style={styles.bubbleBtn}>✕</Text></BarButton>
+          </View>
+        </Animated.View>
+      ) : null}
+      {guidedActive && panelDrawing ? <BubbleGestureLayer mode="draw" width={width} rtl={rtl} skim={noSkim} onTap={() => setPanelDrawing(false)} onDoubleTap={() => setPanelDrawing(false)} onCommit={() => undefined} onDraw={onPanelDraw} /> : null}
+      {guidedActive && panelDrawing ? <View pointerEvents="none" style={[styles.bubbleBar, { bottom: insets.bottom + space.lg }]}><View style={styles.bubblePill}><Text style={styles.bubbleCount}>Drag a box around a panel</Text></View></View> : null}
+      {bubbleActive && (focus !== -1 || drawing) ? (
+        <BubbleGestureLayer mode={drawing ? 'draw' : 'focus'} width={width} rtl={rtl} skim={skim} onTap={bubbleTap} onDoubleTap={leaveBubble} onCommit={stepBubble} onDraw={onBubbleDraw} />
+      ) : null}
+      {bubbleActive ? (
+        <View pointerEvents="box-none" style={[styles.bubbleBar, { bottom: insets.bottom + space.lg }]}>
+          <View style={styles.bubblePill}>
+            {drawing ? (
+              <Text style={styles.bubbleCount}>Drag a box around a balloon</Text>
+            ) : focus >= 0 || focus === -2 ? (
+              <>
+                {focus >= 0 ? <BarButton label="Previous balloon" onPress={() => stepBubble(-1)}><Text style={styles.bubbleBtn}>‹</Text></BarButton> : null}
+                <Text style={styles.bubbleCount}>{focus >= 0 ? `${focus + 1} / ${here.list.length}` : 'Balloon'}</Text>
+                {focus >= 0 ? <BarButton label="Next balloon" onPress={() => stepBubble(1)}><Text style={styles.bubbleBtn}>›</Text></BarButton> : null}
+                <BarButton label="Smaller balloon" onPress={() => nudgeBubbleSize(-BUBBLE_SIZE_STEP)}><Text style={[styles.bubbleBtn, styles.bubbleSizeBtn]}>A−</Text></BarButton>
+                <BarButton label="Larger balloon" onPress={() => nudgeBubbleSize(BUBBLE_SIZE_STEP)}><Text style={[styles.bubbleBtn, styles.bubbleSizeBtn]}>A+</Text></BarButton>
+                <BarButton label="Back to the page" onPress={leaveBubble}><Text style={styles.bubbleBtn}>⤡</Text></BarButton>
+                {focus >= 0 ? <BarButton label="Remove this balloon" onPress={removeBubble}><Text style={styles.bubbleBtn}>⌫</Text></BarButton> : null}
+              </>
+            ) : (
+              <Text style={styles.bubbleCount}>{!here.done ? 'Finding balloons…' : here.list.length ? 'Tap a balloon' : 'Tap the page to zoom in'}</Text>
+            )}
+            <BarButton label={drawing ? 'Cancel selecting' : 'Select a balloon by hand'} onPress={() => setDrawing((d) => !d)}><Text style={[styles.bubbleBtn, drawing && styles.iconActive]}>{drawing ? '✓' : '＋'}</Text></BarButton>
+            <BarButton label="Turn off bubble zoom" onPress={toggleBubbleMode}><Text style={styles.bubbleBtn}>✕</Text></BarButton>
+          </View>
+        </View>
+      ) : null}
       <ActionSheet visible={menuOpen} title={comic.title} options={menuOptions} onClose={() => setMenuOpen(false)} />
       <ReaderDisplaySheet visible={displayOpen} value={display} onChange={changeDisplay} onClose={() => setDisplayOpen(false)} />
       <PageTextSheet value={pageText} onClose={() => setPageText(null)} />
@@ -510,7 +887,7 @@ function PageImage({ source, page, width, height, crop }: { source: ComicSource;
 }
 
 /** One screen of paged reading: a single page, or two side by side (landscape). Zoom applies to the whole unit. */
-function PagedUnit({ register, source, unit, sizes, width, height, rtl, fit, bg, crop, onTap, onPullDown }: { register: (page: number, handle: ZoomHandle | null) => void; source: ComicSource; unit: number[]; sizes: Sizes; width: number; height: number; rtl: boolean; fit: Fit; bg: string; crop: Panel | null; onTap: (x: number) => void; onPullDown?: () => void }) {
+function PagedUnit({ register, source, unit, sizes, width, height, rtl, fit, bg, crop, onTap, onDoubleTap, onPullDown, passive }: { register: (page: number, handle: ZoomHandle | null) => void; source: ComicSource; unit: number[]; sizes: Sizes; width: number; height: number; rtl: boolean; fit: Fit; bg: string; crop: Panel | null; onTap: (x: number, y: number) => void; onDoubleTap?: (x: number, y: number) => void; onPullDown?: () => void; passive?: boolean }) {
   const known = unit.every((p) => sizes[p]);
   const ratios = unit.map((p) => (sizes[p] ? sizes[p]!.width / sizes[p]!.height : DEFAULT_RATIO));
   const sumRatio = ratios.reduce((a, b) => a + b, 0);
@@ -521,7 +898,7 @@ function PagedUnit({ register, source, unit, sizes, width, height, rtl, fit, bg,
   const widths = known ? ratios.map((r) => r * fitH) : unit.map(() => width / unit.length);
   const contentW = widths.reduce((a, b) => a + b, 0);
   return (
-    <ZoomableView ref={(h) => register(unit[0], h)} width={width} height={height} contentWidth={contentW} contentHeight={fitH} background={bg} onTap={onTap} onPullDown={onPullDown}>
+    <ZoomableView ref={passive ? undefined : (h) => register(unit[0], h)} passive={passive} width={width} height={height} contentWidth={contentW} contentHeight={fitH} background={bg} onTap={onTap} onDoubleTap={onDoubleTap} onPullDown={onPullDown}>
       <View style={{ flexDirection: rtl ? 'row-reverse' : 'row', width: contentW, height: fitH }}>
         {unit.map((p, i) => <PageImage key={p} source={source} page={p} width={widths[i]} height={fitH} crop={crop} />)}
       </View>
@@ -566,6 +943,12 @@ function Scrubber({ page, total, rtl, onSeek }: { page: number; total: number; r
 }
 
 const styles = StyleSheet.create({
+  bubbleBar: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
+  bubblePill: { flexDirection: 'row', alignItems: 'center', gap: space.lg, paddingHorizontal: space.lg, paddingVertical: space.sm, borderRadius: radius.lg, backgroundColor: '#000000cc' },
+  bubbleBtn: { color: '#fff', fontSize: 24, lineHeight: 28 },
+  barButton: { paddingHorizontal: 6, paddingVertical: 4 },
+  bubbleSizeBtn: { fontSize: 17, fontFamily: font.bodyMedium },
+  bubbleCount: { color: '#fff', fontSize: 14 },
   root: { flex: 1, backgroundColor: color.bg },
   fill: { width: '100%', height: '100%' },
   center: { flex: 1, backgroundColor: color.bg, alignItems: 'center', justifyContent: 'center', padding: space.xl, gap: space.lg },

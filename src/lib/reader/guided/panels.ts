@@ -4,14 +4,19 @@
 //   3. keep the leaves as panels, ordered row by row (right-to-left inside a row for manga).
 // It cannot split staggered layouts that no straight line separates — those come back as one
 // bigger panel, and a page with fewer than two panels falls back to the whole page.
-export type Panel = { x: number; y: number; w: number; h: number }; // normalised 0..1
+export type Panel = { x: number; y: number; w: number; h: number; /** An irregular panel's outline (page fractions); the box above is its bounds. */ poly?: Array<[number, number]> }; // normalised 0..1
 
 export const FULL_PAGE: Panel = { x: 0, y: 0, w: 1, h: 1 };
 
 type Box = { x0: number; y0: number; x1: number; y1: number }; // x1,y1 exclusive
 
 const TOLERANCE = 24;
-const CUT_FRACTION = 0.97;
+/** How much of a row/column must be gutter to cut along it: strict first, then looser for thin borders, glowing edges and dark art that touches the gutter. */
+const CUT_LADDER: Array<[number, number]> = [[0.97, TOLERANCE], [0.92, TOLERANCE], [0.86, TOLERANCE], [0.8, TOLERANCE], [0.94, 46], [0.88, 46], [0.82, 46]];
+/** A gutter is smooth; dark artwork is textured. A cut gap whose pixels change more than this (average step between neighbours, 0–255) is art, not a gutter. */
+const MAX_GAP_TEXTURE = 7;
+/** No panel is thinner than this share of the page: a narrower "panel" is a stripe of dark art that happened to sit between two cuts. */
+const MIN_PANEL_W = 0.1; const MIN_PANEL_H = 0.06;
 const MIN_PANEL_AREA = 0.015;
 const MAX_DEPTH = 8;
 
@@ -43,7 +48,8 @@ export function detectPanels(gray: Uint8Array, w: number, h: number, opts: { rtl
   if (w < 8 || h < 8 || gray.length < w * h) return [FULL_PAGE];
   const gutter = findGutterGray(gray, w, h);
   if (gutter == null) return [FULL_PAGE];
-  const isGutter = (x: number, y: number) => Math.abs(gray[y * w + x] - gutter) <= TOLERANCE;
+  const isGutterAt = (tol: number) => (x: number, y: number) => Math.abs(gray[y * w + x] - gutter) <= tol;
+  const isGutter = isGutterAt(TOLERANCE);
 
   let gutterPixels = 0;
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (isGutter(x, y)) gutterPixels++;
@@ -51,7 +57,8 @@ export function detectPanels(gray: Uint8Array, w: number, h: number, opts: { rtl
   if (gutterShare < 0.04 || gutterShare > 0.92) return [FULL_PAGE]; // no gutters to cut on, or almost blank
 
   /** Shrink a box to the bounding box of its non-gutter pixels. */
-  const trim = (b: Box): Box | null => {
+  const trim = (b: Box, tol = TOLERANCE): Box | null => {
+    const isGutter = isGutterAt(tol);
     let x0 = b.x1, y0 = b.y1, x1 = b.x0, y1 = b.y0;
     for (let y = b.y0; y < b.y1; y++) for (let x = b.x0; x < b.x1; x++) {
       if (!isGutter(x, y)) { if (x < x0) x0 = x; if (x >= x1) x1 = x + 1; if (y < y0) y0 = y; if (y >= y1) y1 = y + 1; }
@@ -60,7 +67,8 @@ export function detectPanels(gray: Uint8Array, w: number, h: number, opts: { rtl
   };
 
   /** Split along one axis on near-pure gutter lines; returns the bands, or null if there is nothing to cut. */
-  const split = (b: Box, axis: 'y' | 'x'): Box[] | null => {
+  const split = (b: Box, axis: 'y' | 'x', cutFraction: number, tol: number): Box[] | null => {
+    const isGutter = isGutterAt(tol);
     const len = axis === 'y' ? b.y1 - b.y0 : b.x1 - b.x0;
     const across = axis === 'y' ? b.x1 - b.x0 : b.y1 - b.y0;
     const cut: boolean[] = [];
@@ -70,27 +78,41 @@ export function detectPanels(gray: Uint8Array, w: number, h: number, opts: { rtl
         const x = axis === 'y' ? b.x0 + j : b.x0 + i; const y = axis === 'y' ? b.y0 + i : b.y0 + j;
         if (isGutter(x, y)) g++;
       }
-      cut.push(g / across >= CUT_FRACTION);
+      cut.push(g / across >= cutFraction);
     }
     const minGap = Math.max(1, Math.round(len * 0.004));
-    const gaps = runs(cut).filter(([s, e]) => e - s >= minGap);
+    const smooth = (s: number, e: number) => {
+      // Average step between neighbouring pixels along the gap, which is flat for a gutter and busy for art.
+      let sum = 0; let n = 0;
+      for (let i = s; i < e; i++) for (let j = 1; j < across; j++) {
+        const x0 = axis === 'y' ? b.x0 + j - 1 : b.x0 + i; const y0 = axis === 'y' ? b.y0 + i : b.y0 + j - 1;
+        const x1 = axis === 'y' ? b.x0 + j : b.x0 + i; const y1 = axis === 'y' ? b.y0 + i : b.y0 + j;
+        sum += Math.abs(gray[y1 * w + x1] - gray[y0 * w + x0]); n++;
+      }
+      return n === 0 || sum / n <= MAX_GAP_TEXTURE;
+    };
+    const gaps = runs(cut).filter(([s, e]) => e - s >= minGap && smooth(s, e));
     if (!gaps.length) return null;
     const bands: Box[] = []; let cursor = 0;
     for (const [s, e] of [...gaps, [len, len] as [number, number]]) {
       if (s > cursor) bands.push(axis === 'y' ? { ...b, y0: b.y0 + cursor, y1: b.y0 + s } : { ...b, x0: b.x0 + cursor, x1: b.x0 + s });
       cursor = e;
     }
-    return bands.length >= 2 ? bands : null;
+    // A band thinner than a real panel is a stripe of art between two false gaps: leave it out of the count so the cut is not made.
+    const wide = bands.filter((bd) => (bd.x1 - bd.x0) / w >= MIN_PANEL_W && (bd.y1 - bd.y0) / h >= MIN_PANEL_H);
+    return bands.length >= 2 && wide.length === bands.length ? bands : null;
   };
 
   const cut = (box: Box, depth: number): Box[] => {
     const t = trim(box);
     if (!t) return [];
     if (depth >= MAX_DEPTH) return [t];
-    const rows = split(t, 'y');
-    if (rows) return rows.flatMap((r) => cut(r, depth + 1));
-    const cols = split(t, 'x');
-    if (cols) return (opts.rtl ? [...cols].reverse() : cols).flatMap((c) => cut(c, depth + 1));
+    for (const [fraction, tol] of CUT_LADDER) {
+      const rows = split(t, 'y', fraction, tol);
+      if (rows) return rows.flatMap((r) => cut(r, depth + 1));
+      const cols = split(t, 'x', fraction, tol);
+      if (cols) return (opts.rtl ? [...cols].reverse() : cols).flatMap((c) => cut(c, depth + 1));
+    }
     return [t];
   };
 

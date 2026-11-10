@@ -256,11 +256,16 @@ export const toggleInCollection = (collectionId: string, comicId: string): boole
 };
 
 // ---- guided-view panel cache -------------------------------------------------
-export type CachedPanels = { rtl: boolean; panels: Array<{ x: number; y: number; w: number; h: number }> };
+/** `v` is the detector that produced them (older results are redone); `edited` marks panels the reader drew or corrected, which are never redone. */
+export type CachedPanels = { rtl: boolean; panels: Array<{ x: number; y: number; w: number; h: number; poly?: Array<[number, number]> }>; v?: number; edited?: boolean };
 
 export const getCachedPanels = (comicId: string, page: number): CachedPanels | null => {
   const row = sqlite.getFirstSync<{ panels_json: string }>('SELECT panels_json FROM reader_panels WHERE comic_id = ? AND page = ?', comicId, page);
   try { return row ? (JSON.parse(row.panels_json) as CachedPanels) : null; } catch { return null; }
+};
+
+export const clearCachedPanels = (comicId: string, page: number): void => {
+  sqlite.runSync('DELETE FROM reader_panels WHERE comic_id = ? AND page = ?', comicId, page);
 };
 
 export const saveCachedPanels = (comicId: string, page: number, value: CachedPanels): void => {

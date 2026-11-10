@@ -4,13 +4,17 @@ import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-ha
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSheetDrag } from '../../ui/sheetDrag';
-import type { PageAnimation, ReaderFilter } from '../../lib/reader/readerSettings';
+import type { GuidedMask, LandscapeLayout, PageAnimation, ReaderFilter } from '../../lib/reader/readerSettings';
 import { color, font, radius, space, type } from '../../ui/tokens';
 
-export type Display = { brightness: number; filter: ReaderFilter; pageAnimation: PageAnimation; trimBorders: boolean };
+export type Display = { brightness: number; filter: ReaderFilter; pageAnimation: PageAnimation; trimBorders: boolean; guidedMask: GuidedMask; landscapeLayout: LandscapeLayout; bubbleSize: number; guidedMs: number; bridgeMs: number; doubleTapPanel: boolean };
+
+const MASKS: Array<[GuidedMask, string]> = [['dim', 'Dimmed'], ['solid', 'Solid'], ['none', 'Off']];
+const CAMERA_SPEEDS: Array<[number, string]> = [[200, 'Fast'], [320, 'Normal'], [520, 'Slow']];
+const BRIDGES: Array<[number, string]> = [[0, 'None'], [250, '0.25 s'], [500, '0.5 s'], [1000, '1 s']];
 
 const FILTERS: Array<[ReaderFilter, string, boolean]> = [['none', 'None', false], ['sepia', 'Sepia', false], ['gray', 'Black & white', true], ['invert', 'Invert', true], ['contrast', 'Sharpen contrast', true]];
-const ANIMATIONS: Array<[PageAnimation, string]> = [['slide', 'Slide'], ['fade', 'Fade'], ['flip', 'Page flip']];
+const ANIMATIONS: Array<[PageAnimation, string]> = [['slide', 'Slide'], ['fade', 'Fade'], ['flip', 'Page flip'], ['curl', 'Page curl']];
 
 /** Android 12+ can filter a whole view on the GPU; older phones get brightness, sepia and everything else. */
 export const supportsViewFilters = Platform.OS === 'android' ? Number(Platform.Version) >= 31 : true;
@@ -52,6 +56,29 @@ export function ReaderDisplaySheet({ visible, value, onChange, onClose }: { visi
 
           <Text style={styles.label}>Page animation</Text>
           <View style={styles.row}>{ANIMATIONS.map(([k, l]) => <Chip key={k} label={l} active={value.pageAnimation === k} onPress={() => onChange({ pageAnimation: k })} />)}</View>
+
+          <Text style={styles.label}>When the screen is turned sideways</Text>
+          <View style={styles.row}>
+            <Chip label="Two pages (open book)" active={value.landscapeLayout === 'spread'} onPress={() => onChange({ landscapeLayout: 'spread' })} />
+            <Chip label="One page" active={value.landscapeLayout === 'single'} onPress={() => onChange({ landscapeLayout: 'single' })} />
+          </View>
+          <Text style={styles.note}>Guided reading, balloon zoom and the page curl work on both layouts.</Text>
+
+          <Text style={styles.label}>Bubble zoom size · {Math.round(value.bubbleSize * 100)}%</Text>
+          <Slider value={value.bubbleSize} min={0.5} max={1.6} onChange={(bubbleSize) => onChange({ bubbleSize })} />
+          <Text style={styles.note}>How large a speech balloon is when you tap it. 100% fits the balloon to the screen; you can also change it with A− and A+ while one is up.</Text>
+
+          <Text style={styles.label}>Guided reading · other panels</Text>
+          <View style={styles.row}>{MASKS.map(([k, l]) => <Chip key={k} label={l} active={value.guidedMask === k} onPress={() => onChange({ guidedMask: k })} />)}</View>
+          <Text style={styles.label}>Guided reading · camera speed</Text>
+          <View style={styles.row}>{CAMERA_SPEEDS.map(([k, l]) => <Chip key={k} label={l} active={value.guidedMs === k} onPress={() => onChange({ guidedMs: k })} />)}</View>
+          <Text style={styles.label}>Guided reading · pause on a new page</Text>
+          <View style={styles.row}>{BRIDGES.map(([k, l]) => <Chip key={k} label={l} active={value.bridgeMs === k} onPress={() => onChange({ bridgeMs: k })} />)}</View>
+          <Text style={styles.label}>Double-tap</Text>
+          <View style={styles.row}>
+            <Chip label="Focus a panel" active={value.doubleTapPanel} onPress={() => onChange({ doubleTapPanel: true })} />
+            <Chip label="Zoom in" active={!value.doubleTapPanel} onPress={() => onChange({ doubleTapPanel: false })} />
+          </View>
 
           <Text style={styles.label}>Borders</Text>
           <View style={styles.row}><Chip label={value.trimBorders ? 'Trimmed' : 'Keep margins'} active={value.trimBorders} onPress={() => onChange({ trimBorders: !value.trimBorders })} /></View>

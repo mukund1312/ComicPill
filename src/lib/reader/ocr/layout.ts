@@ -149,3 +149,10 @@ export function layoutPage(regions: OcrRegion[], pageW: number, pageH: number, o
   const blocks = orderBlocks(groupIntoBlocks(lines), !!opts.rtl).map(blockText).filter((t) => t.length > 0);
   return { text: blocks.join('\n\n'), blocks };
 }
+
+/** Where each speech balloon / caption sits on the page (fractions 0..1), in reading order. Same grouping as `layoutPage`. */
+export function layoutBubbles(regions: OcrRegion[], pageW: number, pageH: number, opts: { rtl?: boolean } = {}): Array<Box & { lines: Box[] }> {
+  const lines = mergeRegions(regions, pageW, pageH);
+  // Each balloon's box, and the boxes of the lines inside it (so a block that is really two balloons can be told apart from the picture).
+  return orderBlocks(groupIntoBlocks(lines), !!opts.rtl).filter((b) => blockText(b).trim().length > 0).map((b) => ({ ...boxOfBlock(b), lines: b.map(({ x, y, w, h }) => ({ x, y, w, h })) }));
+}

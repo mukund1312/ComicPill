@@ -1,13 +1,23 @@
 import { forwardRef, useImperativeHandle, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withDecay, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withDecay, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
 import { color } from '../../ui/tokens';
 import type { Panel } from '../../lib/reader/guided/panels';
+import { cameraFor } from '../../lib/reader/guided/camera';
 
 export type ZoomHandle = {
   /** Animate to fill the view with a panel (normalised to the content); null returns to the full page. */
-  zoomToPanel(panel: Panel | null): void;
+  zoomToPanel(panel: Panel | null, durationMs?: number, clampToPage?: boolean): void;
+  /** The live camera (scale and offset), for anything that has to follow it frame by frame, such as the panel mask. */
+  camera: { scale: SharedValue<number>; tx: SharedValue<number>; ty: SharedValue<number> };
+  /** The page's on-screen size at rest, and the view it sits in. */
+  content: { width: number; height: number };
+  view: { width: number; height: number };
+  /** A touch point in the view → where it lands on the page (0..1), whatever the current zoom and pan. */
+  pointToContent(x: number, y: number): { x: number; y: number };
+  /** The other way: a point on the page (0..1) → where it is in the view right now. */
+  contentToScreen(x: number, y: number): { x: number; y: number };
 };
 
 type Props = {
@@ -17,10 +27,14 @@ type Props = {
   contentWidth?: number;
   contentHeight?: number;
   /** x is the tap position within the view, 0..width */
-  onTap: (x: number) => void;
+  onTap: (x: number, y: number) => void;
+  /** When given, a double-tap calls this (with the tap position) instead of zooming in and out by itself. */
+  onDoubleTap?: (x: number, y: number) => void;
   /** Drag the page down (while it is not zoomed) and let go: leave the comic. */
   onPullDown?: () => void;
   background?: string;
+  /** Draw only: no gestures and no pan or zoom. Used for the copies of a page that the page-turn effects animate. */
+  passive?: boolean;
   children: ReactNode;
 };
 
@@ -42,7 +56,7 @@ const ONE_FINGER_PER_DOUBLING = 140;
  * Pinch (about the fingers), double-tap (about the tap), and pan with momentum. At 1× — or when
  * pushed against an edge — pan steps aside so the pager can swipe to the next page.
  */
-export const ZoomableView = forwardRef<ZoomHandle, Props>(function ZoomableView({ width, height, contentWidth = width, contentHeight = height, onTap, onPullDown, background = color.bg, children }, ref) {
+export const ZoomableView = forwardRef<ZoomHandle, Props>(function ZoomableView({ width, height, contentWidth = width, contentHeight = height, onTap, onDoubleTap, onPullDown, background = color.bg, passive = false, children }, ref) {
   // A fit-width page can be taller than the screen: it scrolls vertically even at 1×.
   const tallPage = contentHeight > height + 1;
   // Tall pages start at the top, not the middle. (A rotation re-mounts the list, so this runs again.)
@@ -57,16 +71,24 @@ export const ZoomableView = forwardRef<ZoomHandle, Props>(function ZoomableView(
   const clamp = (v: number, limit: number) => { 'worklet'; return Math.min(limit, Math.max(-limit, v)); };
 
   useImperativeHandle(ref, () => ({
-    zoomToPanel(panel) {
-      if (!panel) { scale.value = withTiming(1); tx.value = withTiming(0); ty.value = withTiming(0); return; }
-      // Panel centre relative to the content centre, then scaled so the panel fills ~96% of the view.
-      const cx = (panel.x + panel.w / 2 - 0.5) * contentWidth; const cy = (panel.y + panel.h / 2 - 0.5) * contentHeight;
-      const s = Math.min(MAX_SCALE, Math.max(1, Math.min((width * 0.96) / (panel.w * contentWidth), (height * 0.96) / (panel.h * contentHeight))));
-      const limitX = Math.max(0, (contentWidth * s - width) / 2); const limitY = Math.max(0, (contentHeight * s - height) / 2);
-      scale.value = withTiming(s, { duration: 280 });
-      tx.value = withTiming(Math.min(limitX, Math.max(-limitX, -cx * s)), { duration: 280 });
-      ty.value = withTiming(Math.min(limitY, Math.max(-limitY, -cy * s)), { duration: 280 });
+    pointToContent(x, y) {
+      const sc = scale.value;
+      return { x: (x - width / 2 - tx.value) / (sc * contentWidth) + 0.5, y: (y - height / 2 - ty.value) / (sc * contentHeight) + 0.5 };
     },
+    contentToScreen(x, y) {
+      const sc = scale.value;
+      return { x: width / 2 + tx.value + (x - 0.5) * contentWidth * sc, y: height / 2 + ty.value + (y - 0.5) * contentHeight * sc };
+    },
+    zoomToPanel(panel, durationMs = 320, clampToPage = true) {
+      const cfg = { duration: durationMs, easing: Easing.inOut(Easing.cubic) };
+      if (!panel) { scale.value = withTiming(1, cfg); tx.value = withTiming(0, cfg); ty.value = withTiming(0, cfg); return; }
+      // One shared calculation (lib/reader/guided/camera) decides where the page goes, so the mask and taps agree with the picture.
+      const cam = cameraFor(panel, { width: contentWidth, height: contentHeight }, { width, height }, { clamp: clampToPage });
+      scale.value = withTiming(cam.scale, cfg); tx.value = withTiming(cam.tx, cfg); ty.value = withTiming(cam.ty, cfg);
+    },
+    camera: { scale, tx, ty },
+    content: { width: contentWidth, height: contentHeight },
+    view: { width, height },
   }), [width, height, contentWidth, contentHeight, scale, tx, ty]);
 
   const pinch = Gesture.Pinch()
@@ -142,18 +164,20 @@ export const ZoomableView = forwardRef<ZoomHandle, Props>(function ZoomableView(
     .onFinalize(() => { panning.value = false; oneFinger.value = false; pulling.value = false; });
 
   const doubleTap = Gesture.Tap().numberOfTaps(2).maxDuration(250).onEnd((e) => {
+    if (onDoubleTap) { runOnJS(onDoubleTap)(e.x, e.y); return; }
     if (scale.value > 1.01) { scale.value = withTiming(1); tx.value = withTiming(0); ty.value = withTiming(0); return; }
     const cx = e.x - width / 2; const cy = e.y - height / 2;
     scale.value = withTiming(DOUBLE_TAP_SCALE);
     tx.value = withTiming(clamp(-(DOUBLE_TAP_SCALE - 1) * cx, maxX(DOUBLE_TAP_SCALE)));
     ty.value = withTiming(clamp(-(DOUBLE_TAP_SCALE - 1) * cy, maxY(DOUBLE_TAP_SCALE)));
   });
-  const singleTap = Gesture.Tap().runOnJS(true).maxDuration(250).onEnd((e) => onTap(e.x));
+  const singleTap = Gesture.Tap().runOnJS(true).maxDuration(250).onEnd((e) => onTap(e.x, e.y));
 
   const style = useAnimatedStyle(() => ({
     transform: [{ translateX: tx.value }, { translateY: ty.value }, { scale: scale.value }],
   }));
 
+  if (passive) return <View style={[styles.page, { width, height, backgroundColor: background }]}><View style={styles.center}>{children}</View></View>;
   return (
     <GestureDetector gesture={Gesture.Race(Gesture.Exclusive(doubleTap, singleTap), Gesture.Simultaneous(pinch, pan))}>
       <View style={[styles.page, { width, height, backgroundColor: background }]}>
