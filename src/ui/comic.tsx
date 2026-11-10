@@ -31,14 +31,19 @@ export function ComicCover({ title, workId, size = 'grid', status, onPress, recy
   const corner = size === 'tiny' ? 6 : size === 'list' ? 9 : 14;
   const shape = size === 'fluid' ? { width: '100%' as const, aspectRatio: 2 / 3 } : { width: dims[0], height: dims[1] };
   const asset = workId ? pickCover(customCoverFor(workId), COVER_ASSETS[workId], fileCoverFor(workId)) : undefined;
-  return <PressableScale to={0.97} testID={recyclingKey ? `cover-${recyclingKey}` : undefined} accessibilityRole={onPress ? 'button' : undefined} onPress={onPress} disabled={!onPress} style={[styles.cover, shape, { borderRadius: corner, backgroundColor: asset ? c.surfaceRaised : tint(title), borderColor: `${c.textPrimary}18` }]}>
+  const coverStyle = [styles.cover, shape, { borderRadius: corner, backgroundColor: asset ? c.surfaceRaised : tint(title), borderColor: `${c.textPrimary}18` }];
+  const body = <>
     {asset ? (
       <Image source={asset} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" recyclingKey={recyclingKey} transition={120} />
     ) : (
       <><View style={[styles.moon, { backgroundColor: c.secondary }]} /><Text numberOfLines={4} style={[styles.coverTitle, { color: c.textPrimary, fontFamily: typography.display }, size === 'tiny' && { fontSize: 7 }]}>{title}</Text><View style={[styles.coverRule, { backgroundColor: c.primary }]} /></>
     )}
     {status ? <View style={[styles.status, { backgroundColor: c.success }]}><Text style={[styles.statusText, { color: c.primaryForeground, fontFamily: typography.bodySemibold }]}>{status}</Text></View> : null}
-  </PressableScale>;
+  </>;
+  // A cover with something to do is a labelled button; one inside a card that already opens the comic is just a picture, so a screen reader
+  // reads the card once instead of announcing an unnamed extra button.
+  if (!onPress) return <View testID={recyclingKey ? `cover-${recyclingKey}` : undefined} importantForAccessibility="no-hide-descendants" style={coverStyle}>{body}</View>;
+  return <PressableScale to={0.97} testID={recyclingKey ? `cover-${recyclingKey}` : undefined} accessibilityRole="button" accessibilityLabel={status ? `${title}, ${status}` : title} onPress={onPress} style={coverStyle}>{body}</PressableScale>;
 }
 
 export function ComicRow({ title, workId, meta, status, label, onPress, recyclingKey }: { title: string; workId?: string; meta?: string; status?: string; label?: 'collect' | 'buy_on_sale' | 'digital_is_fine' | 'try_digital_first' | 'skip'; onPress?: () => void; recyclingKey?: string }) {

@@ -61,7 +61,7 @@ export default function ReadingNowScreen() {
               <View style={[styles.heroCover, { borderColor: c.border }]}>{!masked(hero) && hero.coverPath ? <Image source={{ uri: hero.coverPath }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}</View>
               <View style={styles.heroBody}>
                 <Text style={[styles.eyebrow, { color: c.textSecondary, fontFamily: typography.bodySemibold }]}>CONTINUE READING</Text>
-                <Text numberOfLines={3} style={[styles.heroTitle, { color: c.textPrimary, fontFamily: typography.display }]}>{masked(hero) ? 'Locked comic' : hero.title}</Text>
+                <Text numberOfLines={3} maxFontSizeMultiplier={1.25} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.heroTitle, { color: c.textPrimary, fontFamily: typography.display }]}>{masked(hero) ? 'Locked comic' : hero.title}</Text>
                 <Text style={[styles.sub, { color: c.textSecondary, fontFamily: typography.body }]}>Page {hero.progressPage + 1} of {hero.pageCount}</Text>
                 <View style={{ marginTop: 12 }}><Progress value={progressFraction(hero)} /></View>
               </View>

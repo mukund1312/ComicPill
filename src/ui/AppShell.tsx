@@ -55,7 +55,7 @@ function TabBar({ active }: { active: Tab }) {
             <Pressable key={tab.id} accessibilityRole="button" accessibilityLabel={tab.label} accessibilityState={{ selected: on }}
               onPress={() => { if (!on) { feedback.select(); router.replace(tab.href as never); } }} style={[styles.tab, { width: tabWidth }]}>
               <Animated.View style={on ? iconStyle : undefined}><Icon name={on ? tab.iconActive : tab.icon} size={22} color={on ? c.primary : c.textMuted} /></Animated.View>
-              <Text numberOfLines={1} style={[styles.tabLabel, { color: on ? c.primary : c.textMuted, fontFamily: on ? typography.bodySemibold : typography.bodyMedium }]}>{tab.label}</Text>
+              <Text numberOfLines={1} maxFontSizeMultiplier={1.15} adjustsFontSizeToFit minimumFontScale={0.8} style={[styles.tabLabel, { color: on ? c.primary : c.textMuted, fontFamily: on ? typography.bodySemibold : typography.bodyMedium }]}>{tab.label}</Text>
             </Pressable>
           );
         })}
@@ -149,7 +149,7 @@ export function AppShell({ active, title, children, logo = false, right, back = 
         </>
       ) : (
         <View style={styles.header}>
-          {logo ? <Animated.View style={[styles.logoLockup, logoStyle, { transformOrigin: 'left center' }]}><Wordmark small /><ThemeEmblem id={theme.id} size={26} /></Animated.View> : <Text accessibilityRole="header" style={[styles.headerTitle, { color: c.textPrimary, fontFamily: typography.display }]}>{title}</Text>}
+          {logo ? <Animated.View style={[styles.logoLockup, logoStyle, { transformOrigin: 'left center' }]}><Wordmark small /><ThemeEmblem id={theme.id} size={26} /></Animated.View> : <Text accessibilityRole="header" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} maxFontSizeMultiplier={1.2} style={[styles.headerTitle, { color: c.textPrimary, fontFamily: typography.display }]}>{title}</Text>}
           <View style={styles.headerRight}>{layout.railCapable && !layout.rail ? <HeaderButton icon="menu" label="Show menu" onPress={toggleMenu} /> : null}{right ?? (layout.rail ? null : <Pressable accessibilityRole="button" accessibilityLabel="Open profile" hitSlop={8} onPress={() => router.push('/profile')}><Avatar uri={avatar} initial={initialOf({ displayName, username })} size={38} /></Pressable>)}</View>
         </View>
       )}
@@ -169,8 +169,8 @@ const styles = StyleSheet.create({
   topBar: { minHeight: 56, paddingHorizontal: space.lg, paddingTop: 6, alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   pageTitle: { fontSize: 34, letterSpacing: -1, paddingHorizontal: space.lg, marginTop: 8, marginBottom: 6 },
   logoLockup: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  headerTitle: { fontSize: 34, letterSpacing: -1 },
-  headerRight: { minWidth: 38, alignItems: 'flex-end' },
+  headerTitle: { fontSize: 34, letterSpacing: -1, flexShrink: 1, marginRight: space.sm },
+  headerRight: { minWidth: 38, alignItems: 'flex-end', flexShrink: 0 },
   body: { flex: 1 },
   main: { flex: 1 },
   column: { flex: 1, width: '100%', alignSelf: 'center' },

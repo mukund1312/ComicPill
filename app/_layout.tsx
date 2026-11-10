@@ -2,7 +2,11 @@
 // (fonts, gesture root, local db init) but leaves screen composition to the
 // frontend build (see /docs for the design blueprint and API surface).
 import { useEffect, useState } from 'react';
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router';
+import { installNavigationGuard } from '../src/lib/navigation/tapGuard';
+
+// A quick double tap must not open the same screen twice.
+installNavigationGuard(router);
 import { StatusBar } from 'expo-status-bar';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';

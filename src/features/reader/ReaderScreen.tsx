@@ -806,7 +806,8 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
       {bubbleActive && (focus !== -1 || drawing) ? (
         <BubbleGestureLayer mode={drawing ? 'draw' : 'focus'} width={width} rtl={rtl} skim={skim} onTap={bubbleTap} onDoubleTap={leaveBubble} onCommit={stepBubble} onDraw={onBubbleDraw} />
       ) : null}
-      {bubbleActive ? (
+      {/* Out of the way while the page controls are up (it would sit on the scrubber). */}
+      {bubbleActive && !overlay ? (
         <View pointerEvents="box-none" style={[styles.bubbleBar, { bottom: insets.bottom + space.lg }]}>
           <View style={styles.bubblePill}>
             {drawing ? (
@@ -948,7 +949,8 @@ function Scrubber({ page, total, rtl, onSeek }: { page: number; total: number; r
 
 const styles = StyleSheet.create({
   bubbleBar: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
-  bubblePill: { flexDirection: 'row', alignItems: 'center', gap: space.lg, paddingHorizontal: space.lg, paddingVertical: space.sm, borderRadius: radius.lg, backgroundColor: '#000000cc' },
+  // Wraps to a second line rather than running off a narrow screen.
+  bubblePill: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '94%', rowGap: space.xs, alignItems: 'center', gap: space.lg, paddingHorizontal: space.lg, paddingVertical: space.sm, borderRadius: radius.lg, backgroundColor: '#000000cc' },
   bubbleBtn: { color: '#fff', fontSize: 24, lineHeight: 28 },
   barButton: { paddingHorizontal: 6, paddingVertical: 4 },
   bubbleSizeBtn: { fontSize: 17, fontFamily: font.bodyMedium },

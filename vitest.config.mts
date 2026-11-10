@@ -19,7 +19,7 @@ export default defineConfig({
       'src/lib/platform/**/*.spec.ts',
       'src/lib/reader/**/*.spec.ts',
       'src/lib/mind/**/*.spec.ts',
-      'src/lib/opds/**/*.spec.ts', 'src/lib/readingOrders/**/*.spec.ts',
+      'src/lib/opds/**/*.spec.ts', 'src/lib/readingOrders/**/*.spec.ts', 'src/lib/navigation/**/*.spec.ts',
     ],
   },
 });

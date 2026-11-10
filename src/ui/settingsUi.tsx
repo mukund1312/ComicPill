@@ -68,7 +68,8 @@ export function ToggleRow({ label, detail, value, onChange, last, disabled }: Ro
     <RowShell
       label={label} detail={detail} last={last} disabled={disabled} role="switch" state={{ checked: value }}
       onPress={() => { feedback.select(); onChange(!value); }}
-      right={<Switch value={value} disabled={disabled} onValueChange={(v) => { feedback.select(); onChange(v); }} trackColor={{ false: c.border, true: c.primary }} thumbColor={c.primaryForeground} />}
+      // The row is the labelled switch for screen readers; the drawn switch is only its picture, so it is not a second unnamed control.
+      right={<Switch accessible={false} importantForAccessibility="no-hide-descendants" value={value} disabled={disabled} onValueChange={(v) => { feedback.select(); onChange(v); }} trackColor={{ false: c.border, true: c.primary }} thumbColor={c.primaryForeground} />}
     />
   );
 }

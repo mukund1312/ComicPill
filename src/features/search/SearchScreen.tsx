@@ -1,7 +1,7 @@
 // One search box across your files, your collection and the whole catalog.
 import { onMyDevice } from '../../lib/platform/device';
-import { useMemo, useState } from 'react';
-import { Keyboard, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useMemo, useRef, useState } from 'react';
+import { Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { AppShell } from '../../ui/AppShell';
@@ -20,6 +20,7 @@ type Hit = { id: string; title: string; own: string };
 export default function SearchScreen() {
   const { theme, typography } = useAppearance(); const c = theme.colors;
   const [query, setQuery] = useState('');
+  const inputRef = useRef<TextInput>(null);
   const q = query.trim();
   const files: ReaderComic[] = useMemo(() => (q ? listReaderComics().filter((comic) => !comic.locked && matchesQuery(comic, q)).slice(0, 20) : []), [q]);
   const works: Hit[] = useMemo(() => (q ? sqlite.getAllSync<Hit>(
@@ -27,12 +28,13 @@ export default function SearchScreen() {
 
   return (
     <AppShell active="search" title="Search">
-      <View style={[styles.box, { backgroundColor: c.surfaceRaised }]}>
+      {/* The whole pill focuses the field, so the magnifier end is not a dead spot. */}
+      <Pressable accessible={false} onPress={() => inputRef.current?.focus()} style={[styles.box, { backgroundColor: c.surfaceRaised }]}>
         <Icon name="search" size={18} color={c.textMuted} />
-        <TextInput accessibilityLabel="Search" value={query} onChangeText={setQuery} placeholder="Comics, series, writers" placeholderTextColor={c.textMuted} returnKeyType="search" autoCorrect={false}
+        <TextInput ref={inputRef} accessibilityLabel="Search" value={query} onChangeText={setQuery} placeholder="Comics, series, writers" placeholderTextColor={c.textMuted} returnKeyType="search" autoCorrect={false}
           style={[styles.input, { color: c.textPrimary, fontFamily: typography.body }]} onSubmitEditing={() => Keyboard.dismiss()} />
-        {query ? <PressableScale to={0.9} onPress={() => setQuery('')} hitSlop={10}><Icon name="close-circle" size={18} color={c.textMuted} /></PressableScale> : null}
-      </View>
+        {query ? <PressableScale to={0.9} accessibilityLabel="Clear search" onPress={() => setQuery('')} hitSlop={10}><Icon name="close-circle" size={18} color={c.textMuted} /></PressableScale> : null}
+      </Pressable>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}>
         {!q ? (
           <View style={styles.hint}><Icon name="search-outline" size={34} color={c.textMuted} /><Text style={[styles.hintText, { color: c.textSecondary, fontFamily: typography.body }]}>Search the comics on your phone and the whole catalog.</Text></View>

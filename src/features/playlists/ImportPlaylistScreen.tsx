@@ -9,13 +9,26 @@ import { importSharedPlaylist, type ImportResult } from '../../lib/db/queries/pl
 import { Button } from '../../ui/primitives';
 import { color, font, space, type } from '../../ui/tokens';
 
+// One import per link per session: opening the same link again (or the screen mounting twice) shows the earlier result instead of adding a
+// second copy of the playlist.
+const imported = new Map<string, ImportResult>();
+function importOnce(code: string): ImportResult {
+  const hit = imported.get(code);
+  if (hit) return hit;
+  const done = importSharedPlaylist(code);
+  imported.set(code, done);
+  return done;
+}
+
 export default function ImportPlaylistScreen() {
   const { d } = useLocalSearchParams<{ d?: string }>();
   const [result, setResult] = useState<ImportResult | 'pending' | 'missing'>('pending');
 
   useEffect(() => {
-    if (!d) { setResult('missing'); return; }
-    setResult(importSharedPlaylist(decodeURIComponent(d)));
+    let live = true;
+    // Done just after the first paint, so "Opening your shared playlist…" shows while the import runs.
+    Promise.resolve().then(() => { if (live) setResult(d ? importOnce(decodeURIComponent(d)) : 'missing'); });
+    return () => { live = false; };
   }, [d]);
 
   if (result === 'pending') {

@@ -1,9 +1,52 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { router } from 'expo-router';
+import { StyleSheet, Text, View } from 'react-native';
 import { SectionHeader } from '../../ui/primitives';
-import { ComicCover } from '../../ui/comic';
-import { color, font, radius, space, type } from '../../ui/tokens';
+import { SettingsPage } from '../../ui/SettingsPage';
+import { useAppearance } from '../../ui/theme';
+import { radius, space, type } from '../../ui/tokens';
 import photoSources from '../../../docs/creator-photo-sources.json';
-export function SourcesScreen() { return <ScrollView style={styles.page} contentContainerStyle={styles.content}><Text onPress={() => router.back()} style={styles.back}>‹ Back</Text><Text style={styles.title}>Sources & metadata</Text><Text style={styles.copy}>ComicPill shows its sources so you know where information comes from.</Text><View style={styles.work}><ComicCover title="The Long Halloween" size="list" /><View><Text style={styles.workTitle}>The Long Halloween</Text><Text style={styles.meta}>DC Comics · 1996</Text></View></View><SectionHeader title="This edition" /><Rows items={['Writer  Jeph Loeb', 'Artist  Tim Sale', 'Format  Single issues', 'Metadata source  Publisher data', 'Cover source  Official cover art']} /><SectionHeader title="How we make decisions" /><Text style={styles.copy}>Reading-order context comes from confirmed official and third-party sources. ComicPill’s verdicts are personal interpretations, not metadata facts.</Text><SectionHeader title="Creator photos" /><Text style={styles.copy}>Portraits of artists and writers come from Wikimedia Commons under free licences. Credits:</Text><Rows items={Object.values(photoSources as Record<string, { name: string; author: string; licence: string }>).map((p) => `${p.name} — ${p.author.slice(0, 40)} · ${p.licence}`)} /></ScrollView>; }
-function Rows({ items }: { items: string[] }) { return <View style={styles.rows}>{items.map((item) => <View key={item} style={styles.row}><Text style={styles.rowText}>{item}</Text><Text style={styles.chevron}>›</Text></View>)}</View>; }
-const styles = StyleSheet.create({ page: { flex: 1, backgroundColor: color.bg }, content: { padding: space.lg, paddingTop: 60, paddingBottom: 40 }, back: { color: color.muted, fontFamily: font.bodyMedium, marginBottom: 18 }, title: { color: color.text, fontFamily: font.display, fontSize: 34 }, copy: { color: color.muted, fontFamily: font.body, fontSize: type.body, lineHeight: 23, marginTop: 8 }, work: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 22, padding: 12, backgroundColor: color.surface, borderColor: color.border, borderWidth: 1, borderRadius: radius.md }, workTitle: { color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle }, meta: { color: color.muted, fontFamily: font.body, fontSize: type.caption, marginTop: 3 }, rows: { backgroundColor: color.surface, borderWidth: 1, borderColor: color.border, borderRadius: radius.md, overflow: 'hidden' }, row: { minHeight: 48, paddingHorizontal: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: color.border }, rowText: { color: color.text, fontFamily: font.body, fontSize: type.caption }, chevron: { color: color.muted, fontSize: 22 }, note: { flexDirection: 'row', gap: 12, paddingVertical: 18, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: color.border }, noteMark: { color: color.accent, fontSize: 18 }, noteTitle: { color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle }, noteCopy: { color: color.muted, fontFamily: font.body, fontSize: type.caption, lineHeight: 18, marginTop: 4 } });
+
+/** Where the information ComicPill shows comes from. Plain facts, nothing to tap. */
+const SOURCES: Array<[string, string]> = [
+  ['Built-in catalog', 'Titles, creators, characters and reading orders that ship with the app, checked against publisher data.'],
+  ['Your comic files', 'Title, series, issue and writer read from the ComicInfo.xml inside a .cbz or .cbr, when the file has one.'],
+  ['Your own servers', 'Comics and details from a Komga, Kavita or other OPDS server you add yourself.'],
+  ['Online lookup', 'Only when you search for a comic to add: Open Library, and Comic Vine if you have entered your own key. Only the words you search for are sent.'],
+  ['Cover art', 'Covers come from your own files and servers first, then from the catalog.'],
+];
+
+export function SourcesScreen() {
+  const { theme, typography } = useAppearance(); const c = theme.colors;
+  const photos = Object.values(photoSources as Record<string, { name: string; author: string; licence: string }>);
+  return (
+    <SettingsPage title="Sources & metadata" subtitle="ComicPill shows its sources so you know where information comes from.">
+      <SectionHeader title="Where details come from" />
+      <View style={[styles.rows, { backgroundColor: c.surface, borderColor: c.border }]}>
+        {SOURCES.map(([label, detail]) => (
+          <View key={label} style={[styles.row, { borderBottomColor: c.border }]}>
+            <Text style={[styles.rowTitle, { color: c.textPrimary, fontFamily: typography.bodySemibold }]}>{label}</Text>
+            <Text style={[styles.rowText, { color: c.textSecondary, fontFamily: typography.body }]}>{detail}</Text>
+          </View>
+        ))}
+      </View>
+      <SectionHeader title="How we make decisions" />
+      <Text style={[styles.copy, { color: c.textSecondary, fontFamily: typography.body }]}>Reading-order context comes from confirmed official and third-party sources. ComicPill’s verdicts are personal interpretations, not metadata facts.</Text>
+      <SectionHeader title="Creator photos" />
+      <Text style={[styles.copy, { color: c.textSecondary, fontFamily: typography.body }]}>Portraits of artists and writers come from Wikimedia Commons under free licences. Credits:</Text>
+      <View style={[styles.rows, { backgroundColor: c.surface, borderColor: c.border, marginTop: space.sm }]}>
+        {photos.map((p) => (
+          <View key={p.name} style={[styles.row, { borderBottomColor: c.border }]}>
+            <Text style={[styles.rowText, { color: c.textPrimary, fontFamily: typography.body }]}>{`${p.name} — ${p.author.slice(0, 40)} · ${p.licence}`}</Text>
+          </View>
+        ))}
+      </View>
+    </SettingsPage>
+  );
+}
+
+const styles = StyleSheet.create({
+  rows: { borderWidth: 1, borderRadius: radius.md, overflow: 'hidden' },
+  row: { paddingHorizontal: 14, paddingVertical: 12, gap: 4, borderBottomWidth: StyleSheet.hairlineWidth },
+  rowTitle: { fontSize: type.body },
+  rowText: { fontSize: type.caption, lineHeight: 18 },
+  copy: { fontSize: type.body, lineHeight: 23, marginTop: 8 },
+});
