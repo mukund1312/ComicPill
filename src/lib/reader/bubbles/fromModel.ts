@@ -1,7 +1,7 @@
 // Turning the neural detector's boxes into zoom targets. The detector draws the balloon itself (not just its lettering), so no outline hunting is
 // needed here: drop weak or duplicate boxes, keep a hair of air around each, and put them in reading order.
 import { orderBlocks, type OcrLine } from '../ocr/layout';
-import type { Bubble } from './bubbles';
+import { clipToNeighbours, type Bubble } from './bubbles';
 
 export type Detection = { c: number; s: number; x: number; y: number; w: number; h: number };
 
@@ -62,6 +62,17 @@ export function bubblesFromDetections(dets: Detection[], rtl: boolean): Bubble[]
     if (kept.some((k) => overlap(k, box) > 0.5)) continue; // lettering that is really part of a balloon
     kept.push(box);
   }
+  // Balloons that touch are boxed into each other. Each balloon's own lettering is the text boxes (class 1) that sit inside it; pull each box back
+  // only as far as the neighbours' lettering, never into its own, so a lifted balloon carries no piece of the next one and loses none of itself.
+  const textOf = (b: Bubble): Bubble => {
+    const mine = dets.filter((t) => t.c === 1 && t.x + t.w / 2 >= b.x && t.x + t.w / 2 <= b.x + b.w && t.y + t.h / 2 >= b.y && t.y + t.h / 2 <= b.y + b.h);
+    if (mine.length === 0) { const px = b.w * 0.15; const py = b.h * 0.15; return { x: b.x + px, y: b.y + py, w: b.w - 2 * px, h: b.h - 2 * py }; }
+    const x = Math.min(...mine.map((t) => t.x)); const y = Math.min(...mine.map((t) => t.y));
+    return { x, y, w: Math.max(...mine.map((t) => t.x + t.w)) - x, h: Math.max(...mine.map((t) => t.y + t.h)) - y };
+  };
+  const texts = kept.map(textOf);
+  const clipped = kept.map((b, i) => ({ ...clipToNeighbours(b, texts[i], texts.filter((_, j) => j !== i)), ...(b.sfx ? { sfx: true } : {}) }));
+  kept.splice(0, kept.length, ...clipped);
   // Reading order with the same panel-aware cut the text reader uses (each box stands in as one line of lettering).
   const blocks: OcrLine[][] = kept.map((b) => [{ text: 'x', x: b.x, y: b.y, w: b.w, h: b.h }]);
   return orderBlocks(blocks, rtl).map(([l]) => kept.find((b) => b.x === l.x && b.y === l.y && b.w === l.w && b.h === l.h) as Bubble);

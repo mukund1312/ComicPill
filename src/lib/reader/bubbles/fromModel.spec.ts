@@ -47,3 +47,18 @@ describe('sound effects', () => {
     expect(bubblesFromDetections([d(2, 0.45, 0.6, 0.6, 0.2, 0.1)], false)).toHaveLength(0);
   });
 });
+
+describe('touching balloons', () => {
+  it('pulls a box back to the neighbour\'s lettering but never into its own', () => {
+    const out = bubblesFromDetections([
+      d(0, 0.95, 0.2, 0.50, 0.3, 0.12), d(0, 0.95, 0.22, 0.58, 0.3, 0.12),
+      d(1, 0.9, 0.25, 0.52, 0.2, 0.04), d(1, 0.9, 0.27, 0.64, 0.2, 0.04),
+    ], false);
+    expect(out).toHaveLength(2);
+    const [top, bottom] = [...out].sort((a, b) => a.y - b.y);
+    expect(top.y + top.h).toBeGreaterThanOrEqual(0.56); // keeps all of its own lettering (to 0.56)
+    expect(top.y + top.h).toBeLessThanOrEqual(0.64);    // but stops before the lower balloon's lettering (from 0.64)
+    expect(bottom.y).toBeLessThanOrEqual(0.64);
+    expect(bottom.y).toBeGreaterThanOrEqual(0.56);
+  });
+});

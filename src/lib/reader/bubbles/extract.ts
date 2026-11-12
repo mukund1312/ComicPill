@@ -105,7 +105,7 @@ function findSilhouette(rgba: Uint8Array, w: number, h: number): Silhouette | nu
 }
 
 function build(rgba: Uint8Array, w: number, h: number, mask: Silhouette | null, crop: Bubble, win?: { x0: number; y0: number; x1: number; y1: number }): Extracted | null {
-  const padX = 0.02; const padY = 0.03;
+  const padX = 0.006; const padY = 0.008;
   const wx0 = win ? Math.max(0, win.x0 - padX) * w : 0; const wx1 = win ? Math.min(1, win.x1 + padX) * w : w;
   const wy0 = win ? Math.max(0, win.y0 - padY) * h : 0; const wy1 = win ? Math.min(1, win.y1 + padY) * h : h;
 
