@@ -1,53 +1,10 @@
-// Gallery access, kept as narrow as Android allows: the reader picks ONE album, and only images taken
-// after the last scan are listed. Nothing else in the gallery is ever opened.
-import { getMediaLibrary } from './mediaLibrary';
-import { getMindSettings, updateMindSettings } from '../settings';
+// Album watching was removed so the app asks for no gallery permission (pictures come from the system photo picker and the camera).
+// These stay as inert stand-ins so the Mind Space screens keep compiling and old settings are harmless.
 import type { MindStore } from '../store';
 
 export type Access = 'granted' | 'limited' | 'denied';
 
-const toAccess = (r: { granted: boolean; accessPrivileges?: string }): Access => (!r.granted ? 'denied' : r.accessPrivileges === 'limited' ? 'limited' : 'granted');
-
-export async function galleryAccess(): Promise<Access> {
-  try { const ml = getMediaLibrary(); return ml ? toAccess(await ml.getPermissionsAsync(false, ['photo'])) : 'denied'; } catch { return 'denied'; }
-}
-export async function requestGalleryAccess(): Promise<Access> {
-  try { const ml = getMediaLibrary(); return ml ? toAccess(await ml.requestPermissionsAsync(false, ['photo'])) : 'denied'; } catch { return 'denied'; }
-}
-
-export async function listAlbumTitles(): Promise<string[]> {
-  try {
-    const ml = getMediaLibrary(); if (!ml) return [];
-    const albums = await ml.Album.getAll();
-    const titles = await Promise.all(albums.map((a) => a.getTitle().catch(() => '')));
-    return [...new Set(titles.filter(Boolean))].sort((a, b) => a.localeCompare(b));
-  } catch { return []; }
-}
-
-const MAX_PER_SCAN = 100;
-
-/** New images in the watched album since the last scan → Screenshot rows. Returns how many were new. */
-export async function scanNewScreenshots(store: MindStore, since?: number): Promise<number> {
-  const s = getMindSettings();
-  const ml = getMediaLibrary();
-  if (!ml || !s.watching || (await galleryAccess()) === 'denied') return 0;
-  const { Album, AssetField, MediaType, Query } = ml;
-  const album = await Album.get(s.albumTitle).catch(() => null);
-  if (!album) return 0;
-  const from = since ?? s.lastScanAt;
-  // Filter on modification time: it is always set, whereas a file added by a tool or a sync app can have no creation time at all.
-  const assets = await new Query().album(album).gt(AssetField.MODIFICATION_TIME, from).orderBy(AssetField.MODIFICATION_TIME).limit(MAX_PER_SCAN).exe();
-  const rows: Array<{ assetId: string; uri: string; takenAt: number }> = [];
-  let newest = from;
-  for (const a of assets) {
-    try {
-      const info = await a.getInfo();
-      if (info.mediaType !== MediaType.IMAGE) continue;
-      rows.push({ assetId: a.id, uri: info.uri, takenAt: info.creationTime ?? info.modificationTime ?? Date.now() });
-      newest = Math.max(newest, info.modificationTime ?? 0);
-    } catch { /* an asset that vanished mid-scan is just skipped */ }
-  }
-  const added = rows.length ? store.addScreenshots(rows) : 0;
-  if (since === undefined && newest > s.lastScanAt) updateMindSettings({ lastScanAt: newest });
-  return added;
-}
+export async function galleryAccess(): Promise<Access> { return 'denied'; }
+export async function requestGalleryAccess(): Promise<Access> { return 'denied'; }
+export async function listAlbumTitles(): Promise<string[]> { return []; }
+export async function scanNewScreenshots(_store: MindStore, _since?: number): Promise<number> { return 0; }

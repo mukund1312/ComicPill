@@ -10,11 +10,59 @@ import SwiftUI
 import UnrarKit
 import SWCompression
 
+/// An invisible view that takes the keyboard while the reader is open, so a hardware keyboard's left and right arrows turn pages. Handled in
+/// pressesBegan, which fires once per press (holding a key does not repeat it), the same one-step-per-press rule as the Android side.
+final class ReaderKeyCatcher: UIView {
+  var onKey: ((String) -> Void)?
+  override var canBecomeFirstResponder: Bool { true }
+  override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+    var unhandled = Set<UIPress>()
+    for press in presses {
+      switch press.key?.keyCode {
+      case .keyboardLeftArrow: onKey?("left")
+      case .keyboardRightArrow: onKey?("right")
+      default: unhandled.insert(press)
+      }
+    }
+    if !unhandled.isEmpty { super.pressesBegan(unhandled, with: event) }
+  }
+  override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+    let others = presses.filter { $0.key?.keyCode != .keyboardLeftArrow && $0.key?.keyCode != .keyboardRightArrow }
+    if !others.isEmpty { super.pressesEnded(Set(others), with: event) }
+  }
+}
+
 /// The iOS half of ComicArchive. It answers exactly the questions the Android module does, so the JavaScript on top is identical:
 /// list and extract pages from RAR (CBR) and 7z (CB7) files, size them, render PDF pages, make small grayscale thumbnails, and read text from an image.
 public class ComicArchiveModule: Module {
+  private var keyCatcher: ReaderKeyCatcher?
+
+  /// Starts or stops listening for a hardware keyboard's arrow keys. Volume buttons are not captured on iOS (no supported way to do it in a
+  /// reader), so only left and right are delivered.
+  private func setKeyCapture(_ on: Bool) {
+    DispatchQueue.main.async {
+      if on {
+        guard self.keyCatcher == nil else { return }
+        let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first { $0.activationState == .foregroundActive }
+          ?? UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+        guard let root = scene?.windows.first(where: { $0.isKeyWindow })?.rootViewController?.view ?? scene?.windows.first?.rootViewController?.view else { return }
+        let view = ReaderKeyCatcher(frame: .zero)
+        view.onKey = { [weak self] key in self?.sendEvent("onHardwareKey", ["key": key]) }
+        root.addSubview(view)
+        view.becomeFirstResponder()
+        self.keyCatcher = view
+      } else if let view = self.keyCatcher {
+        view.resignFirstResponder(); view.removeFromSuperview(); self.keyCatcher = nil
+      }
+    }
+  }
+
   public func definition() -> ModuleDefinition {
     Name("ComicArchive")
+
+    Events("onHardwareKey")
+    Function("captureKeys") { (on: Bool) in self.setKeyCapture(on) }
+    OnDestroy { self.setKeyCapture(false) }
 
     AsyncFunction("listEntries") { (path: String, kind: String) -> [String] in
       let url = Self.fileURL(path)

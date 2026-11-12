@@ -47,7 +47,7 @@ export default function MindSettingsScreen() {
 
   const toggleWatching = async (on: boolean) => {
     if (!on) { set({ watching: false }); return; }
-    if (!galleryAvailable()) { Alert.alert('Needs the full app', 'Watching a screenshot album can’t run inside Expo Go. Install the ComicPill app (APK or development build) to use it. Adding comics by title works here.'); return; }
+    if (!galleryAvailable()) { Alert.alert('Add screenshots by hand', 'ComicPill never scans your gallery. To add comic screenshots, use Import photos and pick the ones you want, or add comics by title.'); return; }
     let access = await galleryAccess();
     if (access === 'denied') access = await requestGalleryAccess();
     if (access === 'denied') { Alert.alert('Photos access is off', 'Allow photo access in your phone’s settings to let ComicPill watch one album.'); return; }

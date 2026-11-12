@@ -118,3 +118,10 @@ Test comic: any `.cbz` with several panels per page and lettered balloons (the c
 - [x] Balloon zoom → guided view starts on the panel that holds the balloon (was always the first panel)
 - [x] Tablet emulator (2560x1600, landscape spreads): volume keys turn spreads, no crash
 - [ ] Not tested: iOS (volume/arrow key capture is Android-only), iPad
+
+## Permissions, http and iOS
+- [x] Android APK declares no gallery permissions (no READ_MEDIA_*, READ_EXTERNAL_STORAGE); pictures come only from the system photo picker and the camera
+- [x] Album watching (Mind Space) removed with expo-media-library; screens keep working, the toggle explains how to add screenshots by hand
+- [x] Plain-http home servers allowed: Android usesCleartextTraffic=true; iOS NSAllowsLocalNetworking (LAN / .local only)
+- [x] iOS Release simulator build succeeds (iPhone 17, iPad Pro 11"), app launches; arrow-key catcher compiled in
+- [ ] iOS arrow keys not exercised at runtime (no way to tap through the simulator from here); volume buttons not captured on iOS
