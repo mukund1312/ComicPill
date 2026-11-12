@@ -16,7 +16,7 @@ export function Icon({ name, size = 22, color }: { name: IconName; size?: number
 export function HeaderButton({ icon, label, onPress, active = false, disabled = false }: { icon: IconName; label: string; onPress: () => void; active?: boolean; disabled?: boolean }) {
   const { theme } = useAppearance(); const c = theme.colors;
   return (
-    <PressableScale accessibilityRole="button" accessibilityLabel={label} disabled={disabled} hitSlop={6} to={0.9}
+    <PressableScale accessibilityRole="button" accessibilityLabel={label} disabled={disabled} hitSlop={8} to={0.9}
       onPress={() => { feedback.tap(); onPress(); }}
       style={[styles.headerButton, { backgroundColor: active ? c.primaryMuted : c.surfaceRaised }]}>
       <Ionicons name={icon} size={19} color={active ? c.primary : c.textPrimary} />

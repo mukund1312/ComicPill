@@ -32,7 +32,7 @@ export function Button({ children, onPress, kind = 'primary', disabled = false, 
 export function Pill({ label, active = false, onPress }: { label: string; active?: boolean; onPress?: () => void }) {
   const { theme, typography } = useAppearance(); const c = theme.colors;
   return (
-    <PressableScale accessibilityRole="button" accessibilityState={{ selected: active }} to={0.94} onPress={() => { feedback.select(); onPress?.(); }}
+    <PressableScale accessibilityRole="button" accessibilityState={{ selected: active }} to={0.94} hitSlop={{ top: 4, bottom: 4, left: 2, right: 2 }} onPress={() => { feedback.select(); onPress?.(); }}
       style={[styles.pill, { backgroundColor: active ? c.primary : c.surfaceRaised }]}>
       <Text style={[styles.pillText, { color: active ? c.primaryForeground : c.textSecondary, fontFamily: typography.bodySemibold }]}>{label}</Text>
     </PressableScale>
