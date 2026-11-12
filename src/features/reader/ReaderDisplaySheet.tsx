@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -38,14 +38,21 @@ function Slider({ value, min, max, onChange }: { value: number; min: number; max
 export function ReaderDisplaySheet({ visible, value, onChange, onClose }: { visible: boolean; value: Display; onChange: (patch: Partial<Display>) => void; onClose: () => void }) {
   const insets = useSafeAreaInsets();
   const drag = useSheetDrag(onClose);
+  // Never taller than the screen (a phone on its side is short): the settings scroll, and dragging the handle still closes the sheet.
+  const maxHeight = useWindowDimensions().height - insets.top - space.md;
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent supportedOrientations={['portrait', 'landscape']}>
       <GestureHandlerRootView style={{ flex: 1 }}>
 <Pressable style={styles.backdrop} onPress={onClose}>
-<GestureDetector gesture={drag.gesture}>
-<Animated.View style={[styles.sheet, { paddingBottom: insets.bottom + space.lg }, drag.style]}>
-          <View style={styles.handle} />
-          <Text style={styles.heading}>Display</Text>
+<Animated.View style={[styles.sheet, { maxHeight, paddingBottom: insets.bottom + space.lg }, drag.style]}>
+<Pressable onPress={() => undefined} style={styles.body}>
+        <GestureDetector gesture={drag.gesture}>
+          <View collapsable={false}>
+            <View style={styles.handle} />
+            <Text style={styles.heading}>Display</Text>
+          </View>
+        </GestureDetector>
+        <ScrollView style={styles.body} contentContainerStyle={styles.scrollBody} bounces={false} showsVerticalScrollIndicator>
 
           <Text style={styles.label}>Brightness · {Math.round(value.brightness * 100)}%</Text>
           <Slider value={value.brightness} min={0.2} max={1} onChange={(brightness) => onChange({ brightness })} />
@@ -83,8 +90,9 @@ export function ReaderDisplaySheet({ visible, value, onChange, onClose }: { visi
           <Text style={styles.label}>Borders</Text>
           <View style={styles.row}><Chip label={value.trimBorders ? 'Trimmed' : 'Keep margins'} active={value.trimBorders} onPress={() => onChange({ trimBorders: !value.trimBorders })} /></View>
           <Text style={styles.note}>Trimming cuts the blank margin off single pages so the art fills the screen. Full-bleed pages are left alone.</Text>
+        </ScrollView>
+</Pressable>
         </Animated.View>
-</GestureDetector>
       </Pressable>
 </GestureHandlerRootView>
     </Modal>
@@ -93,7 +101,9 @@ export function ReaderDisplaySheet({ visible, value, onChange, onClose }: { visi
 
 const styles = StyleSheet.create({
   backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#00000066' },
-  sheet: { width: '100%', maxWidth: 560, alignSelf: 'center', backgroundColor: color.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: space.lg, gap: space.sm },
+  sheet: { width: '100%', maxWidth: 560, alignSelf: 'center', backgroundColor: color.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: space.lg },
+  body: { flexShrink: 1 },
+  scrollBody: { gap: space.sm, paddingTop: space.sm },
   handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: color.border, marginBottom: space.sm },
   heading: { color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle },
   label: { color: color.muted, fontFamily: font.bodyMedium, fontSize: type.caption, marginTop: space.md },

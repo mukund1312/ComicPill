@@ -2,7 +2,8 @@
 // Pressable with a minimum touch target, an accessibility role/state and a
 // visible pressed state — none of them is decoration.
 import type { PropsWithChildren, ReactNode } from 'react';
-import { Modal, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { space } from './tokens';
 import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
@@ -96,15 +97,21 @@ export function ChoiceSheet<T extends string>({ visible, title, message, choices
   const { theme, typography } = useAppearance();
   const c = theme.colors;
   const drag = useSheetDrag(onClose);
+  // Never taller than the screen (a phone on its side is short): the choices scroll, and dragging the handle still closes the sheet.
+  const maxHeight = useWindowDimensions().height - useSafeAreaInsets().top - space.md;
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent supportedOrientations={['portrait', 'landscape']}>
       <GestureHandlerRootView style={{ flex: 1 }}>
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close" accessibilityRole="button" />
-      <GestureDetector gesture={drag.gesture}>
-      <Animated.View style={[styles.sheet, { backgroundColor: c.surface, borderColor: c.border }, drag.style]}>
+      <Animated.View style={[styles.sheet, { maxHeight, backgroundColor: c.surface, borderColor: c.border }, drag.style]}>
+        <GestureDetector gesture={drag.gesture}>
+        <View collapsable={false} style={styles.sheetHead}>
         <View style={[styles.handle, { backgroundColor: c.textMuted }]} />
         <Text style={[styles.sheetTitle, { color: c.textPrimary, fontFamily: typography.display }]}>{title}</Text>
         {message ? <Text style={[styles.detail, { color: c.textSecondary, fontFamily: typography.body, marginBottom: space.sm }]}>{message}</Text> : null}
+        </View>
+        </GestureDetector>
+        <ScrollView style={styles.sheetScroll} contentContainerStyle={styles.sheetBody} bounces={false}>
         {choices.map((choice) => {
           const on = choice.id === selected;
           return (
@@ -127,8 +134,8 @@ export function ChoiceSheet<T extends string>({ visible, title, message, choices
         <Pressable accessibilityRole="button" onPress={onClose} style={styles.cancel}>
           <Text style={[styles.label, { color: c.textSecondary, fontFamily: typography.bodyMedium }]}>Cancel</Text>
         </Pressable>
+        </ScrollView>
       </Animated.View>
-      </GestureDetector>
       </GestureHandlerRootView>
     </Modal>
   );
@@ -182,7 +189,10 @@ const styles = StyleSheet.create({
   value: { fontSize: 14, flexShrink: 1, textAlign: 'right' },
   chevron: { fontSize: 22 },
   backdrop: { flex: 1, backgroundColor: '#000000AA' },
-  sheet: { width: '100%', maxWidth: 560, alignSelf: 'center', borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, padding: space.lg, paddingBottom: space.xxl, gap: 10 },
+  sheet: { width: '100%', maxWidth: 560, alignSelf: 'center', borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, padding: space.lg, paddingBottom: space.xxl },
+  sheetHead: { gap: 10, marginBottom: 10 },
+  sheetScroll: { flexShrink: 1 },
+  sheetBody: { gap: 10 },
   handle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 6 },
   sheetTitle: { fontSize: 22, marginBottom: 2 },
   choice: { borderWidth: 1, borderRadius: 12, padding: space.md, flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: 54 },

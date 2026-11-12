@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,25 +12,31 @@ export type SheetOption = { label: string; onPress: () => void; destructive?: bo
 export function ActionSheet({ visible, title, options, onClose }: { visible: boolean; title?: string; options: SheetOption[]; onClose: () => void }) {
   const insets = useSafeAreaInsets();
   const drag = useSheetDrag(onClose);
+  // Never taller than the screen (a phone on its side is short): the list scrolls instead, and dragging the handle still closes it.
+  const maxHeight = useWindowDimensions().height - insets.top - space.md;
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent supportedOrientations={['portrait', 'landscape']}>
       {/* A Modal is its own window, so it needs its own gesture root. Tap outside, or drag the sheet down, to close. */}
       <GestureHandlerRootView style={{ flex: 1 }}>
         <Pressable style={styles.backdrop} onPress={onClose}>
-          <GestureDetector gesture={drag.gesture}>
-            <Animated.View style={[styles.sheet, { paddingBottom: insets.bottom + space.md }, drag.style]}>
-              <Pressable onPress={() => undefined}>
-                <View style={styles.grab} />
-                {title ? <Text numberOfLines={1} style={styles.title}>{title}</Text> : null}
-                {options.map((o) => (
-                  <Pressable key={o.label} accessibilityRole="button" style={styles.row} onPress={() => { onClose(); setTimeout(o.onPress, 450); }}>
-                    <Text style={[styles.rowText, o.destructive && styles.destructive]}>{o.label}</Text>
-                    {o.checked ? <Text style={styles.check}>✓</Text> : null}
-                  </Pressable>
-                ))}
+            <Animated.View style={[styles.sheet, { maxHeight, paddingBottom: insets.bottom + space.md }, drag.style]}>
+              <Pressable onPress={() => undefined} style={styles.fill}>
+                <GestureDetector gesture={drag.gesture}>
+                  <View collapsable={false}>
+                    <View style={styles.grab} />
+                    {title ? <Text numberOfLines={1} style={styles.title}>{title}</Text> : null}
+                  </View>
+                </GestureDetector>
+                <ScrollView style={styles.fill} bounces={false} showsVerticalScrollIndicator>
+                  {options.map((o) => (
+                    <Pressable key={o.label} accessibilityRole="button" style={styles.row} onPress={() => { onClose(); setTimeout(o.onPress, 450); }}>
+                      <Text style={[styles.rowText, o.destructive && styles.destructive]}>{o.label}</Text>
+                      {o.checked ? <Text style={styles.check}>✓</Text> : null}
+                    </Pressable>
+                  ))}
+                </ScrollView>
               </Pressable>
             </Animated.View>
-          </GestureDetector>
         </Pressable>
       </GestureHandlerRootView>
     </Modal>
@@ -72,6 +78,7 @@ const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: '#000000aa', justifyContent: 'flex-end' },
   center: { justifyContent: 'center', padding: space.xl },
   sheet: { width: '100%', maxWidth: 560, alignSelf: 'center', backgroundColor: color.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, paddingTop: space.md, paddingHorizontal: space.lg },
+  fill: { flexShrink: 1 },
   grab: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: color.border, marginBottom: space.sm },
   title: { color: color.muted, fontFamily: font.bodyMedium, fontSize: type.caption, marginBottom: space.sm },
   row: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: color.border },
