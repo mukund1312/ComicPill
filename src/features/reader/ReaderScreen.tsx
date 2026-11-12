@@ -47,7 +47,7 @@ import { MakeRoomSheet } from './MakeRoomSheet';
 import { notice } from '../../ui/dialogs';
 import { ComicOpenError, openComicSource, type ComicSource, type PageSize } from '../../lib/reader/ComicSource';
 import { buildUnits, unitIndexOf } from '../../lib/reader/formats/spreads';
-import { BACKGROUND_COLORS, resolveReading, type Fit, type Reading } from '../../lib/reader/presets';
+import { BACKGROUND_COLORS, BUILTIN_PRESETS, resolveReading, type Fit, type Reading } from '../../lib/reader/presets';
 import {
   getFolder, getReaderComic, listBookmarks, saveReaderMode, saveReaderProgress, saveReaderSizes, setComicPreset, setPageCount, toggleBookmark,
   type ReaderComic, type ReaderMode,
@@ -813,7 +813,14 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
     }
   }, [page, source, total, spread, webtoon, guidedActive, comic.id, rtl]);
 
-  const changeMode = (next: ReaderMode) => { persist(); setMode(next); saveReaderMode(comic.id, next); setComicPreset(comic.id, null); setOverlay(false); };
+  const changeMode = (next: ReaderMode) => {
+    persist(); setMode(next); saveReaderMode(comic.id, next);
+    // A folder's preset would otherwise win on the next open and undo this choice, so when it disagrees the comic pins the matching built-in preset.
+    const folderPreset = comic.folderId ? getFolder(comic.folderId)?.presetId ?? null : null;
+    const folderMode = folderPreset ? listPresets().find((p) => p.id === folderPreset)?.mode : undefined;
+    setComicPreset(comic.id, folderMode && folderMode !== next ? BUILTIN_PRESETS.find((p) => p.mode === next)?.id ?? null : null);
+    setOverlay(false);
+  };
 
   const onToggleBookmark = () => {
     const now = toggleBookmark(comic.id, page);

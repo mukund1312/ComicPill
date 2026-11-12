@@ -104,3 +104,14 @@ Test comic: any `.cbz` with several panels per page and lettered balloons (the c
 - Borderless / floating panels on some pages are not split; fix them with *Add a panel by hand*.
 - Balloon detection can include a TV's on-screen text; use ⌫.
 - Page curl is single-page, left-to-right, fit-to-screen only.
+
+## Unified navigation (Android phone emulator, FF1 CBR)
+- [x] LTR bubble mode: volume Up/Down cross page boundaries both ways (last bubble → next page's first; first → previous page's last); long press = one step; system volume untouched in the reader
+- [x] LTR guided (panel) mode: last panel → next page's first panel, and back
+- [x] Page mode: one page per press
+- [x] RTL: bar shows "← RTL"; Left arrow = Next, Right arrow = Previous; volume Up still Next; left bar button = Next; centre/left taps mirrored
+- [x] Android Back: leaves guided view first, then the reader; progress kept
+- [x] Volume keys change system volume again outside the reader
+- [x] Rotation portrait ↔ landscape (two-page spread): keys keep working
+- [x] Mode choice survives full app restart (folder presets no longer override a hand-picked mode); guided on/off and LTR/RTL switches stay on the same page
+- [ ] Not tested: two comics with different directions side by side, bubble↔panel switching mid-page on device, iOS (key capture is Android-only)
