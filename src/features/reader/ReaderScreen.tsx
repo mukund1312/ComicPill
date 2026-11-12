@@ -249,10 +249,11 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
   const slots = useMemo(() => unitSlots(unitPages, sizeList, rtl), [unitPages, sizeList, rtl]);
   // The real curl is built for one page; on a two-page spread "Page curl" turns as the open-book flip, which is verified there.
   // On a two-page spread, Page flip and Page curl both turn as an open book, drawn by BookFlipLayer over the pager; the pages themselves just slide.
-  const bookActive = spread && !webtoon && (display.pageAnimation === 'flip' || display.pageAnimation === 'curl');
+  // Page curl on a left-to-right spread is the real curl (PageCurlLayer turns the right page over like a book); Page flip, or a manga spread, is the hinged sheet.
+  const bookActive = spread && !webtoon && (display.pageAnimation === 'flip' || (display.pageAnimation === 'curl' && rtl));
   const turnKind = bookActive ? 'slide' : display.pageAnimation;
   // The 3-D curl needs whole single pages sitting on the page-sized frame, left to right.
-  const curlActive = display.pageAnimation === 'curl' && !webtoon && !spread && !rtl && !guidedActive && fit === 'contain';
+  const curlActive = display.pageAnimation === 'curl' && !webtoon && !rtl && !guidedActive && fit === 'contain';
   const stackedCells = useStackedCells(units.length, turnKind === 'flip');
   const data = useMemo(() => (rtl ? [...units].reverse() : units), [units, rtl]);
   const visualIndex = useCallback((p: number) => { const i = unitIndexOf(units, p); return rtl ? units.length - 1 - i : i; }, [units, rtl]);
@@ -407,7 +408,11 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
   }, [page, guidedActive, source, comic.id, rtl, width, height, unitPages, slots]);
 
   // Double-tap: on the whole page it focuses the panel under the finger; while a panel is up it goes back to the whole page.
+  // Kept current through a ref: onDoubleTap is defined before the page-turn helpers below.
+  const edgeTurn = useRef<(x: number) => boolean>(() => false);
   const onDoubleTap = useCallback((x: number, y: number) => {
+    // Two quick taps on a page edge are two page turns, not a request for panel-by-panel reading.
+    if (edgeTurn.current(x)) return;
     if (guidedActive) { setGuided(false); return; }
     const pt = zoomRefs.current.get(page)?.pointToContent(x, y);
     if (pt) pendingFocus.current = { page, x: pt.x, y: pt.y };
@@ -690,6 +695,16 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
     return false;
   }, [page, focusBubble, leaveBubble, width]);
 
+  useEffect(() => {
+    edgeTurn.current = (x: number) => {
+      if (!settings.tapZones || guidedActive) return false;
+      const edge = width * 0.3; const flip = settings.invertTaps ? -1 : 1;
+      const dir = x < edge ? (rtl ? 1 : -1) * flip : x > width - edge ? (rtl ? -1 : 1) * flip : 0;
+      if (!dir) return false;
+      advance(dir); later(() => advance(dir), 380);
+      return true;
+    };
+  });
   const onTap = useCallback((x: number, y: number) => {
     // A tap on the floating bar belongs to its buttons, not to the page under it.
     if ((bubbleActive || (guidedActive && barVisible)) && y > height - insets.bottom - 96 && Math.abs(x - width / 2) < 260) return;
@@ -767,7 +782,7 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
       />
       {guidedActive && mask.view && mask.panel ? <PanelMaskLayer style={display.guidedMask} panel={mask.panel === FULL_PAGE ? null : mask.panel} camera={mask.view.camera} content={mask.view.content} view={mask.view.view} background={bg} amount={maskAmount} /> : null}
       {bookActive ? <BookFlipLayer data={data} current={visualIndex(page)} scrollX={scrollX} width={width} height={height} bg={bg} render={(u) => <PagedUnit passive register={registerZoom} source={source} unit={u} sizes={sizeList} width={width} height={height} rtl={rtl} fit={fit} bg={bg} crop={null} onTap={onTap} />} /> : null}
-      {curlActive ? <PageCurlLayer source={source} units={units} current={unitIndexOf(units, page)} scrollX={scrollX} width={width} height={height} bg={bg} /> : null}
+      {curlActive ? <PageCurlLayer source={source} units={units} current={unitIndexOf(units, page)} sizes={sizeList} scrollX={scrollX} width={width} height={height} bg={bg} /> : null}
       </View>
       {display.filter === 'sepia' ? <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#C99A5B', mixBlendMode: 'multiply' }]} /> : null}
       {display.brightness < 1 ? <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#000', opacity: 1 - display.brightness }]} /> : null}
