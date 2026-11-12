@@ -114,4 +114,7 @@ Test comic: any `.cbz` with several panels per page and lettered balloons (the c
 - [x] Volume keys change system volume again outside the reader
 - [x] Rotation portrait ↔ landscape (two-page spread): keys keep working
 - [x] Mode choice survives full app restart (folder presets no longer override a hand-picked mode); guided on/off and LTR/RTL switches stay on the same page
-- [ ] Not tested: two comics with different directions side by side, bubble↔panel switching mid-page on device, iOS (key capture is Android-only)
+- [x] Two comics keep their own direction (Midnight Sons LTR, FF1 Manga)
+- [x] Balloon zoom → guided view starts on the panel that holds the balloon (was always the first panel)
+- [x] Tablet emulator (2560x1600, landscape spreads): volume keys turn spreads, no crash
+- [ ] Not tested: iOS (volume/arrow key capture is Android-only), iPad
