@@ -336,6 +336,7 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
   const panelState = useRef<PanelState>({ page: -1, panels: [], index: 0 });
   const landOnLast = useRef(false);
   const resumePanel = useRef<{ page: number; index: number } | null>(null);
+  const lastBubble = useRef<{ page: number; x: number; y: number } | null>(null);
   const registerZoom = useCallback((p: number, handle: ZoomHandle | null) => {
     if (handle) zoomRefs.current.set(p, handle); else zoomRefs.current.delete(p);
   }, []);
@@ -552,7 +553,7 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
   const rateThis = () => { if (comic.workId) router.push(`/check-in/${comic.workId}`); };
   const menuOptions: SheetOption[] = [
     ...(comic.workId ? [{ label: 'I’m done — rate this comic…', onPress: rateThis }] : []),
-    ...(guidedAvailable() && !webtoon ? [{ label: guided ? 'Turn off guided view' : 'Guided view (panel by panel)', onPress: () => { setGuided((g) => !g); setOverlay(false); } }] : []),
+    ...(guidedAvailable() && !webtoon ? [{ label: guided ? 'Turn off guided view' : 'Guided view (panel by panel)', onPress: () => { if (!guided && lastBubble.current?.page === page && !pendingFocus.current) pendingFocus.current = { ...lastBubble.current }; lastBubble.current = null; setGuided((g) => !g); setOverlay(false); } }] : []),
     ...(guidedActive ? [
       { label: 'Add a panel by hand…', onPress: () => { zoomRefs.current.get(page)?.zoomToPanel(null, 250); fadeTo(maskAmount, 0, 250); setPanelDrawing(true); setMenuOpen(false); } },
       { label: 'Remove this panel', onPress: removePanel },
@@ -648,6 +649,12 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
     return { page: slot.page, local: fromUnit(slot, manualBox) };
   }, [manualBox, slots]);
   const activeItem = useMemo(() => (focus >= 0 ? itemAt(focus) : focus === -2 ? manualItem : null), [focus, itemAt, manualItem]);
+  // Where the last balloon was, so switching to panel-by-panel on this page starts on the panel that holds it.
+  useEffect(() => {
+    if (!activeItem) return;
+    const box = toUnit(slotFor(slots, activeItem.page), activeItem.local);
+    lastBubble.current = { page, x: box.x + box.w / 2, y: box.y + box.h / 2 };
+  }, [activeItem, slots, page]);
   const prevItem = useMemo(() => (focus > 0 ? itemAt(focus - 1) : null), [focus, itemAt]);
   const nextItem = useMemo(() => (focus >= 0 ? itemAt(focus + 1) : null), [focus, itemAt]);
   useEffect(() => {
