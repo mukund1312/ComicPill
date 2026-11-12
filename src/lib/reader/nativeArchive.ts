@@ -13,6 +13,9 @@ type Native = {
   pdfPageSizes(path: string): Promise<number[][]>;
   renderPdfPage(path: string, index: number, dest: string, targetWidth: number): Promise<void>;
   grayThumbnail?(path: string, maxWidth: number): Promise<{ width: number; height: number; data: string }>;
+  /** Android: receive the volume keys and a keyboard's left/right arrows as `onHardwareKey` events, one per press, and keep them from the system. Returns false where it can't. */
+  captureKeys?(on: boolean): boolean;
+  addListener?(event: 'onHardwareKey', listener: (e: { key: 'volume_up' | 'volume_down' | 'left' | 'right' }) => void): { remove(): void };
   recognizeText?(path: string): Promise<string>;
   /** Speech balloons found by an on-device neural detector: boxes as fractions of the image; c 0 = balloon, 1 = text in a balloon, 2 = lettering outside one. */
   detectBubbles?(path: string, minScore: number): Promise<Array<{ c: number; s: number; x: number; y: number; w: number; h: number }>>;

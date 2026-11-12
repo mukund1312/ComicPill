@@ -33,6 +33,9 @@ import { BubbleGestureLayer } from './BubbleGestureLayer';
 import { BubbleFloatLayer, type FloatTarget } from './BubbleFloatLayer';
 import { extractBubble } from '../../lib/reader/bubbles/extract';
 import { BUBBLE_SIZE_STEP, clampBubbleSize, settleRect } from '../../lib/reader/bubbles/pop';
+import { feedback } from '../../lib/platform/feedback';
+import { makeSerialQueue, nextSide, stepForSide, stepForVolume, stepPosition, type NavMode, type NavPosition, type Step } from '../../lib/reader/navigation/readerNav';
+import { useHardwareKeys, type HardwareKey } from './useHardwareKeys';
 import { combineUnit, fromUnit, slotAt, slotFor, toUnit, unitPanels, unitSlots, type Origin } from '../../lib/reader/unitLayout';
 import { optionalNative } from '../../lib/reader/nativeArchive';
 import { CloudFetchError, ensureLocalCopy, freeSpaceFor, isCached, planFetch, readyComics } from '../../lib/reader/cloudCache';
@@ -193,6 +196,20 @@ function BarButton({ label, onPress, children }: { label: string; onPress: () =>
 /** Shared-value writes live outside the component so the compiler lint (which cannot tell a shared value from a plain object) leaves it alone. */
 function fadeTo(sv: SharedValue<number>, to: number, ms: number) { sv.value = withTiming(to, { duration: ms }); }
 
+/**
+ * Previous and Next for the floating bars. Next sits on the side the reading goes towards, with its arrow pointing that way (right for left-to-right,
+ * left for manga); `which` picks the left-hand or right-hand one so a bar can put its count between them.
+ */
+function StepButton({ which, noun, rtl, onStep, before }: { which: 'left' | 'right'; noun: string; rtl: boolean; onStep: (d: Step) => void; before?: () => void }) {
+  const forwardOnRight = nextSide(rtl ? 'rtl' : 'ltr') === 'right';
+  const forward = (which === 'right') === forwardOnRight;
+  return (
+    <BarButton label={`${forward ? 'Next' : 'Previous'} ${noun}`} onPress={() => { before?.(); onStep(forward ? 1 : -1); }}>
+      <Text style={styles.bubbleBtn}>{which === 'right' ? '›' : '‹'}</Text>
+    </BarButton>
+  );
+}
+
 function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComic; source: ComicSource; sizes: Sizes | null; reading: Reading; settings: ReaderSettings }) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -318,6 +335,7 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
   type PanelState = { page: number; panels: Panel[]; index: number; per?: Record<number, Panel[]>; meta?: Origin[] };
   const panelState = useRef<PanelState>({ page: -1, panels: [], index: 0 });
   const landOnLast = useRef(false);
+  const resumePanel = useRef<{ page: number; index: number } | null>(null);
   const registerZoom = useCallback((p: number, handle: ZoomHandle | null) => {
     if (handle) zoomRefs.current.set(p, handle); else zoomRefs.current.delete(p);
   }, []);
@@ -380,7 +398,10 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
   }, [guidedActive, step, units, later, maskAmount, showPanel]);
 
   useEffect(() => {
-    if (!guidedActive) { bridgeTo.current = null; panelState.current = { page: -1, panels: [], index: 0 }; zoomRefs.current.get(page)?.zoomToPanel(null); fadeTo(maskAmount, 0, 200); return; }
+    if (!guidedActive) {
+      // Leaving panel mode: remember which panel, so coming back to this page picks up there instead of the first.
+      if (panelState.current.page >= 0) resumePanel.current = { page: panelState.current.page, index: panelState.current.index };
+      bridgeTo.current = null; panelState.current = { page: -1, panels: [], index: 0 }; zoomRefs.current.get(page)?.zoomToPanel(null); fadeTo(maskAmount, 0, 200); return; }
     let live = true;
     const wantLast = landOnLast.current; landOnLast.current = false;
     const bridged = bridgeTo.current === page;
@@ -396,6 +417,7 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
       let index = wantLast ? panels.length - 1 : 0;
       // Turning the phone re-runs this on the same page: stay on the panel being read rather than going back to the first.
       if (!wantLast && !focus && panelState.current.page === page && panelState.current.panels.length) index = Math.min(panelState.current.index, panels.length - 1);
+      else if (!wantLast && !focus && resumePanel.current?.page === page) index = Math.min(resumePanel.current.index, panels.length - 1);
       if (focus) { const hit = panelAt(panels, focus.x, focus.y); if (hit >= 0) index = hit; }
       panelState.current = { page, panels, index, per, meta };
       const go = () => { if (!live) return; showPanel(page, panels[index], index, panels.length); showBar(); bridgeTo.current = null; };
@@ -703,13 +725,67 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
     return false;
   }, [page, focusBubble, leaveBubble, width]);
 
+  // ---- one navigation controller ----
+  // Next and Previous mean the same thing whichever way they are asked for (button, tap, swipe, arrow key, volume key) and whichever mode is on:
+  // the next/previous balloon, panel or page, in reading order. The reading direction only decides which physical side stands for Next.
+  const navMode: NavMode = guidedActive ? 'panel' : bubbleActive ? 'bubble' : 'page';
+  const dirName = rtl ? 'rtl' : 'ltr';
+  const pendingBubble = useRef<{ page: number; index: number } | null>(null);
+  const queue = useMemo(() => makeSerialQueue(3), []);
+
+  /** Balloons on one reading unit (a page, or both pages of a spread), in order, as the reader will see them. */
+  const bubblesOfUnit = useCallback(async (u: number): Promise<Bubble[]> => {
+    const pages = units[u]; if (!pages) return [];
+    const per: Record<number, Bubble[]> = {};
+    for (const p of pages) per[p] = (await detectPageBubbles(comic.id, p, await source.getPageUri(p), rtl)).filter((b) => display.bubbleSfx || !b.sfx);
+    return combineUnit(pages, unitSlots(pages, sizeList, rtl), per).items;
+  }, [units, comic.id, source, rtl, sizeList, display.bubbleSfx]);
+
+  const navigateBubble = useCallback(async (delta: Step) => {
+    const u = unitIndexOf(units, position.current.page);
+    const list = bubblesRef.current.page === page ? bubblesRef.current.list : await bubblesOfUnit(u);
+    // Nothing lifted yet: Next lifts the first balloon here, Previous the last (a page with none just moves on).
+    if (focusRef.current === -1 && list.length > 0) { focusBubble(delta > 0 ? 0 : list.length - 1); return; }
+    const at: NavPosition = { page: u, index: Math.max(0, focusRef.current) };
+    const result = await stepPosition(at, delta, 'bubble', units.length, async (k) => (await bubblesOfUnit(k)).length);
+    if (result.kind === 'edge') return; // the first or last balloon of the comic: stay put
+    if (!result.crossedPage) { focusBubble(result.position.index); return; }
+    // Onto another page: turn to it, and lift the first (or last) balloon once that page's balloons are known.
+    pendingBubble.current = { page: units[result.position.page][0], index: result.position.index };
+    leaveBubble();
+    goToPage(units[result.position.page][0]);
+  }, [units, page, bubblesOfUnit, focusBubble, leaveBubble, goToPage]);
+
+  // Arrived on the page a crossing was heading for: lift the balloon it meant.
+  useEffect(() => {
+    const want = pendingBubble.current;
+    if (!want || want.page !== page || !bubbleActive || !here.done) return;
+    pendingBubble.current = null;
+    if (here.list.length > 0) focusBubble(Math.min(want.index, here.list.length - 1));
+  }, [page, bubbleActive, here.done, here.list.length, focusBubble]);
+
+  /** The one entry point: Next (+1) or Previous (−1) in the current mode. */
+  const navigate = useCallback((delta: Step) => {
+    queue(async () => {
+      feedback.tap();
+      if (navMode === 'bubble') await navigateBubble(delta);
+      else advance(delta); // page: a page or spread; panel: the next panel, or across the page boundary with the camera pull-back
+    });
+  }, [queue, navMode, navigateBubble, advance]);
+
+  // Hardware: volume Up is always Next, Down always Previous; a keyboard's arrows follow the reading direction.
+  useHardwareKeys(!webtoon, useCallback((key: HardwareKey) => {
+    if (key === 'volume_up' || key === 'volume_down') navigate(stepForVolume(key === 'volume_up' ? 'up' : 'down'));
+    else navigate(stepForSide(key, dirName));
+  }, [navigate, dirName]));
+
   useEffect(() => {
     edgeTurn.current = (x: number) => {
       if (!settings.tapZones || guidedActive) return false;
       const edge = width * 0.3; const flip = settings.invertTaps ? -1 : 1;
-      const dir = x < edge ? (rtl ? 1 : -1) * flip : x > width - edge ? (rtl ? -1 : 1) * flip : 0;
+      const dir = x < edge ? stepForSide('left', dirName) * flip : x > width - edge ? stepForSide('right', dirName) * flip : 0;
       if (!dir) return false;
-      advance(dir); later(() => advance(dir), 380);
+      navigate(dir as Step); later(() => navigate(dir as Step), 380);
       return true;
     };
   });
@@ -718,14 +794,14 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
     if ((bubbleActive || (guidedActive && barVisible)) && y > height - insets.bottom - 96 && Math.abs(x - width / 2) < 260) return;
     if (bubbleActive && bubbleTap(x, y)) return;
     // Panel by panel: the left 30% steps back and the right 70% forward (mirrored for manga); any tap also brings the controls back.
-    if (guidedActive) { showBar(); if (settings.tapZones) advance(tapDirection(x, width, rtl, settings.invertTaps)); return; }
+    if (guidedActive) { showBar(); if (settings.tapZones) navigate(tapDirection(x, width, rtl, settings.invertTaps)); return; }
     const edge = width * 0.3;
     const flip = settings.invertTaps ? -1 : 1;
     // Outer thirds turn the page (direction-aware); the centre toggles the overlay.
-    if (settings.tapZones && x < edge) advance((rtl ? 1 : -1) * flip);
-    else if (settings.tapZones && x > width - edge) advance((rtl ? -1 : 1) * flip);
+    if (settings.tapZones && x < edge) navigate((stepForSide('left', dirName) * flip) as Step);
+    else if (settings.tapZones && x > width - edge) navigate((stepForSide('right', dirName) * flip) as Step);
     else setOverlay((o) => !o);
-  }, [width, height, insets.bottom, rtl, advance, settings.tapZones, settings.invertTaps, bubbleActive, bubbleTap, guidedActive, showBar, barVisible]);
+  }, [width, height, insets.bottom, rtl, dirName, navigate, settings.tapZones, settings.invertTaps, bubbleActive, bubbleTap, guidedActive, showBar, barVisible]);
 
   // Prefetch what's coming (and one back) and tell the source where we are so it never evicts them.
   useEffect(() => {
@@ -744,6 +820,8 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
     setBookmarks((prev) => { const n = new Set(prev); if (now) n.add(page); else n.delete(page); return n; });
   };
 
+  // Next belongs on the side the reading goes towards, with its arrow pointing that way: right for left-to-right, left for manga.
+  const dirTag = rtl ? '← RTL' : 'LTR →';
   const allPages = useMemo(() => { const p = Array.from({ length: total }, (_, i) => i); return rtl ? p.reverse() : p; }, [total, rtl]);
   const listKey = `${mode}-${spread ? 'spread' : 'single'}-${Math.round(width)}`;
   const initial = anchor.page;
@@ -815,9 +893,9 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
       {guidedActive && barVisible && !overlay ? (
         <Animated.View entering={FadeIn.duration(160)} exiting={FadeOut.duration(220)} pointerEvents="box-none" style={[styles.bubbleBar, { bottom: insets.bottom + space.lg }]}>
           <View style={styles.bubblePill}>
-            <BarButton label="Previous panel" onPress={() => { showBar(); advance(-1); }}><Text style={styles.bubbleBtn}>‹</Text></BarButton>
-            <Text style={styles.bubbleCount}>{`Page ${page + 1} · ${panelInfo.page === page ? `${panelInfo.index + 1}/${panelInfo.count}` : '…'}`}</Text>
-            <BarButton label="Next panel" onPress={() => { showBar(); advance(1); }}><Text style={styles.bubbleBtn}>›</Text></BarButton>
+            <StepButton which="left" noun="panel" rtl={rtl} onStep={navigate} before={showBar} />
+            <Text style={styles.bubbleCount}>{`${dirTag} Page ${page + 1} · ${panelInfo.page === page ? `${panelInfo.index + 1}/${panelInfo.count}` : '…'}`}</Text>
+            <StepButton which="right" noun="panel" rtl={rtl} onStep={navigate} before={showBar} />
             <Pressable accessibilityRole="button" accessibilityLabel={`Other panels: ${display.guidedMask === 'dim' ? 'dimmed' : display.guidedMask === 'solid' ? 'hidden' : 'shown'}. Tap to change`} onPress={() => { showBar(); changeDisplay({ guidedMask: display.guidedMask === 'dim' ? 'solid' : display.guidedMask === 'solid' ? 'none' : 'dim' }); }} hitSlop={10}>
               <Text style={styles.bubbleBtn}>{display.guidedMask === 'dim' ? '◐' : display.guidedMask === 'solid' ? '●' : '○'}</Text>
             </Pressable>
@@ -829,7 +907,7 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
       {guidedActive && panelDrawing ? <BubbleGestureLayer mode="draw" width={width} rtl={rtl} skim={noSkim} onTap={() => setPanelDrawing(false)} onDoubleTap={() => setPanelDrawing(false)} onCommit={() => undefined} onDraw={onPanelDraw} /> : null}
       {guidedActive && panelDrawing ? <View pointerEvents="none" style={[styles.bubbleBar, { bottom: insets.bottom + space.lg }]}><View style={styles.bubblePill}><Text style={styles.bubbleCount}>Drag a box around a panel</Text></View></View> : null}
       {bubbleActive && (focus !== -1 || drawing) ? (
-        <BubbleGestureLayer mode={drawing ? 'draw' : 'focus'} width={width} rtl={rtl} skim={skim} onTap={bubbleTap} onDoubleTap={leaveBubble} onCommit={stepBubble} onDraw={onBubbleDraw} />
+        <BubbleGestureLayer mode={drawing ? 'draw' : 'focus'} width={width} rtl={rtl} skim={skim} onTap={bubbleTap} onDoubleTap={leaveBubble} onCommit={navigate} onDraw={onBubbleDraw} />
       ) : null}
       {/* Out of the way while the page controls are up (it would sit on the scrubber). */}
       {bubbleActive && !overlay ? (
@@ -839,9 +917,9 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
               <Text style={styles.bubbleCount}>Drag a box around a balloon</Text>
             ) : focus >= 0 || focus === -2 ? (
               <>
-                {focus >= 0 ? <BarButton label="Previous balloon" onPress={() => stepBubble(-1)}><Text style={styles.bubbleBtn}>‹</Text></BarButton> : null}
-                <Text style={styles.bubbleCount}>{focus >= 0 ? `${focus + 1} / ${here.list.length}` : 'Balloon'}</Text>
-                {focus >= 0 ? <BarButton label="Next balloon" onPress={() => stepBubble(1)}><Text style={styles.bubbleBtn}>›</Text></BarButton> : null}
+                {focus >= 0 ? <StepButton which="left" noun="balloon" rtl={rtl} onStep={navigate} /> : null}
+                <Text style={styles.bubbleCount}>{focus >= 0 ? `${dirTag} ${focus + 1} / ${here.list.length}` : 'Balloon'}</Text>
+                {focus >= 0 ? <StepButton which="right" noun="balloon" rtl={rtl} onStep={navigate} /> : null}
                 <BarButton label="Smaller balloon" onPress={() => nudgeBubbleSize(-BUBBLE_SIZE_STEP)}><Text style={[styles.bubbleBtn, styles.bubbleSizeBtn]}>A−</Text></BarButton>
                 <BarButton label="Larger balloon" onPress={() => nudgeBubbleSize(BUBBLE_SIZE_STEP)}><Text style={[styles.bubbleBtn, styles.bubbleSizeBtn]}>A+</Text></BarButton>
                 <BarButton label="Back to the page" onPress={leaveBubble}><Text style={styles.bubbleBtn}>⤡</Text></BarButton>

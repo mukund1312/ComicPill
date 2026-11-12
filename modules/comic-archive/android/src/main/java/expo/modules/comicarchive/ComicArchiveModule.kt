@@ -8,6 +8,9 @@ import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.ParcelFileDescriptor
 import android.util.Base64
+import android.view.KeyEvent
+import android.view.Window
+import androidx.core.os.bundleOf
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
@@ -152,8 +155,54 @@ class ComicArchiveModule : Module() {
     }
   }
 
+  // ---- hardware keys while the reader is open ----
+  // The reader asks to receive the volume keys (and the arrow keys of a keyboard) and gets one event per press. While captured they are consumed, so
+  // the system volume does not change and its slider never shows; held keys (repeats, long presses) are swallowed, so a press is exactly one step.
+  // Android only delivers the volume keys to the foreground activity, and only to apps that handle them: a locked screen, a different app on top,
+  // or the system's own accessibility shortcut gets them first. The keys are released the moment the reader closes.
+  private var keysCaptured = false
+  private var keyWindow: Window? = null
+  private var keyBase: Window.Callback? = null
+
+  private class KeyCallback(private val base: Window.Callback, private val onKey: (KeyEvent) -> Boolean) : Window.Callback by base {
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean = onKey(event) || base.dispatchKeyEvent(event)
+  }
+
+  private fun keyName(code: Int): String? = when (code) {
+    KeyEvent.KEYCODE_VOLUME_UP -> "volume_up"
+    KeyEvent.KEYCODE_VOLUME_DOWN -> "volume_down"
+    KeyEvent.KEYCODE_DPAD_LEFT -> "left"
+    KeyEvent.KEYCODE_DPAD_RIGHT -> "right"
+    else -> null
+  }
+
+  private fun setKeyCapture(on: Boolean): Boolean {
+    val activity = appContext.currentActivity ?: return false
+    activity.runOnUiThread {
+      val window = activity.window
+      if (on && keyWindow !== window) {
+        keyBase = window.callback
+        keyWindow = window
+        window.callback = KeyCallback(window.callback) { e ->
+          val name = if (keysCaptured) keyName(e.keyCode) else null
+          if (name == null) false else {
+            if (e.action == KeyEvent.ACTION_DOWN && e.repeatCount == 0) sendEvent("onHardwareKey", bundleOf("key" to name))
+            true
+          }
+        }
+      }
+      if (!on && keyWindow != null) { keyWindow?.callback = keyBase; keyWindow = null; keyBase = null }
+    }
+    keysCaptured = on
+    return true
+  }
+
   override fun definition() = ModuleDefinition {
     Name("ComicArchive")
+
+    Events("onHardwareKey")
+    Function("captureKeys") { on: Boolean -> setKeyCapture(on) }
+    OnActivityDestroys { setKeyCapture(false) }
 
     // Keep access to a file the reader picked from Drive, Dropbox or any other document provider, after the app is closed.
     Function("persistUriPermission") { uri: String ->
