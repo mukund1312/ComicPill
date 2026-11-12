@@ -4,10 +4,12 @@ import { bubblesFromDetections } from './fromModel';
 const d = (c: number, s: number, x: number, y: number, w: number, h: number) => ({ c, s, x, y, w, h });
 
 describe('bubblesFromDetections', () => {
-  it('keeps balloons, drops weak boxes and lettering outside balloons, and removes duplicates', () => {
+  it('keeps balloons, drops weak boxes and duplicates, and marks lettering outside balloons as a sound effect', () => {
     const out = bubblesFromDetections([d(0, 0.95, 0.1, 0.1, 0.2, 0.08), d(0, 0.2, 0.5, 0.5, 0.2, 0.08), d(2, 0.9, 0.6, 0.6, 0.1, 0.05), d(0, 0.9, 0.101, 0.101, 0.2, 0.08)], false);
-    expect(out).toHaveLength(1);
-    expect(out[0].x).toBeLessThanOrEqual(0.1); expect(out[0].w).toBeGreaterThanOrEqual(0.2);
+    const balloons = out.filter((b) => !b.sfx);
+    expect(balloons).toHaveLength(1); // weak box and the duplicate gone
+    expect(balloons[0].x).toBeLessThanOrEqual(0.1); expect(balloons[0].w).toBeGreaterThanOrEqual(0.2);
+    expect(out.filter((b) => b.sfx)).toHaveLength(1); // the lettering outside the balloon is kept, marked as a sound effect
   });
   it('reads a page top to bottom, and right to left across a row for manga', () => {
     const boxes = [d(0, 0.9, 0.1, 0.6, 0.2, 0.08), d(0, 0.9, 0.6, 0.1, 0.2, 0.08), d(0, 0.9, 0.1, 0.1, 0.2, 0.08)];
@@ -31,5 +33,17 @@ describe('splitStacked', () => {
   });
   it('leaves a balloon with several close lines of lettering alone', () => {
     expect(splitStacked(balloon, [d(1, 0.9, 0.45, 0.22, 0.2, 0.05), d(1, 0.9, 0.45, 0.28, 0.2, 0.05), d(1, 0.9, 0.45, 0.34, 0.2, 0.05)])).toHaveLength(1);
+  });
+});
+
+describe('sound effects', () => {
+  it('keeps lettering outside balloons as marked sound effects, and drops lettering that sits inside a balloon', () => {
+    const out = bubblesFromDetections([d(0, 0.95, 0.1, 0.1, 0.3, 0.1), d(2, 0.9, 0.6, 0.6, 0.2, 0.1), d(2, 0.9, 0.12, 0.12, 0.2, 0.06)], false);
+    expect(out).toHaveLength(2);
+    expect(out.filter((b) => b.sfx)).toHaveLength(1);
+    expect(out.find((b) => b.sfx)!.x).toBeGreaterThan(0.5);
+  });
+  it('ignores weak sound-effect guesses', () => {
+    expect(bubblesFromDetections([d(2, 0.45, 0.6, 0.6, 0.2, 0.1)], false)).toHaveLength(0);
   });
 });

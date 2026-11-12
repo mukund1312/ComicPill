@@ -3,7 +3,8 @@
 import type { Panel } from '../guided/panels';
 
 /** `tight`: just the lettering, kept when no balloon outline could be found (so a lift can use it instead of the big padded box). */
-export type Bubble = Panel & { tight?: Panel };
+/** `tight`: just the lettering. `sfx`: lettering outside any balloon (sound effects, signs), shown only when the reader asks for it. */
+export type Bubble = Panel & { tight?: Panel; sfx?: boolean };
 
 /** The balloon is bigger than the lettering inside it; open each box up so the outline is not cut off. */
 export function padBubble(box: Panel): Bubble {

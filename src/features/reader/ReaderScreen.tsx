@@ -207,7 +207,7 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
   const [menuOpen, setMenuOpen] = useState(false);
   const [displayOpen, setDisplayOpen] = useState(false);
   const [pageText, setPageText] = useState<PageText>(null);
-  const [display, setDisplay] = useState<Display>({ brightness: settings.brightness, filter: settings.filter, pageAnimation: settings.pageAnimation, trimBorders: settings.trimBorders, guidedMask: settings.guidedMask, landscapeLayout: settings.landscapeLayout, bubbleSize: settings.bubbleSize, guidedMs: settings.guidedMs, bridgeMs: settings.bridgeMs, doubleTapPanel: settings.doubleTapPanel });
+  const [display, setDisplay] = useState<Display>({ brightness: settings.brightness, filter: settings.filter, pageAnimation: settings.pageAnimation, trimBorders: settings.trimBorders, guidedMask: settings.guidedMask, landscapeLayout: settings.landscapeLayout, bubbleSize: settings.bubbleSize, bubbleSfx: settings.bubbleSfx, guidedMs: settings.guidedMs, bridgeMs: settings.bridgeMs, doubleTapPanel: settings.doubleTapPanel });
   const [trimBoxes, setTrimBoxes] = useState<Record<number, Panel | null>>({});
   const trimAsked = useRef(new Set<number>());
   const scrollX = useSharedValue(0);
@@ -550,7 +550,15 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
   // ---- bubble zoom: balloons on the page (or both pages of the spread), and which one is up close (-1 none, -2 a hand-picked spot) ----
   // Balloons are found and saved per page; here they are laid side by side into the unit's coordinates so taps and the lift work across a spread.
   const [bubbles, setBubbles] = useState<{ page: number; per: Record<number, Bubble[]>; done: boolean }>({ page: -1, per: NO_BUBBLES, done: false });
-  const perHere = bubbles.page === page ? bubbles.per : NO_BUBBLES;
+  // Sound effects are found with the balloons but only offered when the reader has asked for them.
+  const sfxOn = display.bubbleSfx;
+  const perHere = useMemo(() => {
+    const per = bubbles.page === page ? bubbles.per : NO_BUBBLES;
+    if (sfxOn) return per;
+    const out: Record<number, Bubble[]> = {};
+    for (const k of Object.keys(per)) out[Number(k)] = per[Number(k)].filter((b) => !b.sfx);
+    return out;
+  }, [bubbles, page, sfxOn]);
   const unitBubbles = useMemo(() => combineUnit(unitPages, slots, perHere), [unitPages, slots, perHere]);
   const here = { list: unitBubbles.items, done: bubbles.page === page && bubbles.done };
   // Focus belongs to the unit it was made on, so turning the page drops it without any resetting.

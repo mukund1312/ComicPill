@@ -6,6 +6,8 @@ import type { Bubble } from './bubbles';
 export type Detection = { c: number; s: number; x: number; y: number; w: number; h: number };
 
 const MIN_SCORE = 0.4;
+/** Sound effects are judged more strictly: a stray word of background text is worse than a missed one. */
+const SFX_SCORE = 0.55;
 const MAX_SHARE = 0.25;
 
 const overlap = (a: Bubble, b: Bubble) => {
@@ -37,7 +39,9 @@ export function splitStacked(balloon: Detection, texts: Detection[]): Detection[
 }
 
 export function bubblesFromDetections(dets: Detection[], rtl: boolean): Bubble[] {
-  // Class 0 is the balloon (captions included). Lettering outside a balloon (sound effects, titles) is left alone.
+  // Class 0 is the balloon (captions included). Lettering outside a balloon (class 2: sound effects, signs) is kept too, marked `sfx`, so the
+  // reader can choose to zoom it; it is ordered with the balloons but never replaces one.
+  const effects = dets.filter((d) => d.c === 2 && d.s >= SFX_SCORE && d.w > 0.02 && d.h > 0.012 && d.w * d.h <= MAX_SHARE);
   const found = dets
     .filter((d) => d.c === 0)
     .flatMap((d) => splitStacked(d, dets))
@@ -49,6 +53,13 @@ export function bubblesFromDetections(dets: Detection[], rtl: boolean): Bubble[]
     const x = Math.max(0, d.x - padX); const y = Math.max(0, d.y - padY);
     const box: Bubble = { x, y, w: Math.min(1, d.x + d.w + padX) - x, h: Math.min(1, d.y + d.h + padY) - y };
     if (kept.some((k) => overlap(k, box) > 0.7)) continue; // the same balloon found twice
+    kept.push(box);
+  }
+  for (const d of effects.sort((a, b) => b.s - a.s)) {
+    const pad = 0.01;
+    const x = Math.max(0, d.x - pad); const y = Math.max(0, d.y - pad);
+    const box: Bubble = { x, y, w: Math.min(1, d.x + d.w + pad) - x, h: Math.min(1, d.y + d.h + pad) - y, sfx: true };
+    if (kept.some((k) => overlap(k, box) > 0.5)) continue; // lettering that is really part of a balloon
     kept.push(box);
   }
   // Reading order with the same panel-aware cut the text reader uses (each box stands in as one line of lettering).

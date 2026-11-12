@@ -26,6 +26,8 @@ export type ReaderSettings = {
   landscapeLayout: LandscapeLayout;
   /** How big a balloon is when lifted: 1 is the automatic fit, less is smaller, more is larger. */
   bubbleSize: number;
+  /** Bubble zoom also lifts lettering outside balloons: sound effects and signs. */
+  bubbleSfx: boolean;
   /** How long the camera takes to move between panels, in milliseconds. */
   guidedMs: number;
   /** How long a whole new page is shown before the camera moves into its first panel, in milliseconds (0 goes straight in). */
@@ -41,7 +43,7 @@ export type PageAnimation = 'slide' | 'fade' | 'flip' | 'curl';
 export type ReaderFilter = 'none' | 'sepia' | 'gray' | 'invert' | 'contrast';
 
 const KEY = 'reader_settings';
-export const DEFAULT_SETTINGS: ReaderSettings = { incognito: false, tapZones: true, invertTaps: false, defaultPresetId: DEFAULT_PRESET_ID, pageAnimation: 'slide', brightness: 1, filter: 'none', trimBorders: false, bubbleZoom: false, guidedMask: 'dim', landscapeLayout: 'spread', bubbleSize: 1, guidedMs: 320, bridgeMs: 500, doubleTapPanel: true };
+export const DEFAULT_SETTINGS: ReaderSettings = { incognito: false, tapZones: true, invertTaps: false, defaultPresetId: DEFAULT_PRESET_ID, pageAnimation: 'slide', brightness: 1, filter: 'none', trimBorders: false, bubbleZoom: false, guidedMask: 'dim', landscapeLayout: 'spread', bubbleSize: 1, bubbleSfx: false, guidedMs: 320, bridgeMs: 500, doubleTapPanel: true };
 
 export function loadReaderSettings(): ReaderSettings {
   try { return { ...DEFAULT_SETTINGS, ...(JSON.parse(getMeta(KEY) ?? '{}') as Partial<ReaderSettings>) }; } catch { return DEFAULT_SETTINGS; }

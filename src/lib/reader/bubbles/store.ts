@@ -4,7 +4,7 @@ import { getMeta, setMeta } from '../../db/queries/meta';
 import type { Bubble } from './bubbles';
 
 /** Bump when the detector changes enough that old automatic results should be redone. */
-const VERSION = 16;
+const VERSION = 17;
 const key = (comicId: string, page: number, rtl: boolean) => `bubbles:v${VERSION}:${comicId}:${page}:${rtl ? 'r' : 'l'}`;
 
 export type StoredBubbles = { list: Bubble[]; edited: boolean };

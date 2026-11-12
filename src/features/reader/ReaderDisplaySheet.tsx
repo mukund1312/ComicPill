@@ -7,7 +7,7 @@ import { useSheetDrag } from '../../ui/sheetDrag';
 import type { GuidedMask, LandscapeLayout, PageAnimation, ReaderFilter } from '../../lib/reader/readerSettings';
 import { color, font, radius, space, type } from '../../ui/tokens';
 
-export type Display = { brightness: number; filter: ReaderFilter; pageAnimation: PageAnimation; trimBorders: boolean; guidedMask: GuidedMask; landscapeLayout: LandscapeLayout; bubbleSize: number; guidedMs: number; bridgeMs: number; doubleTapPanel: boolean };
+export type Display = { brightness: number; filter: ReaderFilter; pageAnimation: PageAnimation; trimBorders: boolean; guidedMask: GuidedMask; landscapeLayout: LandscapeLayout; bubbleSize: number; bubbleSfx: boolean; guidedMs: number; bridgeMs: number; doubleTapPanel: boolean };
 
 const MASKS: Array<[GuidedMask, string]> = [['dim', 'Dimmed'], ['solid', 'Solid'], ['none', 'Off']];
 const CAMERA_SPEEDS: Array<[number, string]> = [[200, 'Fast'], [320, 'Normal'], [520, 'Slow']];
@@ -74,6 +74,12 @@ export function ReaderDisplaySheet({ visible, value, onChange, onClose }: { visi
           <Text style={styles.label}>Bubble zoom size · {Math.round(value.bubbleSize * 100)}%</Text>
           <Slider value={value.bubbleSize} min={0.5} max={1.6} onChange={(bubbleSize) => onChange({ bubbleSize })} />
           <Text style={styles.note}>How large a speech balloon is when you tap it. 100% fits the balloon to the screen; you can also change it with A− and A+ while one is up.</Text>
+
+          <Text style={styles.label}>Bubble zoom · sound effects</Text>
+          <View style={styles.row}>
+            <Chip label="Dialogue only" active={!value.bubbleSfx} onPress={() => onChange({ bubbleSfx: false })} />
+            <Chip label="Also sound effects" active={value.bubbleSfx} onPress={() => onChange({ bubbleSfx: true })} />
+          </View>
 
           <Text style={styles.label}>Guided reading · other panels</Text>
           <View style={styles.row}>{MASKS.map(([k, l]) => <Chip key={k} label={l} active={value.guidedMask === k} onPress={() => onChange({ guidedMask: k })} />)}</View>
