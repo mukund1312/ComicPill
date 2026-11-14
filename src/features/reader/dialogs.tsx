@@ -4,6 +4,7 @@ import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-ha
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSheetDrag } from '../../ui/sheetDrag';
+import { feedback } from '../../lib/platform/feedback';
 import { color, font, radius, space, type } from '../../ui/tokens';
 
 export type SheetOption = { label: string; onPress: () => void; destructive?: boolean; checked?: boolean };
@@ -29,7 +30,7 @@ export function ActionSheet({ visible, title, options, onClose }: { visible: boo
                 </GestureDetector>
                 <ScrollView style={styles.fill} bounces={false} showsVerticalScrollIndicator>
                   {options.map((o) => (
-                    <Pressable key={o.label} accessibilityRole="button" style={styles.row} onPress={() => { onClose(); setTimeout(o.onPress, 450); }}>
+                    <Pressable key={o.label} accessibilityRole="button" style={styles.row} onPress={() => { feedback.select(); onClose(); setTimeout(o.onPress, 450); }}>
                       <Text style={[styles.rowText, o.destructive && styles.destructive]}>{o.label}</Text>
                       {o.checked ? <Text style={styles.check}>✓</Text> : null}
                     </Pressable>

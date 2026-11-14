@@ -25,6 +25,7 @@ import { usePermissions } from './usePermissions';
 import { useAiConfig } from '../../lib/ai/useAiConfig';
 import { useAuth } from '../../lib/auth/auth';
 import { updatesSupported } from '../../lib/update/useUpdate';
+import { hiddenShelfReady } from '../../lib/reader/hiddenShelf';
 import { PROVIDER_LABEL } from '../../lib/ai/models';
 
 type ExportChoice = 'share' | 'copy';
@@ -133,6 +134,7 @@ export default function SettingsScreen() {
 
       <SettingsSection title="Privacy & data" footer="Everything you add stays on this device. ComicPill has no account. It only goes online for two things you control: your own AI key (when you tap Build my journey or Scan) and, on Android, a once-a-day check for a newer version.">
         <LinkRow label="Passcode & privacy" detail="Ask for a passcode when ComicPill opens." onPress={() => router.push('/passcode')} />
+        <LinkRow label="Hidden shelf" detail="Keep some comics behind a password of their own." value={hiddenShelfReady() ? 'On' : 'Off'} onPress={() => router.push('/hidden-shelf')} />
         <ToggleRow label="Personalized recommendations" detail="Use what ComicPill has learned about your taste. Off: Today and Compare treat you as a new reader." value={s.personalizedRecommendations} onChange={(v) => s.update({ personalizedRecommendations: v })} />
         {updatesSupported() ? <ToggleRow label="Check for updates" detail="Once a day, asks GitHub if a newer ComicPill exists. Sends no personal data." value={s.checkForUpdates} onChange={(v) => s.update({ checkForUpdates: v })} /> : null}
         <InfoRow label="Analytics" value="None collected" detail="This version doesn’t track your usage." />

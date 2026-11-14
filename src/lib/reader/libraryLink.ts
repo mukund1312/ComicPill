@@ -38,7 +38,7 @@ export function setWorkCover(workId: string, coverPath: string): void {
 
 /** Comics imported before linking existed (or whose link was lost) get linked now. Cheap when there is nothing to do. */
 export function backfillReaderLinks(): number {
-  const rows = sqlite.getAllSync<{ id: string; title: string; series: string | null; writer: string | null; cover_path: string | null }>('SELECT id, title, series, writer, cover_path FROM reader_comics WHERE work_id IS NULL');
+  const rows = sqlite.getAllSync<{ id: string; title: string; series: string | null; writer: string | null; cover_path: string | null }>('SELECT id, title, series, writer, cover_path FROM reader_comics WHERE work_id IS NULL AND hidden = 0');
   for (const r of rows) linkReaderComic({ id: r.id, title: r.title, series: r.series, writer: r.writer, coverPath: r.cover_path, workId: null });
   return rows.length;
 }

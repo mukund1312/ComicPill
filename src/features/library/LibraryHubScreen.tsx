@@ -22,7 +22,7 @@ export default function LibraryHubScreen() {
   const [open, setOpen] = useState({ libraries: true, imports: true, tools: true });
   const running = useJob().running;
   useFocusEffect(useCallback(() => {
-    const phone = sqlite.getFirstSync<{ n: number }>('SELECT COUNT(*) AS n FROM reader_comics')?.n ?? 0;
+    const phone = sqlite.getFirstSync<{ n: number }>('SELECT COUNT(*) AS n FROM reader_comics WHERE hidden = 0')?.n ?? 0;
     const collection = sqlite.getFirstSync<{ n: number }>("SELECT COUNT(*) AS n FROM user_library WHERE own <> 'none'")?.n ?? 0;
     setCounts({ phone, collection, collections: listCollections().length });
   }, []));

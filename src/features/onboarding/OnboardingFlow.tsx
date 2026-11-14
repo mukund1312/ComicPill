@@ -12,6 +12,7 @@ import { ProcessingStage } from './ProcessingStage';
 import { RevealStage } from './RevealStage';
 import { CollectionStage } from './CollectionStage';
 import { StorageStage } from './StorageStage';
+import { HiddenShelfStage } from './HiddenShelfStage';
 import { FirstPickStage, LibraryReadyStage } from './FinalStages';
 import { useOnboarding, useOnboardingReady } from '../../lib/state/onboarding';
 import { PICK_STAGES, prevStageFor, type PickKey, type Stage } from '../../lib/onboarding/flow';
@@ -119,6 +120,8 @@ export default function OnboardingFlow() {
       return <RevealStage selections={s.selections} onNext={s.next} />;
     case 'storage':
       return <StorageStage onNext={s.next} />;
+    case 'hidden_shelf':
+      return <HiddenShelfStage onNext={s.next} />;
     case 'collection':
       return <CollectionStage draft={s.draft} setDraft={s.setDraft} onSave={saveCollection} onSkip={() => { s.setDraft([]); s.markCollectionSetup(); s.next(); }} onBack={null} saving={saving} />;
     case 'library_ready':

@@ -6,11 +6,11 @@ import { OWNERSHIP_ORDER, READING_ORDER, type DraftItem } from './collectionDraf
 
 export type Stage =
   | 'welcome' | 'characters' | 'villains' | 'art' | 'artists' | 'writers' | 'genres' | 'traits'
-  | 'processing' | 'reveal' | 'storage' | 'collection' | 'library_ready' | 'first_pick' | 'done';
+  | 'processing' | 'reveal' | 'storage' | 'hidden_shelf' | 'collection' | 'library_ready' | 'first_pick' | 'done';
 
 export const STAGE_ORDER: Stage[] = [
   'welcome', 'characters', 'villains', 'art', 'artists', 'writers', 'genres', 'traits',
-  'processing', 'reveal', 'storage', 'collection', 'library_ready', 'first_pick', 'done',
+  'processing', 'reveal', 'storage', 'hidden_shelf', 'collection', 'library_ready', 'first_pick', 'done',
 ];
 
 /** The picking stages, which get the little progress dots. */

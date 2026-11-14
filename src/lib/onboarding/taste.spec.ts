@@ -104,7 +104,7 @@ describe('the starting-taste reveal', () => {
 
 describe('the flow', () => {
   it('runs welcome -> characters -> villains -> art -> artists -> writers -> genres -> traits -> processing -> reveal -> storage -> collection -> library -> first pick -> done', () => {
-    expect(STAGE_ORDER).toEqual(['welcome', 'characters', 'villains', 'art', 'artists', 'writers', 'genres', 'traits', 'processing', 'reveal', 'storage', 'collection', 'library_ready', 'first_pick', 'done']);
+    expect(STAGE_ORDER).toEqual(['welcome', 'characters', 'villains', 'art', 'artists', 'writers', 'genres', 'traits', 'processing', 'reveal', 'storage', 'hidden_shelf', 'collection', 'library_ready', 'first_pick', 'done']);
   });
   it('advances one step at a time and stops at the end', () => {
     expect(nextStage('welcome')).toBe('characters');
@@ -119,7 +119,7 @@ describe('the flow', () => {
     expect(prevStage('villains')).toBe('characters');
     expect(prevStage('characters')).toBe('welcome');
     expect(prevStage('welcome')).toBeNull();
-    for (const s of ['processing', 'reveal', 'storage', 'collection', 'library_ready', 'first_pick', 'done'] as const) expect(prevStage(s)).toBeNull();
+    for (const s of ['processing', 'reveal', 'storage', 'hidden_shelf', 'collection', 'library_ready', 'first_pick', 'done'] as const) expect(prevStage(s)).toBeNull();
     expect(prevStage('characters', true)).toBeNull();
   });
   it('shows progress only on picking steps', () => {

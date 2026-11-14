@@ -125,3 +125,16 @@ Test comic: any `.cbz` with several panels per page and lettered balloons (the c
 - [x] Plain-http home servers allowed: Android usesCleartextTraffic=true; iOS NSAllowsLocalNetworking (LAN / .local only)
 - [x] iOS Release simulator build succeeds (iPhone 17, iPad Pro 11"), app launches; arrow-key catcher compiled in
 - [ ] iOS arrow keys not exercised at runtime (no way to tap through the simulator from here); volume buttons not captured on iOS
+
+## Hidden shelf and haptics (15 Nov 2026, phone emulator, release build)
+
+- [x] Swipe On My Phone right-to-left: panel follows the finger, settles half open. Not set up yet: offers "Set it up" → full-screen password form.
+- [x] Set up (1234 twice) → saved; next swipe asks for the password with the keyboard already up.
+- [x] Wrong password: red field, "Wrong password", panel shakes, warning haptic. Right password: slides fully open.
+- [x] Long-press a comic → "Move to hidden shelf": shelf count 7 → 6, toast, comic only on the hidden shelf; not in Reading Now.
+- [x] Leave the app (Home) and come back: hidden shelf shut, password asked again.
+- [x] Open a hidden comic from the panel; Back returns to the open hidden shelf; Back again locks it.
+- [x] Settings → Hidden shelf: status, count, change password, forgot (deletes hidden comics), turn off (moves them back).
+- [ ] Onboarding "Want a hidden shelf?" step (after the storage step) — covered by the stage-order unit test only, not run on a device.
+- [x] Haptics recorded by the system (dumpsys vibrator_manager) for menus, selection, hide, unlock; the emulator plays them at 0 strength, so feel them on a real phone.
+- Note: on phones with gesture navigation, start the swipe away from the very right edge — a swipe from the edge itself is Android's Back gesture.

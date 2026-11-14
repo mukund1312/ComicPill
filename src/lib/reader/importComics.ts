@@ -10,7 +10,7 @@ import type { ComicSource } from './ComicSource';
 import { Platform } from 'react-native';
 import { optionalNative } from './nativeArchive';
 import { BOOKMARK_PREFIX, NESTED_SEP, cacheDirFor, cachedFileFor, copyFromSource, ensureLocalCopy, freeSpaceFor, isCached, trimIfAuto } from './cloudCache';
-import { createFolder, deleteReaderComic, fillInComic, getReaderComic, insertReaderComic, isDuplicateSource, setComicStorage, sourceKeyOf, unpreparedLinkIds, type ReaderMode } from './readerLibrary';
+import { createFolder, deleteReaderComic, fillInComic, getReaderComic, insertReaderComic, isDuplicateSource, isHiddenComic, setComicStorage, sourceKeyOf, unpreparedLinkIds, type ReaderMode } from './readerLibrary';
 
 export type ImportResult = { imported: string[]; /** Already in the library, so left alone. */ skipped: string[]; failed: Array<{ name: string; reason: string }> };
 export const emptyResult = (): ImportResult => ({ imported: [], skipped: [], failed: [] });
@@ -348,7 +348,10 @@ export async function completeLinkedComic(comic: { id: string; title: string; wo
   const title = displayTitle(info, comic.title);
   const mode: ReaderMode | null = info.rtl ? 'rtl' : null;
   fillInComic(comic.id, { title, pageCount: source.pageCount, coverPath, series: info.series ?? null, issue: info.number ?? null, writer: info.writer ?? null, mode });
-  try { const workId = linkReaderComic({ id: comic.id, title, series: info.series ?? null, writer: info.writer ?? null, coverPath, workId: comic.workId }); if (coverPath) setWorkCover(workId, coverPath); } catch { /* the shelf already has it */ }
+  // A comic on the hidden shelf stays out of the catalog: linking it would put it in My Collection for anyone to see.
+  if (!isHiddenComic(comic.id)) {
+    try { const workId = linkReaderComic({ id: comic.id, title, series: info.series ?? null, writer: info.writer ?? null, coverPath, workId: comic.workId }); if (coverPath) setWorkCover(workId, coverPath); } catch { /* the shelf already has it */ }
+  }
   return title;
 }
 

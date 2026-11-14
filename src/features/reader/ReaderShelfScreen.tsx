@@ -34,6 +34,8 @@ import { KEEP_CHOICES, keepLimit, setKeepLimit } from '../../lib/reader/cloudBud
 import { Icon } from '../../ui/Icon';
 import { usePerRow } from '../../ui/gridColumns';
 import { PerRowSheet } from './PerRowSheet';
+import { HiddenShelf } from './HiddenShelf';
+import { hiddenShelfReady, hideComics } from '../../lib/reader/hiddenShelf';
 import { checkPassword, isUnlocked, makeLock, markUnlocked, passwordProblem } from '../../lib/reader/lock';
 import { newSalt, sha256 } from '../../lib/reader/lockCrypto';
 import { listPresets } from '../../lib/reader/readerSettings';
@@ -108,8 +110,8 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
     title: `Password for “${name}”`, secure: true, submitLabel: 'Unlock',
     onSubmit: async (pw) => {
       const lock = getLock(kind, id);
-      if (lock && (await checkPassword(pw, lock, sha256))) { markUnlocked(kind, id); refresh(); then(); }
-      else Alert.alert('Wrong password', 'Try again.');
+      if (lock && (await checkPassword(pw, lock, sha256))) { feedback.success(); markUnlocked(kind, id); refresh(); then(); }
+      else { feedback.warning(); Alert.alert('Wrong password', 'Try again.'); }
     },
   });
   const requireUnlock = (kind: 'comic' | 'folder', id: string, name: string, locked: boolean, then: () => void) => {
@@ -121,8 +123,8 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
       const problem = passwordProblem(pw);
       if (problem) { Alert.alert('Too short', problem); return; }
       setPrompt({ title: 'Type it again to confirm', secure: true, submitLabel: 'Lock', onSubmit: async (again) => {
-        if (again !== pw) { Alert.alert('Those don’t match', 'Nothing was locked.'); return; }
-        setLock(kind, id, await makeLock(pw, sha256, newSalt())); markUnlocked(kind, id); refresh();
+        if (again !== pw) { feedback.warning(); Alert.alert('Those don’t match', 'Nothing was locked.'); return; }
+        setLock(kind, id, await makeLock(pw, sha256, newSalt())); markUnlocked(kind, id); refresh(); feedback.success();
         Alert.alert('Locked', 'It asks for this password whenever the app has been closed or left. This hides it from casual eyes; it doesn’t encrypt the file.');
       } });
     },
@@ -188,14 +190,14 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
       ],
     });
   };
-  const pickFolderFor = (comic: ReaderComic) => chooseDestination('Move to folder', () => false, comic.folderId, (target) => { setComicFolder(comic.id, target); refresh(); });
+  const pickFolderFor = (comic: ReaderComic) => chooseDestination('Move to folder', () => false, comic.folderId, (target) => { setComicFolder(comic.id, target); feedback.success(); refresh(); flash(`Moved to ${target ? folders.find((f) => f.id === target)?.name ?? 'folder' : 'Library'}`); });
 
   const pickCollectionFor = (comic: ReaderComic) => {
     const member = new Set(collectionsForComic(comic.id));
     setSheet({
       title: 'Collections',
       options: [
-        ...collections.map((col) => ({ label: col.name, checked: member.has(col.id), onPress: () => { toggleInCollection(col.id, comic.id); refresh(); } })),
+        ...collections.map((col) => ({ label: col.name, checked: member.has(col.id), onPress: () => { if (toggleInCollection(col.id, comic.id)) feedback.success(); else feedback.tap(); refresh(); } })),
         { label: 'New collection…', onPress: () => setPrompt({ title: 'New collection', submitLabel: 'Create', onSubmit: (name) => { toggleInCollection(createCollection(name), comic.id); refresh(); } }) },
       ],
     });
@@ -212,7 +214,20 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
 
   const openComic = (comic: ReaderComic) => requireUnlock('comic', comic.id, comic.title, comic.locked, () => { if (!startBackgroundOpen(comic, refresh)) router.push(`/reader/${comic.id}`); });
 
-  const comicMenu = (comic: ReaderComic) => setSheet({
+  /** Onto the hidden shelf. Without one yet, Settings sets it up first. */
+  const moveToHidden = (ids: string[], done?: () => void) => {
+    if (!hiddenShelfReady()) {
+      Alert.alert('Set up a hidden shelf first', 'Choose a password for it. Then comics you hide disappear from here, and you open the shelf by swiping this screen from right to left.', [
+        { text: 'Not now', style: 'cancel' },
+        { text: 'Set it up', onPress: () => router.push('/hidden-shelf') },
+      ]);
+      return;
+    }
+    hideComics(ids); feedback.success(); done?.(); refresh();
+    flash(`${ids.length === 1 ? 'Hidden' : `${ids.length} comics hidden`}. Swipe ← to open the hidden shelf.`);
+  };
+
+  const comicMenu = (comic: ReaderComic) => { feedback.hold(); setSheet({
     title: coverHidden(comic) ? 'Locked comic' : comic.title,
     options: [
       { label: 'Open', onPress: () => openComic(comic) },
@@ -224,11 +239,12 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
       { label: 'Move to folder…', onPress: () => pickFolderFor(comic) },
       { label: 'Reading preset…', onPress: () => pickPreset(comic.presetId, 'Reading preset', (id) => { setComicPreset(comic.id, id); refresh(); }) },
       comic.locked ? { label: 'Remove password lock', onPress: () => removeLock('comic', comic.id, comic.title) } : { label: 'Lock with a password…', onPress: () => chooseLock('comic', comic.id, comic.title) },
-      { label: 'Delete from device', destructive: true, onPress: () => requireUnlock('comic', comic.id, comic.title, comic.locked, () => Alert.alert('Delete comic?', `"${comic.title}" will be removed from this device.`, [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => { removeComic(comic.id); refresh(); } }])) },
+      ...(mode === 'phone' ? [{ label: 'Move to hidden shelf', onPress: () => requireUnlock('comic', comic.id, comic.title, comic.locked, () => moveToHidden([comic.id])) }] : []),
+      { label: 'Delete from device', destructive: true, onPress: () => requireUnlock('comic', comic.id, comic.title, comic.locked, () => Alert.alert('Delete comic?', `"${comic.title}" will be removed from this device.`, [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => { removeComic(comic.id); feedback.warning(); refresh(); flash('Deleted'); } }])) },
     ],
-  });
+  }); };
 
-  const folderMenu = (f: ReaderFolder) => setSheet({
+  const folderMenu = (f: ReaderFolder) => { feedback.hold(); setSheet({
     title: f.name,
     options: [
       { label: 'Rename', onPress: () => requireUnlock('folder', f.id, f.name, f.locked, () => setPrompt({ title: 'Rename folder', initial: f.name, onSubmit: (name) => { renameFolder(f.id, name); refresh(); } })) },
@@ -238,15 +254,15 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
       f.locked ? { label: 'Remove password lock', onPress: () => removeLock('folder', f.id, f.name) } : { label: 'Lock with a password…', onPress: () => chooseLock('folder', f.id, f.name) },
       { label: 'Delete folder…', destructive: true, onPress: () => requireUnlock('folder', f.id, f.name, f.locked, () => askDeleteFolders([f.id], [], (n) => { refresh(); flash(`Deleted ${n}`); })) },
     ],
-  });
+  }); };
 
-  const collectionMenu = (col: ReaderCollection) => setSheet({
+  const collectionMenu = (col: ReaderCollection) => { feedback.hold(); setSheet({
     title: col.name,
     options: [
       { label: 'Rename', onPress: () => setPrompt({ title: 'Rename collection', initial: col.name, onSubmit: (name) => { renameCollection(col.id, name); refresh(); } }) },
-      { label: 'Delete collection (keeps comics)', destructive: true, onPress: () => { deleteCollection(col.id); refresh(); } },
+      { label: 'Delete collection (keeps comics)', destructive: true, onPress: () => { deleteCollection(col.id); feedback.warning(); refresh(); } },
     ],
-  });
+  }); };
 
   const insideName = segment === 'library' ? folders.find((f) => f.id === openFolder)?.name : segment === 'collections' ? collections.find((col) => col.id === openCollection)?.name : undefined;
   const inside = !!insideName;
@@ -289,9 +305,9 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
       { label: `Most comics kept on this device: ${keepLimit() || 'no limit'}…`, onPress: keepMenu },
       { label: 'Browse an OPDS server…', onPress: () => router.push('/reader/opds') },
       { label: 'Import a folder…', onPress: () => runImport('Importing folder', 'Imported', (p) => pickAndImportFolder({ parentId: openFolder ?? undefined, ...p })) },
-      { label: openFolder ? `New folder inside “${insideName ?? 'this folder'}”…` : 'New folder…', onPress: () => setPrompt({ title: 'New folder', submitLabel: 'Create', onSubmit: (name) => { createFolder(name, openFolder); refresh(); } }) },
+      { label: openFolder ? `New folder inside “${insideName ?? 'this folder'}”…` : 'New folder…', onPress: () => setPrompt({ title: 'New folder', submitLabel: 'Create', onSubmit: (name) => { createFolder(name, openFolder); feedback.success(); refresh(); } }) },
       ...(segment === 'library' ? [{ label: 'Select comics…', onPress: () => setSelecting(true) }] : []),
-      { label: 'New collection…', onPress: () => setPrompt({ title: 'New collection', submitLabel: 'Create', onSubmit: (name) => { createCollection(name); refresh(); } }) },
+      { label: 'New collection…', onPress: () => setPrompt({ title: 'New collection', submitLabel: 'Create', onSubmit: (name) => { createCollection(name); feedback.success(); refresh(); } }) },
       { label: view === 'grid' ? 'Show as a list' : 'Show as a grid', onPress: () => setView(view === 'grid' ? 'list' : 'grid') },
       { label: 'Reader settings', onPress: () => router.push('/reader/settings') },
     ],
@@ -313,12 +329,12 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   const toggleSelect = (comic: ReaderComic) => requireUnlock('comic', comic.id, comic.title, comic.locked, () => {
     const next = new Set(selectedRef.current);
     if (next.has(comic.id)) next.delete(comic.id); else next.add(comic.id);
-    commitSelected(next);
+    feedback.select(); commitSelected(next);
   });
   const toggleFolder = (folder: ReaderFolder) => requireUnlock('folder', folder.id, folder.name, folder.locked, () => {
     const next = new Set(pickedFoldersRef.current);
     if (next.has(folder.id)) next.delete(folder.id); else next.add(folder.id);
-    commitFolders(next);
+    feedback.select(); commitFolders(next);
   });
   const endSelecting = () => { setSelecting(false); commitSelected(new Set()); commitFolders(new Set()); };
   const selectAll = () => {
@@ -328,7 +344,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   const targetName = (id: string | null) => (id ? listFolders().find((f) => f.id === id)?.name ?? 'folder' : 'Library'); // reads the database: it also runs from the drag handlers
   const moveSelected = () => chooseDestination(`Move ${pickedCount} ${pickedCount === 1 ? 'item' : 'items'}`, (id) => pathTo(folders, id).some((p) => pickedFoldersRef.current.has(p)), undefined, (target) => {
     const n = moveItems([...selectedRef.current], [...pickedFoldersRef.current], target);
-    endSelecting(); refresh(); flash(`Moved ${n} to ${targetName(target)}`);
+    feedback.success(); endSelecting(); refresh(); flash(`Moved ${n} to ${targetName(target)}`);
   });
   /** Asks what to do with what is inside the folders: keep it (moved up a level) or delete it too. */
   const askDeleteFolders = (folderIds: string[], ids: string[], done: (n: number) => void) => {
@@ -341,8 +357,8 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
     Alert.alert(lone ? `Delete “${lone}”?` : `Delete ${folderIds.length} ${folderIds.length === 1 ? 'folder' : 'folders'}${ids.length ? ` and ${ids.length} ${ids.length === 1 ? 'comic' : 'comics'}` : ''}?`,
       `${inside.length} ${inside.length === 1 ? 'comic is' : 'comics are'} inside the folders. Comics linked from Drive stay in Drive.`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Folders only, keep their comics', onPress: () => { removeComics(ids); for (const id of folderIds) deleteFolder(id); done(ids.length + folderIds.length); } },
-      { text: 'Delete the comics too', style: 'destructive', onPress: () => { removeComics([...new Set([...ids, ...inside])]); drop(); done(ids.length + inside.length + all.size); } },
+      { text: 'Folders only, keep their comics', onPress: () => { removeComics(ids); for (const id of folderIds) deleteFolder(id); feedback.warning(); done(ids.length + folderIds.length); } },
+      { text: 'Delete the comics too', style: 'destructive', onPress: () => { removeComics([...new Set([...ids, ...inside])]); drop(); feedback.warning(); done(ids.length + inside.length + all.size); } },
     ]);
   };
   const deleteSelected = () => {
@@ -351,7 +367,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
     if (!folderIds.length) {
       Alert.alert(`Delete ${ids.length} ${ids.length === 1 ? 'comic' : 'comics'}?`, 'They are removed from this device. Comics linked from Drive stay in Drive.', [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => { removeComics(ids); done(ids.length); } },
+        { text: 'Delete', style: 'destructive', onPress: () => { removeComics(ids); feedback.warning(); done(ids.length); } },
       ]);
       return;
     }
@@ -451,7 +467,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
       finger.current = { x, y };
       dragOrigin.current = latest.current.openFolder;
       setDragging(true);
-      feedback.tap(); // picked up
+      feedback.hold(); // picked up
       setDragLead(id);
       frameRef.current?.measureInWindow((fx, fy, _w, h) => { frameBox.current = { x: fx, y: fy, h }; place(finger.current.x, finger.current.y); });
       listWrapRef.current?.measureInWindow((_x, ly, _w, lh) => { listBox.current = { y: ly, h: lh }; });
@@ -479,7 +495,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   }), []);
 
   const empty = segment === 'collections' && !openCollection
-      ? <EmptyState title="No collections yet" copy="Group comics your own way — long-press a comic and choose “Add to collection”." action="New collection" onAction={() => setPrompt({ title: 'New collection', submitLabel: 'Create', onSubmit: (name) => { createCollection(name); refresh(); } })} />
+      ? <EmptyState title="No collections yet" copy="Group comics your own way — long-press a comic and choose “Add to collection”." action="New collection" onAction={() => setPrompt({ title: 'New collection', submitLabel: 'Create', onSubmit: (name) => { createCollection(name); feedback.success(); refresh(); } })} />
       : query
         ? <EmptyState title="No matches" copy="Try a title, series or writer." />
         : <EmptyState title={inside ? 'This is empty' : 'No files yet'} copy={inside ? 'Import files straight into this folder, or move comics here from their long-press menu.' : 'Import CBZ, CBR, CB7, ZIP, PDF or comic EPUB files from your phone to read them here.'} action={inside && segment === 'library' ? 'Import here' : inside ? undefined : 'Import comics'} onAction={inside && segment !== 'library' ? undefined : importHere} />;
@@ -538,6 +554,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   return (
     <AppShell active="library" back onBack={stepOut} title={mode === 'collections' ? 'Collections' : onMyDevice()} right={<HeaderActions><HeaderButton icon="search" label="Search" active={searchOpen} onPress={() => { setSearchOpen((o) => !o); if (searchOpen) setQuery(''); }} /><HeaderButton icon="add" label="Add" disabled={busy || job.running} onPress={addMenu} /></HeaderActions>}>
       <GestureHandlerRootView style={styles.frame}>
+      <HiddenShelfIf on={mode === 'phone'} enabled={!selecting && !dragging} onOpenComic={(comic) => { if (!startBackgroundOpen(comic, refresh)) router.push(`/reader/${comic.id}`); }} onShelfChanged={refresh}>
       <View ref={frameRef} collapsable={false} style={styles.frame}>
       <Animated.View entering={FadeIn.duration(220)} style={[styles.header, styles.stickyHead]}>
         {searchOpen || query ? <Input placeholder="Search title, series or writer" value={query} onChangeText={setQuery} /> : null}
@@ -592,16 +609,23 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
           </View>
           <Pressable onPress={selectAll} hitSlop={8}><Text style={styles.barBtn}>All</Text></Pressable>
           <Pressable disabled={!pickedCount} onPress={moveSelected} hitSlop={8}><Text style={[styles.barBtn, !pickedCount && styles.barOff]}>Move</Text></Pressable>
+          {mode === 'phone' ? <Pressable disabled={!selected.size} onPress={() => moveToHidden([...selected], endSelecting)} hitSlop={8}><Text style={[styles.barBtn, !selected.size && styles.barOff]}>Hide</Text></Pressable> : null}
           <Pressable disabled={!pickedCount} onPress={deleteSelected} hitSlop={8}><Text style={[styles.barDanger, !pickedCount && styles.barOff]}>Delete</Text></Pressable>
         </View>
       ) : null}
       </View>
+      </HiddenShelfIf>
       </GestureHandlerRootView>
       <PerRowSheet visible={perRowOpen} onClose={() => setPerRowOpen(false)} />
       <ActionSheet visible={!!sheet} title={sheet?.title} options={sheet?.options ?? []} onClose={() => setSheet(null)} />
       <PromptModal visible={!!prompt} title={prompt?.title ?? ''} initial={prompt?.initial} submitLabel={prompt?.submitLabel} secure={prompt?.secure} onSubmit={(v) => prompt?.onSubmit(v)} onClose={() => setPrompt(null)} />
     </AppShell>
   );
+}
+
+/** The hidden shelf only lives on "On my phone"; the Collections view is the same screen without it. */
+function HiddenShelfIf({ on, children, ...rest }: { on: boolean; children: ReactNode } & Omit<Parameters<typeof HiddenShelf>[0], 'children'>) {
+  return on ? <HiddenShelf {...rest}>{children}</HiddenShelf> : <>{children}</>;
 }
 
 /** A cover that never leaves a blank box: if the file's cover is missing or won't decode, show the title on a tinted card. */

@@ -30,7 +30,7 @@ type Row = {
   added_at: number; last_read_at: number | null; progress_page: number; mode: string;
   progress_offset: number; sizes_json: string | null;
   series: string | null; issue: string | null; writer: string | null; folder_id: string | null; preset_id: string | null;
-  lock_hash: string | null; work_id: string | null; size_bytes: number | null; source_uri: string | null;
+  lock_hash: string | null; work_id: string | null; size_bytes: number | null; source_uri: string | null; hidden?: number | null;
 };
 
 const parseSizes = (json: string | null): ReaderComic['sizes'] => {
@@ -55,8 +55,31 @@ const map = (r: Row): ReaderComic => ({
 const uid = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 
 // ---- comics -----------------------------------------------------------------
+/** Every comic on the shelf. Comics on the hidden shelf are left out: they appear only behind its password (see `hiddenShelf.ts`). */
 export const listReaderComics = (): ReaderComic[] =>
-  sqlite.getAllSync<Row>('SELECT * FROM reader_comics ORDER BY COALESCE(last_read_at, added_at) DESC').map(map);
+  sqlite.getAllSync<Row>('SELECT * FROM reader_comics WHERE hidden = 0 ORDER BY COALESCE(last_read_at, added_at) DESC').map(map);
+
+/** Only the comics on the hidden shelf. */
+export const listHiddenComics = (): ReaderComic[] =>
+  sqlite.getAllSync<Row>('SELECT * FROM reader_comics WHERE hidden = 1 ORDER BY COALESCE(last_read_at, added_at) DESC').map(map);
+
+export const isHiddenComic = (id: string): boolean => !!sqlite.getFirstSync('SELECT 1 FROM reader_comics WHERE id = ? AND hidden = 1', id);
+
+export const countHiddenComics = (): number => sqlite.getFirstSync<{ n: number }>('SELECT COUNT(*) AS n FROM reader_comics WHERE hidden = 1')?.n ?? 0;
+
+/**
+ * Puts comics on the hidden shelf, or back on the normal one. Hiding takes a comic out of its folder and unlinks it from the catalog, so no
+ * folder count, "on your phone" badge or reading history points back at it.
+ */
+export const setComicsHidden = (ids: string[], hidden: boolean): void => {
+  for (const id of ids) {
+    if (hidden) sqlite.runSync('UPDATE reader_comics SET hidden = 1, folder_id = NULL, work_id = NULL WHERE id = ?', id);
+    else sqlite.runSync('UPDATE reader_comics SET hidden = 0 WHERE id = ?', id);
+  }
+};
+
+/** Every comic id, hidden or not: an import compares before and after to find what it added. */
+export const allReaderComicIds = (): string[] => sqlite.getAllSync<{ id: string }>('SELECT id FROM reader_comics').map((r) => r.id);
 
 export const getReaderComic = (id: string): ReaderComic | null => {
   const row = sqlite.getFirstSync<Row>('SELECT * FROM reader_comics WHERE id = ?', id);
@@ -148,7 +171,7 @@ export type ReaderFolder = { id: string; name: string; presetId: string | null; 
 export const listFolders = (): ReaderFolder[] =>
   sqlite.getAllSync<{ id: string; name: string; preset_id: string | null; parent_id: string | null; created_at: number; n: number; sub: number; lock_hash: string | null }>(
     `SELECT f.id, f.name, f.preset_id, f.parent_id, f.created_at, f.lock_hash,
-       (SELECT COUNT(*) FROM reader_comics c WHERE c.folder_id = f.id) AS n,
+       (SELECT COUNT(*) FROM reader_comics c WHERE c.folder_id = f.id AND c.hidden = 0) AS n,
        (SELECT COUNT(*) FROM reader_folders s WHERE s.parent_id = f.id) AS sub
      FROM reader_folders f ORDER BY f.name COLLATE NOCASE`,
   ).map((r) => ({ id: r.id, name: r.name, presetId: r.preset_id, parentId: r.parent_id, createdAt: r.created_at, count: r.n, subfolders: r.sub, locked: !!r.lock_hash }));

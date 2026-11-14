@@ -26,6 +26,10 @@ export const getJob = (): JobState => state;
 export const subscribeJob = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l); }; };
 export const useJob = (): JobState => useSyncExternalStore(subscribeJob, getJob, getJob);
 
+/** Told how each job ended (the app's haptics use it: a buzz for a finished import, a different one when nothing went in). */
+let finished: ((result: ImportResult | null) => void) | null = null;
+export const onJobFinished = (fn: ((result: ImportResult | null) => void) | null): void => { finished = fn; };
+
 export const dismissSummary = (): void => set({ summary: null });
 /** Ask the running job to stop after the file it is on. */
 export const stopJob = (): void => { cancel.cancelled = true; set({ stopping: true }); };
@@ -52,8 +56,9 @@ export async function runJob(label: string, work: (progress: ImportProgress) => 
   try {
     const { verb, result } = await work({ cancel, onProgress: (p) => set({ done: p.done, total: p.total, name: p.name, ...(p.phase ? { label: p.phase } : {}) }) });
     // Backing out of the picker leaves nothing to report.
-    if (result.imported.length || result.skipped.length || result.failed.length) set({ summary: summarize(verb, result, cancel.cancelled) });
+    if (result.imported.length || result.skipped.length || result.failed.length) { set({ summary: summarize(verb, result, cancel.cancelled) }); try { finished?.(result); } catch { /* only a buzz */ } }
   } catch (e) {
+    try { finished?.(null); } catch { /* only a buzz */ }
     set({ summary: { text: 'The import stopped unexpectedly', problems: [e instanceof Error ? e.message : String(e)] } });
   } finally {
     void deactivateKeepAwake('comicpill-import').catch(() => undefined);

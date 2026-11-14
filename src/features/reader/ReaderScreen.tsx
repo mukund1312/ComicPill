@@ -316,6 +316,7 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
     const first = viewableItems.find((v) => v.isViewable && v.item);
     if (!first?.item) return;
     const p = first.item[0];
+    if (p !== position.current.page) feedback.select(); // a page turned
     position.current = { page: p, frac: 0 };
     setPage(p); persist();
   }, [webtoon, strip.known, persist]);
@@ -387,7 +388,7 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
       if (ni >= 0 && ni < st.panels.length) { st.index = ni; showPanel(st.page, st.panels[ni], ni, st.panels.length); return; }
       // Past the last (or before the first) panel: pull the camera back to the whole page, turn to the neighbouring page, hold on it, then go in.
       const at = position.current.page; const ui = unitIndexOf(units, at);
-      if (delta > 0 ? ui >= units.length - 1 : ui <= 0) return; // the end of the comic: stay on this panel
+      if (delta > 0 ? ui >= units.length - 1 : ui <= 0) { feedback.warning(); return; } // the end of the comic: stay on this panel
       bridgeTo.current = units[ui + (delta > 0 ? 1 : -1)][0];
       if (delta < 0) landOnLast.current = true;
       zoomRefs.current.get(at)?.zoomToPanel(null, guideCfg.current.guidedMs);
@@ -619,6 +620,7 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
   const focusBubble = useCallback((i: number, manual?: Bubble) => {
     const target = manual ?? bubblesRef.current.list[i];
     if (!target) return;
+    feedback.select(); // a balloon lifts
     setManualBox(manual ?? null);
     setFocus(manual ? -2 : i);
   }, [setFocus]);
@@ -755,7 +757,7 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
     if (focusRef.current === -1 && list.length > 0) { focusBubble(delta > 0 ? 0 : list.length - 1); return; }
     const at: NavPosition = { page: u, index: Math.max(0, focusRef.current) };
     const result = await stepPosition(at, delta, 'bubble', units.length, async (k) => (await bubblesOfUnit(k)).length);
-    if (result.kind === 'edge') return; // the first or last balloon of the comic: stay put
+    if (result.kind === 'edge') { feedback.warning(); return; } // the first or last balloon of the comic: stay put
     if (!result.crossedPage) { focusBubble(result.position.index); return; }
     // Onto another page: turn to it, and lift the first (or last) balloon once that page's balloons are known.
     pendingBubble.current = { page: units[result.position.page][0], index: result.position.index };
@@ -774,7 +776,8 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
   /** The one entry point: Next (+1) or Previous (−1) in the current mode. */
   const navigate = useCallback((delta: Step) => {
     queue(async () => {
-      feedback.tap();
+      // Balloons tick as they lift and pages as they turn; a panel step inside the page gets its own light tap.
+      if (navMode === 'panel') feedback.tap();
       if (navMode === 'bubble') await navigateBubble(delta);
       else advance(delta); // page: a page or spread; panel: the next panel, or across the page boundary with the camera pull-back
     });
@@ -831,6 +834,7 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
 
   const onToggleBookmark = () => {
     const now = toggleBookmark(comic.id, page);
+    if (now) feedback.success(); else feedback.tap();
     setBookmarks((prev) => { const n = new Set(prev); if (now) n.add(page); else n.delete(page); return n; });
   };
 
