@@ -19,53 +19,71 @@
 <body>
 <main>
   <h1>ComicPill privacy policy</h1>
-  <p class="meta">Last updated 25 October 2026</p>
+  <p class="meta">Last updated 15 November 2026 · App: ComicPill (<code>com.mukund.comicpill</code>)</p>
 
-  <p>ComicPill helps you decide what comic to read next and what to buy. This page explains, in plain language, what the app does with your information. The short version: <strong>your data stays on your phone, there is no account, and there is no tracking.</strong></p>
+  <p>ComicPill is a comic reader and reading guide. This page explains, in plain language, what the app does with your information. The short version: <strong>your data stays on your phone, we run no servers, and there is no tracking, advertising or analytics.</strong></p>
+
+  <h2>Who we are, and how to reach us</h2>
+  <p>ComicPill is made by Mukund Umashankar. Questions, requests or problems: <a href="mailto:mukund.umashankar@gmail.com">mukund.umashankar@gmail.com</a>.</p>
 
   <h2>What stays on your phone</h2>
-  <p>Your library, reading history, ratings, playlists, reading journeys, wallet, settings, and profile (name, username, bio and photo) are stored only on your device. ComicPill has no servers and no user accounts, so we never receive this information. Uninstalling the app removes it.</p>
+  <p>Your library, reading history, ratings, playlists, reading journeys, wallet, settings, and profile (name, username, bio and photo) are stored only on your device. ComicPill has no servers, so the developer never receives this information. Uninstalling the app removes it.</p>
+
+  <h2>The optional account</h2>
+  <p>You can use ComicPill without an account. If you create one (Settings → Create an account), your email address and a salted hash of your password are kept in your phone's secure storage and are used only to ask for them when the app opens. They are never sent anywhere. <strong>Settings → Delete account</strong> removes them from the phone at any time; it offers to clear your reading data at the same time. Uninstalling also removes them.</p>
 
   <h2>Reading your own comic files</h2>
-  <p>You can open comic files (CBZ, CBR, CB7, ZIP, PDF and EPUB) that are already on your phone. ComicPill uses Android's system file picker, so it needs no storage permission and only sees the files you choose. Chosen files are copied into the app's private storage on your phone, and your reading progress, bookmarks, folders and collections are saved there too. None of it is uploaded anywhere. Removing a comic from the reader, or uninstalling the app, deletes the copy. Reading in incognito mode saves no progress at all.</p>
+  <p>You can open comic files (CBZ, CBR, CB7, ZIP, PDF and EPUB). ComicPill uses your phone's own file picker, so it needs no storage permission and only sees the files you choose. A chosen file is either <em>copied</em> into the app's private storage, or <em>linked</em> when it lives in a cloud app such as Google Drive, iCloud or Dropbox: a linked file stays where it is and is downloaded to this phone only when you open it. Your reading progress, bookmarks, folders and collections are saved on the phone. None of it is uploaded by ComicPill. Removing a comic from the reader, or uninstalling the app, deletes the copy. Reading in incognito mode saves no progress at all.</p>
 
-  <h2>Mind Space: reading your comic screenshots (optional)</h2>
-  <p>If you turn on Mind Space, ComicPill watches <strong>one photo album you choose</strong> (usually “Screenshots”) and reads nothing else in your gallery. The text in each new screenshot is read <strong>on your phone</strong> first. Anything that looks private, such as one-time codes, bank messages, phone numbers or email addresses, is dropped on the spot: its text is not kept and it is never sent. Screenshots with nothing about comics are skipped too. The rest are shown to you, and <strong>only the ones you approve are sent</strong> (you can switch on auto-send later, and private ones are still never sent).</p>
-  <p>An approved screenshot is shrunk and re-saved (which removes location and camera details) and sent, with up to 1,500 characters of its text, straight from your phone to the AI provider you set up (Anthropic or OpenAI) using your own key. Comic titles are searched on AniList and, if you add a key, Comic Vine. Your ratings, scores, library and weekly plans stay on your phone. The weekly reading-plan notification is scheduled on your phone. “Delete all Mind Space data” in Mind Space settings clears all of this; your screenshots themselves are never touched.</p>
+  <h2>Comic servers you add (OPDS)</h2>
+  <p>If you connect a comic server you run (Komga, Kavita, Calibre-Web or another OPDS server), ComicPill contacts only that address, to list and download comics you choose. A server's username and password are kept in your phone's secure storage. Servers on your home network can use plain <code>http</code>; that is your choice and your network. ComicPill sends nothing about this to us.</p>
+
+  <h2>Hidden shelf, passcode and locks</h2>
+  <p>You can hide comics on a hidden shelf behind a password, lock single comics or folders, and ask for a passcode when the app opens. These passwords are stored only on your phone as salted hashes. They keep comics out of casual view; they do not encrypt the files. A forgotten hidden-shelf password can't be recovered, so starting over deletes the hidden comics.</p>
+
+  <h2>Photos and the camera</h2>
+  <p><strong>ComicPill never reads your photo gallery.</strong> When you choose a picture (a cover, a profile photo, a screenshot for Mind Space), your phone's own photo picker shows its screen and hands the app only the pictures you selected. The camera is used only when you tap to photograph your comic shelf for scanning, or to take a profile photo. Shelf scanning reads the spine text on your phone; the picture is not uploaded.</p>
+
+  <h2>Mind Space (optional)</h2>
+  <p>In Mind Space you can add screenshots of comics you want to try. The text in each one is read on your phone first. Anything that looks private, such as one-time codes, bank messages, phone numbers or email addresses, is dropped on the spot: its text is not kept and it is never sent. Screenshots with nothing about comics are skipped too. You see what is left, and only the ones you approve are sent (you can switch on auto-send later; private ones are still never sent). An approved screenshot is shrunk and re-saved, which removes location and camera details, and is sent with up to 1,500 characters of its text, straight from your phone to the AI provider you set up (Anthropic or OpenAI) using your own key. Comic titles are then searched on AniList and, if you add a key, Comic Vine. <strong>Settings → Mind Space → Delete all Mind Space data</strong> clears everything it stored; your original photos are never touched.</p>
+
+  <h2>Looking things up online</h2>
+  <p>When you search for a comic to add, ComicPill sends the words you typed to Open Library (openlibrary.org) and, if you entered your own key, Comic Vine (comicvine.gamespot.com), and may download a cover image from them. Those sites see your IP address and your search, as any website would, and have their own privacy policies. Nothing is sent when you are not searching. Covers of comics in the built-in catalog ship inside the app.</p>
 
   <h2>Permissions, and why</h2>
   <ul>
-    <li><strong>Camera</strong> — to take a profile photo and to photograph your comic shelf for scanning. Photos are used only when you take them.</li>
-    <li><strong>Photos</strong> — to choose a profile picture or screenshots of a digital library (only the images you pick are read) and, only if you turn on Mind Space, to look at the one album you choose. ComicPill asks for access to images only, never video or audio. On Android 14 and later you can share just selected photos instead.</li>
-    <li><strong>Notifications</strong> — to send the daily reading reminder and the weekly Mind Space plan, if you turn them on. It is scheduled on your phone; nothing is sent from a server.</li>
+    <li><strong>Camera</strong> — to photograph your comic shelf for scanning and to take a profile photo. Used only when you tap for it.</li>
+    <li><strong>Notifications</strong> — for the daily reading reminder and the weekly Mind Space plan, if you turn them on. They are scheduled on your phone; nothing is sent from a server.</li>
+    <li><strong>Internet</strong> — for the lookups, servers and optional AI features described on this page.</li>
+    <li><strong>Vibration</strong> — for light haptic feedback (you can turn it off in Settings → Accessibility).</li>
+    <li><strong>Biometrics</strong> — only if you use the app passcode, to unlock with your fingerprint or face.</li>
   </ul>
-  <p>You can change any of these at any time in your phone's Settings.</p>
+  <p>ComicPill does not request access to your photos, videos, files, contacts, location or microphone. You can change any permission at any time in your phone's Settings.</p>
 
   <h2>Optional AI features (your own key)</h2>
-  <p>If you choose to add your own API key from Anthropic (Claude) or OpenAI in <em>Settings → AI assistant</em>, then <strong>only when you tap "Build my journey" or "Scan"</strong>, the text you typed or the photos you selected are sent directly from your phone to that provider, using your key, to be read. They do not pass through ComicPill, and we never see them. The provider's own terms and privacy policy apply to that data. For OpenAI, ComicPill asks that the request not be stored.</p>
-  <p>Your key is kept in your phone's secure storage (the system Keychain / Keystore). It is never included in the data export and is sent only to the provider it belongs to. You can remove it at any time. If you never add a key, these features stay off and nothing is sent anywhere.</p>
+  <p>If you add your own API key from Anthropic (Claude) or OpenAI in Settings → AI assistant, then only when you tap "Build my journey" or "Scan", the text you typed or the photos you selected are sent directly from your phone to that provider, using your key, to be read. They do not pass through any ComicPill server, and the developer never sees them. The provider's own terms and privacy policy apply. Your key is kept in your phone's secure storage and is never included in the data export. You can remove it at any time. If you never add a key, these features stay off and nothing is sent.</p>
 
-  <h2>Checking for updates</h2>
-  <p>On Android builds installed directly (not from the Play Store), the app can check once a day whether a newer version exists by downloading a small public file from GitHub Pages (<code>mukund1312.github.io/ComicPill/version.json</code>). No personal information is sent, but like any website visit, GitHub can see your IP address and that a request was made. You can turn this off in <em>Settings → Privacy &amp; data</em>.</p>
+  <h2>Checking for updates (direct downloads only)</h2>
+  <p>Versions of ComicPill installed directly from a file, outside the Google Play Store, can check once a day whether a newer version exists by downloading a small public file from GitHub Pages. No personal information is sent, but like any website visit, GitHub can see your IP address. This is off in the Google Play version, which Play updates itself.</p>
 
-  <h2>Sharing a playlist</h2>
-  <p>When you share a playlist, ComicPill creates a link that contains the playlist's name and the titles in it. Anyone who has the link can see them. The link opens a page hosted on GitHub Pages. Nothing is shared unless you choose to send the link.</p>
+  <h2>Translating or sharing text</h2>
+  <p>"Copy or translate text on this page" copies text to your clipboard, or opens Google Translate in your browser with that text when you choose that option. Sharing a playlist creates a link containing the playlist's name and titles; anyone with the link can see them, and it opens a page hosted on GitHub Pages. Nothing is shared unless you choose to send it.</p>
 
   <h2>What we don't do</h2>
   <ul>
-    <li>No analytics, advertising, or tracking of any kind.</li>
-    <li>No selling or sharing of your data — we do not have it.</li>
-    <li>No account or sign-in.</li>
+    <li>No analytics, advertising, tracking or profiling of any kind.</li>
+    <li>No selling or sharing of your data: we do not have it.</li>
+    <li>No required account or sign-in.</li>
   </ul>
 
-  <h2>Your control</h2>
-  <p><em>Settings → Privacy &amp; data</em> lets you export a copy of your data and clear your reading data. <em>Settings → AI assistant</em> lets you remove your key. Uninstalling the app removes everything stored on the device.</p>
+  <h2>Your control and deleting your data</h2>
+  <p>Everything is on your phone, so you are in control: <strong>Settings → Privacy &amp; security</strong> lets you export a copy of your data and clear your reading data; <strong>Settings → Delete account</strong> removes an account; Settings → AI assistant removes your key; Mind Space settings delete Mind Space data; and uninstalling the app removes everything stored on the device. Because the developer holds none of your data, there is nothing on our side to delete; if you would like to ask anyway, write to <a href="mailto:mukund.umashankar@gmail.com">mukund.umashankar@gmail.com</a>.</p>
 
   <h2>Children</h2>
-  <p>ComicPill is not directed at children under 13 and does not knowingly collect information from anyone.</p>
+  <p>ComicPill is not directed at children under 13 and does not knowingly collect information from anyone. Some comics you add yourself may contain mature content; ComicPill's own catalog suggestions can include titles rated for teens and older.</p>
 
-  <h2>Changes and contact</h2>
-  <p>If this policy changes, the date above will change with it. Questions or requests: <a href="https://github.com/mukund1312/ComicPill/issues">open an issue on GitHub</a>.</p>
+  <h2>Changes</h2>
+  <p>If this policy changes, the date at the top will change with it. Questions or requests: <a href="mailto:mukund.umashankar@gmail.com">mukund.umashankar@gmail.com</a>.</p>
 </main>
 </body>
 </html>

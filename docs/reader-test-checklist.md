@@ -148,3 +148,13 @@ Test comic: any `.cbz` with several panels per page and lettered balloons (the c
 - [x] Settings regrouped: You (profile, notifications, account), Reading, Privacy & security, Permissions, App, Help.
 - [x] Reader balloon bar: "Balloon 1 of 6 · reading left to right →", bigger A−/A+, page icon; one-time tip on the first lifted balloon, again from ⋯ → "What do the balloon buttons do?".
 - [x] Help & feedback: "Email it" opens the email app addressed to the support address (Gmail opened on the emulator); "Save for later" keeps notes; "Email all" sends saved notes.
+
+## Play blockers pass (15 Nov 2026, release build, phone emulator)
+
+- [x] AAB/APK built without EXPO_PUBLIC_ENABLE_UPDATE_CHECK: Settings has no "Check for updates", the footer doesn't mention it, About has no update row.
+- [x] Permissions: Camera, Internet, Network state, Vibrate, Wake lock, Notifications, Foreground service, Biometric, Boot completed, badge. No READ_MEDIA/storage/location/audio.
+- [x] Settings → Permissions lists Camera and Notifications only; copy no longer mentions screenshots of your library.
+- [x] Mind Space: "Add screenshots" opens the system PhotoPicker ("This app can only access the photos you select"); picked images are copied to private storage, read on the phone and listed for review; unrelated ones are skipped. Settings no longer offers album watching.
+- [x] Today: eyebrow is "TONIGHT'S PICK" (no internal bucket name); a new reader is told "A good place to start" instead of "Fits your taste" (covered by a unit test); mood chips render.
+- [x] expo install --fix: 14 packages on the SDK 57 versions; expo-doctor 21/21; tsc, lint (0 errors), 1,095 tests pass.
+- Not done here: pushing the privacy page to GitHub Pages and the Play Console forms (see docs/PLAY-CONSOLE.md).

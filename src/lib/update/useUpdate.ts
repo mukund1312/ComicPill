@@ -6,10 +6,10 @@ import { useSettings } from '../state/settings';
 import { checkForUpdate, dismissVersion, isDismissed } from './check';
 import { isTrustedApkUrl, type UpdateStatus } from './manifest';
 
-/** The check only makes sense for a directly-installed Android APK. A Play
- *  Store build turns it off with EXPO_PUBLIC_DISABLE_UPDATE_CHECK=1 (set in
- *  the production EAS profile), because the Play Store updates the app itself. */
-export const updatesSupported = () => Platform.OS === 'android' && process.env.EXPO_PUBLIC_DISABLE_UPDATE_CHECK !== '1';
+/** The check only makes sense for a directly-installed Android APK, so it is OFF unless a build asks for it with EXPO_PUBLIC_ENABLE_UPDATE_CHECK=1
+ *  (the `preview` EAS profile does). Google Play does not allow an app to download its own updates, so a store build must never have it:
+ *  off by default means forgetting a flag can't put it there. */
+export const updatesSupported = () => Platform.OS === 'android' && process.env.EXPO_PUBLIC_ENABLE_UPDATE_CHECK === '1';
 
 export const installedVersion = () => Constants.expoConfig?.version ?? '0.0.0';
 

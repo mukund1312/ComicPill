@@ -29,7 +29,8 @@ import { hiddenShelfReady } from '../../lib/reader/hiddenShelf';
 import { PROVIDER_LABEL } from '../../lib/ai/models';
 
 type ExportChoice = 'share' | 'copy';
-const PERMISSIONS: PermissionKey[] = ['camera', 'photos', 'notifications'];
+// Photos is not listed: ComicPill never reads your gallery. Pictures come in through the system picker, which needs no permission.
+const PERMISSIONS: PermissionKey[] = ['camera', 'notifications'];
 
 export default function SettingsScreen() {
   const authEmail = useAuth((st) => st.email);
@@ -158,7 +159,7 @@ export default function SettingsScreen() {
         </SettingsSection>
       ) : null}
 
-      <SettingsSection title="Privacy & security" footer="Everything you add stays on this device. ComicPill only goes online when you ask it to: looking up a comic, reading from your own comic servers, using your own AI key, and on Android a daily check for a newer version.">
+      <SettingsSection title="Privacy & security" footer={`Everything you add stays on this device. ComicPill only goes online when you ask it to: looking up a comic, reading from your own comic servers, or using your own AI key${updatesSupported() ? ', plus a daily check for a newer version' : ''}.`}>
         <LinkRow label="Passcode" detail="Ask for a passcode when ComicPill opens." onPress={() => router.push('/passcode')} />
         <ToggleRow label="Personalized recommendations" detail="Use what ComicPill has learned about your taste. Off: Today and Compare treat you as a new reader." value={s.personalizedRecommendations} onChange={(v) => s.update({ personalizedRecommendations: v })} />
         {updatesSupported() ? <ToggleRow label="Check for updates" detail="Once a day, asks GitHub if a newer ComicPill exists. Sends no personal data." value={s.checkForUpdates} onChange={(v) => s.update({ checkForUpdates: v })} /> : null}
@@ -167,7 +168,7 @@ export default function SettingsScreen() {
         <ActionRow label="Clear reading data" detail="Remove your library, history, playlists and journeys." destructive onPress={clearData} last />
       </SettingsSection>
 
-      <SettingsSection title="Permissions" footer="Tap a row to allow it, or to change it in your phone’s Settings.">
+      <SettingsSection title="Permissions" footer="Tap a row to allow it, or to change it in your phone’s Settings. ComicPill never reads your photo gallery: pictures you choose go through your phone’s own picker.">
         {PERMISSIONS.map((k, i) => (
           <LinkRow key={k} label={PERMISSION_COPY[k].title} detail={PERMISSION_COPY[k].why} value={permissionValue(k)} onPress={() => { void perms.activate(k); }} last={i === PERMISSIONS.length - 1} />
         ))}

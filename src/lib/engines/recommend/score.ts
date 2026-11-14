@@ -35,6 +35,9 @@ export function dailyJitter(workId: string, dateKey: string): number {
   return (Math.abs(hash) % 1000) / 100000;
 }
 
+/** Whether the reader has told ComicPill anything yet. With nothing, "fits your taste" would be a claim with nothing behind it. */
+const hasTaste = (profile: TodayInput['profile']): boolean => Object.values(profile.affinities).some((group) => Object.keys(group).length > 0);
+
 export function scoreWork(
   work: ScorableWork,
   input: TodayInput,
@@ -83,7 +86,7 @@ export function scoreWork(
     N - config.weights.F * F + dailyJitter(work.id, options.dateKey);
 
   const contributions: ScoreParts['contributions'] = [
-    { part: 'T', value: weights.T * T, detail: `Fits your taste` },
+    { part: 'T', value: weights.T * T, detail: hasTaste(input.profile) ? `Fits your taste` : `A good place to start` },
     { part: 'P', value: config.weights.P * P, detail: P === 1 ? `Next in a path you're reading` : P === 0.5 ? `Next in a path you haven't started` : `Not next up in its path` },
     { part: 'O', value: config.weights.O * O, detail: O === 1 ? `You own it` : `Not owned yet` },
   ];

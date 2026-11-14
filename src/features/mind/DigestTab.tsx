@@ -6,13 +6,11 @@ import { useNotQuite } from './NotQuite';
 import type { Digest, DigestCard } from '../../lib/mind/engine/digest';
 import { getSeriesRow } from '../../lib/mind/queries';
 import { buildAndSaveDigest } from '../../lib/mind/digestDb';
-import { useMindSettings } from '../../lib/mind/settings';
 import { EmptyState } from '../../ui/primitives';
 import { color, font, space, type } from '../../ui/tokens';
 import type { MindData } from './useMindData';
 
-export default function DigestTab({ data, refresh }: { data: MindData; refresh: () => void }) {
-  const settings = useMindSettings();
+export default function DigestTab({ data, refresh, goInbox }: { data: MindData; refresh: () => void; goInbox: () => void }) {
   const [viewing, setViewing] = useState<Digest | null>(null);
   const notQuite = useNotQuite(() => { try { buildAndSaveDigest(); } catch { /* keep the old one */ } refresh(); });
   const digest = viewing ?? data.digest;
@@ -20,7 +18,7 @@ export default function DigestTab({ data, refresh }: { data: MindData; refresh: 
   if (!digest || digest.cards.length + digest.upNext.length === 0) {
     return (
       <View>
-        <EmptyState mark="◇" title="No plan yet" copy={settings.watching ? 'Screenshot a comic you want to try. It lands in your Inbox, and the week’s plan builds itself here.' : 'Turn on screenshot watching in settings, or add a comic from the Library tab.'} action={settings.watching ? 'Open Inbox' : 'Set up'} onAction={() => (settings.watching ? undefined : router.push('/mind/settings'))} />
+        <EmptyState mark="◇" title="No plan yet" copy="Add screenshots of comics you want to try, or add a comic from the Library tab. The week’s plan builds itself here." action="Add screenshots" onAction={goInbox} />
         {data.past.length ? <PastWeeks past={data.past} onPick={setViewing} /> : null}
       </View>
     );

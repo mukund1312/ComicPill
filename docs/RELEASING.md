@@ -69,8 +69,10 @@ install → come back to the link → *Open in ComicPill*.
    ```
    `submit` needs a Google service-account key (Play Console → *Setup → API access*);
    EAS walks you through it. The first release usually has to be uploaded by hand.
-5. The `production` profile sets `EXPO_PUBLIC_DISABLE_UPDATE_CHECK=1`, so the
-   Play Store build doesn't run the GitHub update check — the Store updates it.
+5. The GitHub update check is **off by default**. Only the `preview` profile (the APK you
+   share directly) sets `EXPO_PUBLIC_ENABLE_UPDATE_CHECK=1`, so a Play Store build can't
+   contain it (Play forbids an app downloading its own updates) — the Store updates it.
+   Building locally with Gradle? Don't set that variable for the bundle you upload.
 
 ## Faster updates without a new APK (optional)
 

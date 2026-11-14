@@ -4,11 +4,11 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { ActionSheet, PromptModal, type SheetOption } from '../reader/dialogs';
 import { Card, SHOT_LABEL, SmallButton, StatusChip, relativeTime } from './ui';
-import { scanNewScreenshots } from '../../lib/mind/capture/scan';
+import { pickScreenshots } from '../../lib/mind/capture/pick';
 import { makeDeps } from '../../lib/mind/deps';
 import type { CaptureRow, ShotRow } from '../../lib/mind/model';
 import { approveScreenshots, chooseOption, dismissCapture, dismissScreenshot, keepUnverified, reresolveCapture } from '../../lib/mind/pipeline';
-import { getMindSettings, useMindSettings } from '../../lib/mind/settings';
+import { useMindSettings } from '../../lib/mind/settings';
 import { sqliteStore } from '../../lib/mind/sqliteStore';
 import { syncMind } from '../../lib/mind/sync';
 import { EmptyState } from '../../ui/primitives';
@@ -39,8 +39,8 @@ export default function InboxTab({ data, refresh }: { data: MindData; refresh: (
     try { await fn(); } catch { Alert.alert('Something went wrong', 'Try again in a moment.'); } finally { setBusy(null); refresh(); }
   };
 
-  const scanNow = () => run('Scanning…', async () => { await syncMind(); });
-  const lookBack = () => run('Looking back…', async () => { await scanNewScreenshots(sqliteStore, Date.now() - 7 * DAY); await syncMind(); });
+  const scanNow = () => run('Reading…', async () => { await syncMind(); });
+  const addShots = () => run('Adding…', async () => { if (await pickScreenshots(sqliteStore)) await syncMind(); });
   const send = () => run('Sending…', async () => {
     approveScreenshots(selectedIds, sqliteStore);
     for (const s of awaiting) if (!selectedIds.includes(s.id)) dismissScreenshot(s.id, sqliteStore);
@@ -74,15 +74,15 @@ export default function InboxTab({ data, refresh }: { data: MindData; refresh: (
     }
   };
 
-  if (!settings.watching && data.shots.length === 0) {
-    return <EmptyState mark="◇" title="Watch a screenshot album" copy="Pick the album your screenshots land in. ComicPill reads only that album, checks the text on your phone first, and sends nothing without your say-so." action="Set up" onAction={() => router.push('/mind/settings')} />;
+  if (data.shots.length === 0) {
+    return <EmptyState mark="◇" title="Add comic screenshots" copy="Pick screenshots of comics you want to try. ComicPill reads the text on your phone first, and sends nothing without your say-so. It never looks at the rest of your photos." action="Choose screenshots" onAction={addShots} />;
   }
 
   return (
     <View style={{ gap: space.md }}>
       <View style={styles.actions}>
-        <SmallButton label={busy ?? 'Scan now'} kind="primary" disabled={!!busy} onPress={scanNow} />
-        <SmallButton label="Look back 7 days" disabled={!!busy || !settings.watching} onPress={lookBack} />
+        <SmallButton label={busy ?? 'Add screenshots'} kind="primary" disabled={!!busy} onPress={addShots} />
+        <SmallButton label="Read again" disabled={!!busy} onPress={scanNow} />
         {busy ? <ActivityIndicator color={color.accent} /> : null}
       </View>
 
@@ -116,7 +116,7 @@ export default function InboxTab({ data, refresh }: { data: MindData; refresh: (
           </View>
         </Card>
       ) : null}
-      {shown.length === 0 && !awaiting.length ? <EmptyState mark="◇" title="Inbox is clear" copy="Screenshot a comic and it shows up here within seconds of opening the app." /> : null}
+      {shown.length === 0 && !awaiting.length ? <EmptyState mark="◇" title="Inbox is clear" copy="Add screenshots of comics and they show up here once ComicPill has read them." /> : null}
       {shown.map((s) => (
         <Pressable key={s.id} onPress={() => resolve(s)}>
           <View style={styles.item}>
@@ -131,7 +131,6 @@ export default function InboxTab({ data, refresh }: { data: MindData; refresh: (
         </Pressable>
       ))}
       {hidden ? <Text style={styles.small}>{hidden} screenshot{hidden === 1 ? '' : 's'} skipped (private or not about comics). They were never uploaded.</Text> : null}
-      {getMindSettings().albumTitle && settings.watching ? <Text style={styles.small}>Watching “{settings.albumTitle}” only.</Text> : null}
 
       <ActionSheet visible={!!sheet} title={sheet?.title} options={sheet?.options ?? []} onClose={() => setSheet(null)} />
       <PromptModal visible={!!prompt} title="Title of the comic" initial={prompt?.capture.title} submitLabel="Search"

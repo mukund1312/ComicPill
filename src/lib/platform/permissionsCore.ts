@@ -33,8 +33,8 @@ export function actionFor(state: PermissionState): PermissionAction {
 }
 
 export const PERMISSION_COPY: Record<PermissionKey, { title: string; why: string }> = {
-  camera: { title: 'Camera', why: 'Lets you take a profile photo, and will be used for shelf scanning.' },
-  photos: { title: 'Photos', why: 'For importing screenshots of your digital library. Choosing a profile picture works without it.' },
+  camera: { title: 'Camera', why: 'For photographing your comic shelf to scan it, and for a profile photo.' },
+  photos: { title: 'Photos', why: 'Not needed: pictures you choose go through your phone’s own picker.' },
   notifications: { title: 'Notifications', why: 'Needed for your daily reading reminder.' },
 };
 

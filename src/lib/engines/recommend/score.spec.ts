@@ -63,3 +63,19 @@ describe('scoreWork mood matching', () => {
     expect(scored.M).toBe(0.3);
   });
 });
+
+describe('scoreWork taste claim', () => {
+  const now = new Date('2026-09-30T20:00:00Z');
+  const opts: TodayOptions = { mood: null, dateKey: '2026-09-30', config: DEFAULT_ENGINE_CONFIG, now };
+  const detail = (profile: TodayInput['profile']) =>
+    scoreWork(work('a', ['crime']), { ...input([work('a', ['crime'])]), profile }, opts, 'explore').contributions.find((c) => c.part === 'T')?.detail;
+
+  it('does not claim to fit a taste the reader has not shared', () => {
+    expect(detail(emptyProfile())).toBe('A good place to start');
+  });
+  it('says it once there is a taste to fit', () => {
+    const profile = emptyProfile();
+    profile.affinities.genre.crime = { score: 0.8, evidence: 3 } as never;
+    expect(detail(profile)).toBe('Fits your taste');
+  });
+});

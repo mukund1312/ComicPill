@@ -38,7 +38,7 @@ export default function MindScreen({ initialTab = 'digest' }: { initialTab?: Tab
             <Text style={styles.bannerBody}>Rate 15 comics you’ve read so scores aren’t blind. Takes two minutes.</Text>
           </Pressable>
         ) : null}
-        {tab === 'digest' ? <DigestTab data={data} refresh={data.refresh} /> : null}
+        {tab === 'digest' ? <DigestTab data={data} refresh={data.refresh} goInbox={() => setTab('inbox')} /> : null}
         {tab === 'inbox' ? <InboxTab data={data} refresh={data.refresh} /> : null}
         {tab === 'library' ? <LibraryTab data={data} refresh={data.refresh} /> : null}
         {tab === 'taste' ? <TasteTab data={data} /> : null}

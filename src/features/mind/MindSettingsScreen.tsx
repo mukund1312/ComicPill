@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { galleryAvailable } from '../../lib/mind/capture/mediaLibrary';
-import { galleryAccess, listAlbumTitles, requestGalleryAccess } from '../../lib/mind/capture/scan';
 import { DAY_NAMES } from '../../lib/mind/engine/weekPlanner';
 import { SIGNALS, SIGNAL_LABEL, DEFAULT_WEIGHTS, suggestWeights, type Signal } from '../../lib/mind/engine/tasteScorer';
 import { DEFAULT_THRESHOLDS, type Thresholds } from '../../lib/mind/engine/verdictRules';
@@ -36,7 +34,6 @@ const THRESHOLD_ROWS: Array<[keyof Thresholds, string, number, number]> = [
 
 export default function MindSettingsScreen() {
   const s = useMindSettings();
-  const [albums, setAlbums] = useState<string[] | null>(null);
   const [dayPicker, setDayPicker] = useState(false);
   const [cv, setCv] = useState('');
   const [cvSaved, setCvSaved] = useState<boolean | null>(null);
@@ -45,17 +42,6 @@ export default function MindSettingsScreen() {
   const resync = () => { try { const d = buildAndSaveDigest(); void syncDigestNotification(getMindSettings(), d); void syncMindTask(); } catch { /* nothing to plan yet */ } };
   const set = (patch: Parameters<typeof updateMindSettings>[0]) => { updateMindSettings(patch); resync(); };
 
-  const toggleWatching = async (on: boolean) => {
-    if (!on) { set({ watching: false }); return; }
-    if (!galleryAvailable()) { Alert.alert('Add screenshots by hand', 'ComicPill never scans your gallery. To add comic screenshots, use Import photos and pick the ones you want, or add comics by title.'); return; }
-    let access = await galleryAccess();
-    if (access === 'denied') access = await requestGalleryAccess();
-    if (access === 'denied') { Alert.alert('Photos access is off', 'Allow photo access in your phone’s settings to let ComicPill watch one album.'); return; }
-    if (access === 'limited') Alert.alert('Only some photos are shared', 'You picked “selected photos”. ComicPill can only see those. To watch a whole album, allow access to all photos.');
-    // Start from now: old screenshots are only read if the reader asks to look back.
-    set({ watching: true, lastScanAt: s.lastScanAt || Date.now() });
-  };
-  const pickAlbum = async () => setAlbums(await listAlbumTitles());
 
   const suggest = () => {
     const events = ratingEvents();
@@ -75,10 +61,8 @@ export default function MindSettingsScreen() {
   ]);
 
   return (
-    <SettingsPage title="Mind Space" subtitle="Screenshots in, a weekly reading plan out.">
-      <SettingsSection title="Screenshots" footer="Only the one album below is read, and the text on each screenshot is checked on this phone before anything can be sent.">
-        <ToggleRow label="Watch an album" value={s.watching} onChange={toggleWatching} />
-        <LinkRow label="Album" value={s.albumTitle} onPress={pickAlbum} />
+    <SettingsPage title="Mind Space" subtitle="Screenshots you pick in, a weekly reading plan out.">
+      <SettingsSection title="Screenshots" footer="You choose the screenshots yourself, through your phone’s photo picker. ComicPill never looks at the rest of your photos, and the text on each one is checked on this phone before anything can be sent.">
         <ToggleRow label="Auto-send" detail="Skip the review step for comic-looking screenshots. Private ones are still never sent." value={s.autoSend} onChange={(v) => set({ autoSend: v })} last />
       </SettingsSection>
 
@@ -122,7 +106,6 @@ export default function MindSettingsScreen() {
         <ActionRow label="Delete all Mind Space data" destructive onPress={deleteAll} last />
       </SettingsSection>
 
-      <ChoiceSheet visible={albums !== null} title="Which album?" selected={s.albumTitle} choices={(albums ?? []).map((a) => ({ id: a, label: a }))} onSelect={(a) => { set({ albumTitle: a, lastScanAt: Date.now() }); setAlbums(null); }} onClose={() => setAlbums(null)} footnote={albums && albums.length === 0 ? 'No albums found. Allow photo access first.' : undefined} />
       <ChoiceSheet visible={dayPicker} title="Digest day" selected={String(s.digestDay)} choices={DAY_NAMES.map((d, i) => ({ id: String(i), label: d }))} onSelect={(i) => { set({ digestDay: Number(i) }); setDayPicker(false); }} onClose={() => setDayPicker(false)} />
     </SettingsPage>
   );

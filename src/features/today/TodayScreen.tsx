@@ -161,7 +161,7 @@ export default function TodayScreen() {
       <View style={[styles.heroWrap, { height: layout.isTablet ? HERO_H_TABLET : HERO_H }]}>
         <HeroArt source={backdrop} title={lead.title} scrollY={scrollY} width={width} onPress={() => router.push(isResume && recent ? `/reader/${recent.id}` : `/comic/${lead.workId}`)} />
         <View pointerEvents="box-none" style={styles.heroText}>
-          <Text style={[styles.eyebrow, { color: c.textSecondary, fontFamily: typography.bodySemibold }]}>{isResume ? 'CONTINUE READING' : `TONIGHT’S PICK${today.mood ? ` · ${today.mood.toUpperCase()}` : ` · ${lead.bucket.replaceAll('_', ' ').toUpperCase()}`}`}</Text>
+          <Text style={[styles.eyebrow, { color: c.textSecondary, fontFamily: typography.bodySemibold }]}>{isResume ? 'CONTINUE READING' : `TONIGHT’S PICK${today.mood ? ` · ${today.mood.toUpperCase()}` : ''}`}</Text>
           <Text numberOfLines={2} style={[styles.heroTitle, { color: c.textPrimary, fontFamily: typography.display }]}>{lead.title}</Text>
           <Text numberOfLines={2} style={[styles.reason, { color: c.textSecondary, fontFamily: typography.body }]}>{isResume ? '' : lead.inLibrary ? 'In your library · ' : 'New to you · '}{lead.reasons[0] ?? 'A clear next step in your reading.'}</Text>
           <View style={styles.cta}><Button onPress={() => router.push(isResume && recent ? `/reader/${recent.id}` : `/comic/${lead.workId}`)}>{isResume ? 'Continue reading  →' : 'Read tonight  →'}</Button></View>

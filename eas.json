@@ -11,12 +11,12 @@
     "preview": {
       "distribution": "internal",
       "autoIncrement": true,
-      "android": { "buildType": "apk" }
+      "android": { "buildType": "apk" },
+      "env": { "EXPO_PUBLIC_ENABLE_UPDATE_CHECK": "1" }
     },
     "production": {
       "autoIncrement": true,
-      "android": { "buildType": "app-bundle" },
-      "env": { "EXPO_PUBLIC_DISABLE_UPDATE_CHECK": "1" }
+      "android": { "buildType": "app-bundle" }
     }
   },
   "submit": {
