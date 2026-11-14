@@ -5,7 +5,7 @@ export default defineConfig({
     environment: 'node',
     include: [
       'src/lib/engines/**/*.spec.ts',
-      'src/lib/util/**/*.spec.ts',
+      'src/lib/util/**/*.spec.ts', 'src/lib/support.spec.ts',
       'src/lib/db/seed/**/*.spec.ts',
       'src/features/**/*.spec.ts',
       'src/lib/intent/**/*.spec.ts',

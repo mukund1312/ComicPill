@@ -28,8 +28,9 @@ interface AuthState {
   signUp: (email: string, password: string, replace?: boolean) => Promise<AuthResult>;
   signIn: (email: string, password: string) => Promise<AuthResult>;
   signOut: () => Promise<void>;
-  /** Forgot your password: with no server, the only way back in is to remove the account on this phone and make a new one. Comics and taste are untouched. */
-  removeAccount: () => Promise<void>;
+  /** Forgot your password: with no server, the only way back in is to remove the account on this phone and make a new one. Comics and taste are untouched.
+   *  `forget`: deleting the account for good (Settings → Delete account), so the next account made here, under any email, keeps the shelf. */
+  removeAccount: (forget?: boolean) => Promise<void>;
 }
 
 export function createAuthStore(deps: AuthDeps) {
@@ -60,12 +61,13 @@ export function createAuthStore(deps: AuthDeps) {
         const created = await createAccount(email, password, { salt: deps.salt, hash: deps.hash, now: deps.now() });
         await deps.vault.set(ACCOUNT_KEY, JSON.stringify(created));
         await deps.vault.set(SESSION_KEY, created.email);
-        // A different email than last time means a different person: they start fresh.
+        // A different email than the last account here means a different person: they start fresh. The first account on a phone (made by
+        // someone who has been using the app without one) keeps everything they already have.
         const last = await deps.vault.get(LAST_EMAIL_KEY).catch(() => null);
         await deps.vault.set(LAST_EMAIL_KEY, created.email).catch(() => undefined);
         account = created;
         set({ hasAccount: true, status: 'signedIn', email: created.email });
-        return { ok: true, fresh: last !== created.email };
+        return { ok: true, fresh: !!last && last !== created.email };
       } catch {
         return fail('Couldn’t create the account on this phone. Please try again.');
       }
@@ -94,8 +96,8 @@ export function createAuthStore(deps: AuthDeps) {
       set({ status: 'signedOut', email: null });
     },
 
-    removeAccount: async () => {
-      await Promise.all([deps.vault.remove(ACCOUNT_KEY), deps.vault.remove(SESSION_KEY)]).catch(() => undefined);
+    removeAccount: async (forget = false) => {
+      await Promise.all([deps.vault.remove(ACCOUNT_KEY), deps.vault.remove(SESSION_KEY), ...(forget ? [deps.vault.remove(LAST_EMAIL_KEY)] : [])]).catch(() => undefined);
       account = null; failures = 0; lockedUntil = 0;
       set({ hasAccount: false, status: 'signedOut', email: null });
     },

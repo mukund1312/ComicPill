@@ -22,7 +22,7 @@ type Kind = 'sign-in' | 'sign-up' | 'forgot-password';
 
 const COPY: Record<Kind, { title: string; sub: string }> = {
   'sign-in': { title: 'Welcome back.', sub: 'Sign in to pick up where you left off.' },
-  'sign-up': { title: 'Create your account.', sub: 'Your email names your shelf on this phone.' },
+  'sign-up': { title: 'Create an account.', sub: 'Optional. ComicPill then asks for your email and password when it opens, so your shelf is yours on a shared phone.' },
   'forgot-password': { title: 'Forgot your password?', sub: '' },
 };
 
@@ -79,12 +79,12 @@ export default function AuthScreen({ kind }: { kind: Kind }) {
   const removeAccount = async () => {
     const yes = await confirm({
       title: 'Remove the account on this phone?',
-      message: 'ComicPill can’t email a reset link, so this is the way back in. Signing up again with the same email keeps your library and taste; a different email starts a new, empty one. You’ll create a new account next.',
+      message: 'ComicPill can’t email a reset link, so this is the way back in. You keep using the app without an account; your library and taste stay. You can make a new account later in Settings.',
       confirmLabel: 'Remove account', destructive: true,
     });
     if (!yes) return;
-    await auth.removeAccount();
-    router.replace('/sign-up');
+    await auth.removeAccount(true);
+    router.replace('/');
   };
 
   const { isTablet } = useLayout();
@@ -103,9 +103,9 @@ export default function AuthScreen({ kind }: { kind: Kind }) {
           {kind === 'forgot-password' ? (
             <View style={styles.form}>
               <Text style={[styles.sub, { color: c.textSecondary, fontFamily: typography.body }]}>
-                Your account is stored only on this phone, so there’s no server to email a reset link. If you can’t remember the password, you can remove the account here and make a new one. Your comics and taste are kept if you sign up again with the same email; a different email starts fresh.
+                Your account is stored only on this phone, so there’s no server to email a reset link. If you can’t remember the password, remove the account here. Your comics and taste stay, and you carry on without an account; you can make a new one any time in Settings.
               </Text>
-              {auth.hasAccount ? <Button kind="destructive" onPress={removeAccount}>Remove account on this phone</Button> : <Button onPress={() => router.replace('/sign-up')}>Create an account</Button>}
+              {auth.hasAccount ? <Button kind="destructive" onPress={removeAccount}>Remove account on this phone</Button> : <Button onPress={() => router.replace('/')}>Continue</Button>}
               <Button kind="ghost" onPress={() => router.replace('/sign-in')}>Back to sign in</Button>
             </View>
           ) : (
@@ -116,9 +116,14 @@ export default function AuthScreen({ kind }: { kind: Kind }) {
               {error ? <Text accessibilityLiveRegion="polite" style={[styles.error, { color: c.error, fontFamily: typography.bodyMedium }]}>{error}</Text> : null}
               <Button onPress={submit} disabled={busy}>{busy ? 'One moment…' : kind === 'sign-up' ? 'Create account' : 'Sign in'}</Button>
               {kind === 'sign-in' ? <Button kind="ghost" onPress={() => router.push('/forgot-password')}>Forgot password?</Button> : null}
-              <Button kind="ghost" onPress={() => router.replace(kind === 'sign-in' ? '/sign-up' : '/sign-in')}>
-                {kind === 'sign-in' ? 'New here? Create an account' : 'Already have an account? Sign in'}
-              </Button>
+              {kind === 'sign-in' || auth.hasAccount ? (
+                <Button kind="ghost" onPress={() => router.replace(kind === 'sign-in' ? '/sign-up' : '/sign-in')}>
+                  {kind === 'sign-in' ? 'New here? Create an account' : 'Already have an account? Sign in'}
+                </Button>
+              ) : (
+                // No account yet: this page is a choice, never a gate.
+                <Button kind="ghost" onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}>Not now</Button>
+              )}
               <Text style={[styles.fine, { color: c.textMuted, fontFamily: typography.body }]}>Your account stays on this phone. ComicPill doesn’t send your email or password anywhere.</Text>
             </View>
           )}

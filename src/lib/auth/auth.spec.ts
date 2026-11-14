@@ -36,7 +36,7 @@ describe('signing up and in', () => {
     const { store, data } = setup();
     await store.getState().load();
     expect(store.getState().status).toBe('signedOut');
-    expect(await store.getState().signUp('Me@Example.com', 'correct horse')).toEqual({ ok: true, fresh: true });
+    expect(await store.getState().signUp('Me@Example.com', 'correct horse')).toEqual({ ok: true, fresh: false });
     expect(store.getState()).toMatchObject({ status: 'signedIn', email: 'me@example.com', hasAccount: true });
     expect(data.get(ACCOUNT_KEY)).not.toContain('correct horse');
   });
@@ -113,14 +113,22 @@ describe('staying signed in', () => {
 });
 
 describe('a different person', () => {
-  it('is fresh the first time and when the email changes, but not for the same email again', async () => {
+  it('keeps the shelf for the first account on a phone (it was used without one), starts fresh only when the email changes', async () => {
     const { store } = setup();
     await store.getState().load();
-    expect(await store.getState().signUp('me@example.com', 'correct horse')).toEqual({ ok: true, fresh: true });
+    expect(await store.getState().signUp('me@example.com', 'correct horse')).toEqual({ ok: true, fresh: false });
     await store.getState().removeAccount();
     expect(await store.getState().signUp('Me@Example.com', 'a new password')).toEqual({ ok: true, fresh: false });
     await store.getState().removeAccount();
     expect(await store.getState().signUp('someone@else.com', 'a new password')).toEqual({ ok: true, fresh: true });
+  });
+  it('deleting the account for good forgets it, so the next account (any email) keeps the shelf', async () => {
+    const { store } = setup();
+    await store.getState().load();
+    await store.getState().signUp('me@example.com', 'correct horse');
+    await store.getState().removeAccount(true);
+    expect(store.getState()).toMatchObject({ status: 'signedOut', hasAccount: false });
+    expect(await store.getState().signUp('someone@else.com', 'a new password')).toEqual({ ok: true, fresh: false });
   });
 });
 

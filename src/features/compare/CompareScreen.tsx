@@ -14,7 +14,7 @@ const money = (paise: number) => `₹${Math.round(paise / 100).toLocaleString('e
 
 export default function CompareScreen() {
   const [mode, setMode] = useState<'read' | 'buy'>('read');
-  return <AppShell active="library" title="Compare"><View style={styles.modeTabs}><Pill label="Read" active={mode === 'read'} onPress={() => setMode('read')} /><Pill label="Buy" active={mode === 'buy'} onPress={() => setMode('buy')} /></View>{mode === 'read' ? <ReadCompare /> : <BuyCompare />}</AppShell>;
+  return <AppShell active="library" back title="Compare"><View style={styles.modeTabs}><Pill label="Read" active={mode === 'read'} onPress={() => setMode('read')} /><Pill label="Buy" active={mode === 'buy'} onPress={() => setMode('buy')} /></View>{mode === 'read' ? <ReadCompare /> : <BuyCompare />}</AppShell>;
 }
 
 function ReadCompare() {

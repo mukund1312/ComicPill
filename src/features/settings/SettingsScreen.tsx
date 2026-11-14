@@ -34,6 +34,24 @@ const PERMISSIONS: PermissionKey[] = ['camera', 'photos', 'notifications'];
 export default function SettingsScreen() {
   const authEmail = useAuth((st) => st.email);
   const doSignOut = useAuth((st) => st.signOut);
+  const removeAccount = useAuth((st) => st.removeAccount);
+  const deleteAccount = async () => {
+    const yes = await confirm({
+      title: 'Delete your account?',
+      message: 'This removes your email and password from this phone. ComicPill keeps working without an account, and your comics and reading data stay unless you clear them next.',
+      confirmLabel: 'Delete account', destructive: true,
+    });
+    if (!yes) return;
+    await removeAccount(true);
+    feedback.warning();
+    const wipe = await confirm({
+      title: 'Also clear your reading data?',
+      message: 'Removes your library, reading history, playlists, journeys and wallet from this phone. Comic files on your shelf are not touched.',
+      confirmLabel: 'Clear it too', cancelLabel: 'Keep it', destructive: true,
+    });
+    if (wipe) { try { clearUserData(); } catch { notice('Couldn’t clear data', 'Your account is deleted, but the reading data is still here. Try Clear reading data below.'); return; } }
+    notice('Account deleted', wipe ? 'Your account and reading data are gone from this phone.' : 'Your account is gone from this phone. Your library is still here.');
+  };
   const signOut = async () => {
     const yes = await confirm({ title: 'Sign out?', message: 'Your comics and taste stay on this phone. Sign back in any time.', confirmLabel: 'Sign out' });
     if (!yes) return;
@@ -111,12 +129,24 @@ export default function SettingsScreen() {
 
   return (
     <SettingsPage title="Settings" subtitle="Quiet controls for the rest of your reading life." backLabel="Profile">
-      <SettingsSection title="Account">
+      <SettingsSection title="You" footer={authEmail ? 'Your account lives on this phone only. ComicPill asks for it when it opens.' : 'An account is optional. With one, ComicPill asks for your email and password when it opens. It lives only on this phone.'}>
         <LinkRow label="Edit profile" value={`@${username}`} onPress={() => router.push('/edit-profile')} />
-        <LinkRow label="Notifications" value={reminderSummary(s)} onPress={() => router.push('/notifications')} last />
+        <LinkRow label="Notifications" value={reminderSummary(s)} onPress={() => router.push('/notifications')} />
+        {authEmail ? (
+          <>
+            <InfoRow label="Signed in" detail={authEmail} />
+            <ActionRow label="Sign out" detail="Your comics and taste stay. Sign back in any time." onPress={signOut} />
+            <ActionRow label="Delete account" detail="Removes your email and password from this phone." destructive onPress={deleteAccount} last />
+          </>
+        ) : (
+          <LinkRow label="Create an account" detail="Optional. Protect ComicPill with your email and password." onPress={() => router.push('/sign-up')} last />
+        )}
       </SettingsSection>
 
       <SettingsSection title="Reading">
+        <LinkRow label="Reader settings" detail="Reading modes, page turns, balloons and panels." onPress={() => router.push('/reader/settings')} />
+        <LinkRow label="Hidden shelf" detail="Keep some comics behind a password of their own." value={hiddenShelfReady() ? 'On' : 'Off'} onPress={() => router.push('/hidden-shelf')} />
+        <LinkRow label="Storage" detail="What ComicPill keeps on this device, and clearing space." onPress={() => router.push('/storage')} />
         <LinkRow label="Default journey depth" detail="How many books a new journey starts with." value={depthLabel} onPress={() => setSheet('depth')} />
         <ToggleRow label="Travel mode" detail="Only pick books you can open digitally." value={digitalOnly} onChange={setDigitalOnly} last />
       </SettingsSection>
@@ -128,23 +158,13 @@ export default function SettingsScreen() {
         </SettingsSection>
       ) : null}
 
-      <SettingsSection title="AI assistant" footer="Optional. Add your own key to understand natural-language requests and scan shelves. Everything else works without one.">
-        <LinkRow label="AI assistant" value={ai.key ? `${PROVIDER_LABEL[ai.provider]} · key saved` : 'Off'} onPress={() => router.push('/ai-settings')} last />
-      </SettingsSection>
-
-      <SettingsSection title="Privacy & data" footer="Everything you add stays on this device. ComicPill has no account. It only goes online for two things you control: your own AI key (when you tap Build my journey or Scan) and, on Android, a once-a-day check for a newer version.">
-        <LinkRow label="Passcode & privacy" detail="Ask for a passcode when ComicPill opens." onPress={() => router.push('/passcode')} />
-        <LinkRow label="Hidden shelf" detail="Keep some comics behind a password of their own." value={hiddenShelfReady() ? 'On' : 'Off'} onPress={() => router.push('/hidden-shelf')} />
+      <SettingsSection title="Privacy & security" footer="Everything you add stays on this device. ComicPill only goes online when you ask it to: looking up a comic, reading from your own comic servers, using your own AI key, and on Android a daily check for a newer version.">
+        <LinkRow label="Passcode" detail="Ask for a passcode when ComicPill opens." onPress={() => router.push('/passcode')} />
         <ToggleRow label="Personalized recommendations" detail="Use what ComicPill has learned about your taste. Off: Today and Compare treat you as a new reader." value={s.personalizedRecommendations} onChange={(v) => s.update({ personalizedRecommendations: v })} />
         {updatesSupported() ? <ToggleRow label="Check for updates" detail="Once a day, asks GitHub if a newer ComicPill exists. Sends no personal data." value={s.checkForUpdates} onChange={(v) => s.update({ checkForUpdates: v })} /> : null}
         <InfoRow label="Analytics" value="None collected" detail="This version doesn’t track your usage." />
         <ActionRow label="Export my data" detail="Get a copy of your library, history and settings." onPress={openExport} />
         <ActionRow label="Clear reading data" detail="Remove your library, history, playlists and journeys." destructive onPress={clearData} last />
-      </SettingsSection>
-
-      <SettingsSection title="Account" footer="Your account lives on this phone only.">
-        <InfoRow label="Signed in as" value={authEmail ?? ''} />
-        <ActionRow label="Sign out" detail="You can sign back in any time. Nothing is deleted." onPress={signOut} last />
       </SettingsSection>
 
       <SettingsSection title="Permissions" footer="Tap a row to allow it, or to change it in your phone’s Settings.">
@@ -155,16 +175,16 @@ export default function SettingsScreen() {
 
       <SettingsSection title="App">
         <LinkRow label="Appearance" value={`${theme.name} · ${typography.name}`} onPress={() => router.push('/appearance')} />
+        <LinkRow label="Accessibility" detail="Text size, motion and haptics." onPress={() => router.push('/accessibility')} />
+        <LinkRow label="AI assistant" detail="Optional: your own key for natural-language requests and shelf scans." value={ai.key ? `${PROVIDER_LABEL[ai.provider]} · key saved` : 'Off'} onPress={() => router.push('/ai-settings')} />
         <LinkRow label="Language" value="English" onPress={() => setSheet('language')} />
-        <LinkRow label="Currency" value="₹ INR" onPress={() => setSheet('currency')} />
-        <LinkRow label="Accessibility" onPress={() => router.push('/accessibility')} last />
+        <LinkRow label="Currency" value="₹ INR" onPress={() => setSheet('currency')} last />
       </SettingsSection>
 
-      <SettingsSection title="Support">
-        <LinkRow label="Help & feedback" onPress={() => router.push('/feedback')} />
-        <LinkRow label="Sources & metadata" onPress={() => router.push('/sources')} />
+      <SettingsSection title="Help">
+        <LinkRow label="Help & feedback" detail="Report a bug or send an idea." onPress={() => router.push('/feedback')} />
         <LinkRow label="Edit my taste picks" detail="Characters, art, genres and story feel." onPress={() => router.push('/onboarding?mode=edit')} />
-        <LinkRow label="Storage" detail="See what ComicPill keeps on this device and clear space." onPress={() => router.push('/storage')} />
+        <LinkRow label="Sources & metadata" onPress={() => router.push('/sources')} />
         <LinkRow label="About ComicPill" onPress={() => router.push('/about')} last />
       </SettingsSection>
 

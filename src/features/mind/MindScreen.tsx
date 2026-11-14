@@ -24,7 +24,7 @@ export default function MindScreen({ initialTab = 'digest' }: { initialTab?: Tab
   const needsQuiz = !settings.quizDone && ratedCount() < 10;
 
   return (
-    <AppShell active="library" title="Mind Space" right={<Pressable accessibilityRole="button" accessibilityLabel="Mind Space settings" onPress={() => router.push('/mind/settings')}><Text style={styles.gear}>⚙</Text></Pressable>}>
+    <AppShell active="library" back title="Mind Space" right={<Pressable accessibilityRole="button" accessibilityLabel="Mind Space settings" onPress={() => router.push('/mind/settings')}><Text style={styles.gear}>⚙</Text></Pressable>}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pills}>
           <Pill label="Digest" active={tab === 'digest'} onPress={() => setTab('digest')} />

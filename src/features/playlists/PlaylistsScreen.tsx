@@ -98,7 +98,7 @@ export default function PlaylistsScreen() {
     />;
   }
 
-  return <AppShell active="library" title="Playlists">
+  return <AppShell active="library" back title="Playlists">
     <FlashList<BrowseItem>
       data={searching ? state.searchResults : state.playlists}
       keyExtractor={(item) => isSearchWork(item) ? item.workId : item.id}
@@ -140,7 +140,7 @@ function PlaylistDetail({ playlist, query, searchResults, onQuery, onBack, onAdd
     onReorder(ids);
   };
   const existing = new Set(playlist.items.map((item) => item.workId));
-  return <AppShell active="library" title="Playlist">
+  return <AppShell active="library" back onBack={() => { onBack(); return true; }} title="Playlist">
     <FlashList
       data={playlist.items}
       keyExtractor={(item) => item.workId}

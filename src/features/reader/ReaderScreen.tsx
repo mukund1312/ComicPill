@@ -12,6 +12,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { sqlite } from '../../lib/db/client';
 import { upsertLibraryEntry } from '../../lib/db/queries/library';
+import { getMeta, setMeta } from '../../lib/db/queries/meta';
 import { ActionSheet, type SheetOption } from './dialogs';
 import { PageTextSheet, type PageText } from './PageTextSheet';
 import { ReaderDisplaySheet, supportsViewFilters, type Display } from './ReaderDisplaySheet';
@@ -34,6 +35,7 @@ import { BubbleFloatLayer, type FloatTarget } from './BubbleFloatLayer';
 import { extractBubble } from '../../lib/reader/bubbles/extract';
 import { BUBBLE_SIZE_STEP, clampBubbleSize, settleRect } from '../../lib/reader/bubbles/pop';
 import { feedback } from '../../lib/platform/feedback';
+import { Icon } from '../../ui/Icon';
 import { makeSerialQueue, nextSide, stepForSide, stepForVolume, stepPosition, type NavMode, type NavPosition, type Step } from '../../lib/reader/navigation/readerNav';
 import { useHardwareKeys, type HardwareKey } from './useHardwareKeys';
 import { combineUnit, fromUnit, slotAt, slotFor, toUnit, unitPanels, unitSlots, type Origin } from '../../lib/reader/unitLayout';
@@ -560,6 +562,7 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
       { label: 'Remove this panel', onPress: removePanel },
       { label: 'Redo panel detection on this page', onPress: redetectPanels },
     ] : []),
+    ...(bubbleActive ? [{ label: 'What do the balloon buttons do?', onPress: () => setBubbleTip(true) }] : []),
     ...(!webtoon && !guidedActive ? [{ label: bubbleMode ? 'Turn off bubble zoom' : 'Bubble zoom (tap a speech balloon)', onPress: () => toggleBubbleMode() }] : []),
     ...(landscape && !webtoon ? [{ label: display.landscapeLayout === 'spread' ? 'Landscape: show one page' : 'Landscape: show two pages (open book)', onPress: () => changeDisplay({ landscapeLayout: display.landscapeLayout === 'spread' ? 'single' : 'spread' }) }] : []),
     { label: 'All pages…', onPress: () => setGalleryOpen(true) },
@@ -590,6 +593,12 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
   const sizeKey = `${Math.round(width)}x${Math.round(height)}`;
   const [focusAt, setFocusAt] = useState({ page: -1, i: -1, size: '' });
   const focus = focusAt.page === page && focusAt.size === sizeKey ? focusAt.i : -1;
+  // The balloon bar's buttons are explained once, the first time a balloon is lifted; ⋯ → "What do the balloon buttons do?" shows it again.
+  const [tipSeen, setTipSeen] = useState(() => getMeta('tip_balloon_bar') === '1');
+  const [tipAsked, setTipAsked] = useState(false);
+  const bubbleTip = tipAsked || (!tipSeen && focus >= 0);
+  const setBubbleTip = setTipAsked;
+  const dismissBubbleTip = useCallback(() => { setTipAsked(false); setTipSeen(true); setMeta('tip_balloon_bar', '1'); }, []);
   const setFocus = useCallback((i: number) => setFocusAt({ page, i, size: sizeKey }), [page, sizeKey]);
   const focusRef = useRef(-1);
   const bubblesRef = useRef<{ page: number; per: Record<number, Bubble[]>; done: boolean; list: Bubble[]; meta: Origin[] }>({ page: -1, per: NO_BUBBLES, done: false, list: [], meta: [] });
@@ -840,6 +849,7 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
 
   // Next belongs on the side the reading goes towards, with its arrow pointing that way: right for left-to-right, left for manga.
   const dirTag = rtl ? '← RTL' : 'LTR →';
+  const dirWords = rtl ? '← reading right to left' : 'reading left to right →';
   const allPages = useMemo(() => { const p = Array.from({ length: total }, (_, i) => i); return rtl ? p.reverse() : p; }, [total, rtl]);
   const listKey = `${mode}-${spread ? 'spread' : 'single'}-${Math.round(width)}`;
   const initial = anchor.page;
@@ -936,11 +946,14 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
             ) : focus >= 0 || focus === -2 ? (
               <>
                 {focus >= 0 ? <StepButton which="left" noun="balloon" rtl={rtl} onStep={navigate} /> : null}
-                <Text style={styles.bubbleCount}>{focus >= 0 ? `${dirTag} ${focus + 1} / ${here.list.length}` : 'Balloon'}</Text>
+                <View style={styles.countBox}>
+                  <Text style={styles.bubbleCount}>{focus >= 0 ? `Balloon ${focus + 1} of ${here.list.length}` : 'Balloon'}</Text>
+                  {focus >= 0 ? <Text style={styles.bubbleDir}>{dirWords}</Text> : null}
+                </View>
                 {focus >= 0 ? <StepButton which="right" noun="balloon" rtl={rtl} onStep={navigate} /> : null}
                 <BarButton label="Smaller balloon" onPress={() => nudgeBubbleSize(-BUBBLE_SIZE_STEP)}><Text style={[styles.bubbleBtn, styles.bubbleSizeBtn]}>A−</Text></BarButton>
                 <BarButton label="Larger balloon" onPress={() => nudgeBubbleSize(BUBBLE_SIZE_STEP)}><Text style={[styles.bubbleBtn, styles.bubbleSizeBtn]}>A+</Text></BarButton>
-                <BarButton label="Back to the page" onPress={leaveBubble}><Text style={styles.bubbleBtn}>⤡</Text></BarButton>
+                <BarButton label="Back to the page" onPress={leaveBubble}><Icon name="contract-outline" size={24} color="#fff" /></BarButton>
                 {focus >= 0 ? <BarButton label="Remove this balloon" onPress={removeBubble}><Text style={styles.bubbleBtn}>⌫</Text></BarButton> : null}
               </>
             ) : (
@@ -948,6 +961,25 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
             )}
             <BarButton label={drawing ? 'Cancel selecting' : 'Select a balloon by hand'} onPress={() => setDrawing((d) => !d)}><Text style={[styles.bubbleBtn, drawing && styles.iconActive]}>{drawing ? '✓' : '＋'}</Text></BarButton>
             <BarButton label="Turn off bubble zoom" onPress={toggleBubbleMode}><Text style={styles.bubbleBtn}>✕</Text></BarButton>
+          </View>
+        </View>
+      ) : null}
+      {bubbleActive && bubbleTip && !overlay ? (
+        <View pointerEvents="box-none" style={[styles.tipWrap, { bottom: insets.bottom + space.lg + 84 }]}>
+          <View style={styles.tipCard}>
+            <Text style={styles.tipTitle}>Reading balloon by balloon</Text>
+            {[
+              ['‹  ›', 'Previous / next balloon. Swiping, the arrow keys and the volume buttons do the same.'],
+              ['A−  A+', 'Make the balloon smaller or larger.'],
+              ['page', 'Back to the whole page.'],
+              ['⌫', 'That wasn’t a balloon: remove it.'],
+              ['＋', 'Missed one? Draw a box around it.'],
+              ['✕', 'Turn balloon reading off.'],
+              [rtl ? '← RTL' : 'LTR →', 'The reading direction. Change it in ⋯ → Reading mode.'],
+            ].map(([sym, text]) => (
+              <View key={sym} style={styles.tipRow}>{sym === 'page' ? <View style={styles.tipIcon}><Icon name="contract-outline" size={18} color="#fff" /></View> : <Text style={styles.tipSym}>{sym}</Text>}<Text style={styles.tipText}>{text}</Text></View>
+            ))}
+            <BarButton label="Got it" onPress={dismissBubbleTip}><Text style={styles.tipOk}>Got it</Text></BarButton>
           </View>
         </View>
       ) : null}
@@ -1074,8 +1106,18 @@ const styles = StyleSheet.create({
   bubblePill: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '94%', rowGap: space.xs, alignItems: 'center', gap: space.lg, paddingHorizontal: space.lg, paddingVertical: space.sm, borderRadius: radius.lg, backgroundColor: '#000000cc' },
   bubbleBtn: { color: '#fff', fontSize: 24, lineHeight: 28 },
   barButton: { paddingHorizontal: 6, paddingVertical: 4 },
-  bubbleSizeBtn: { fontSize: 17, fontFamily: font.bodyMedium },
+  bubbleSizeBtn: { fontSize: 20, fontFamily: font.bodySemibold },
   bubbleCount: { color: '#fff', fontSize: 14 },
+  countBox: { alignItems: 'center' },
+  bubbleDir: { color: '#ffffffaa', fontSize: 11, marginTop: 1 },
+  tipWrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
+  tipCard: { width: '92%', maxWidth: 440, backgroundColor: '#111216f2', borderRadius: radius.lg, borderWidth: 1, borderColor: '#ffffff22', padding: space.lg, gap: space.sm },
+  tipTitle: { color: '#fff', fontFamily: font.displayMedium, fontSize: 17, marginBottom: 2 },
+  tipRow: { flexDirection: 'row', gap: space.md, alignItems: 'flex-start' },
+  tipIcon: { width: 58 },
+  tipSym: { color: '#fff', fontFamily: font.bodySemibold, fontSize: 15, width: 58 },
+  tipText: { color: '#ffffffcc', fontFamily: font.body, fontSize: 13.5, lineHeight: 19, flex: 1 },
+  tipOk: { color: '#fff', fontFamily: font.bodySemibold, fontSize: 15, alignSelf: 'flex-end', paddingVertical: 6, paddingHorizontal: 4 },
   root: { flex: 1, backgroundColor: color.bg },
   fill: { width: '100%', height: '100%' },
   center: { flex: 1, backgroundColor: color.bg, alignItems: 'center', justifyContent: 'center', padding: space.xl, gap: space.lg },

@@ -6,9 +6,8 @@ import { useOnboarding, useOnboardingReady } from '../src/lib/state/onboarding';
 import { useAuth } from '../src/lib/auth/auth';
 import { useAppearance } from '../src/ui/theme';
 
-/** The front door: signed out -> sign in (or sign up on a fresh phone); signed in
- *  but not set up -> onboarding; otherwise Today. Blank frames while saved state
- *  is read, so nobody flashes into the wrong screen. */
+/** The front door. An account is optional: with none, the app opens straight in (onboarding first, then Today). Someone who made an
+ *  account and signed out is asked to sign in. Blank frames while saved state is read, so nobody flashes into the wrong screen. */
 export default function Index() {
   const ready = useOnboardingReady();
   const completed = useOnboarding((s) => s.completed);
@@ -19,7 +18,7 @@ export default function Index() {
   useEffect(() => { void load(); }, [load]);
 
   if (!ready || status === 'loading') return <View style={{ flex: 1, backgroundColor: theme.colors.background }} />;
-  if (status === 'signedOut') return <Redirect href={hasAccount ? '/sign-in' : '/sign-up'} />;
+  if (status === 'signedOut' && hasAccount) return <Redirect href="/sign-in" />;
   if (!completed) return <Redirect href="/onboarding" />;
   return <TodayScreen />;
 }

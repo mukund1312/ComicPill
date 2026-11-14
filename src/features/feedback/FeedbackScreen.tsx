@@ -1,11 +1,15 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import Constants from 'expo-constants';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { useFeedback } from './useFeedback';
 import { Button, EmptyState, Pill } from '../../ui/primitives';
 import { color, font, radius, space, type } from '../../ui/tokens';
 import type { FeedbackCategory } from '../../lib/types/domain';
+import { SUPPORT_EMAIL, mailtoLink } from '../../lib/support';
+import { feedback as haptics } from '../../lib/platform/feedback';
 
 const CATEGORIES: Array<[FeedbackCategory, string]> = [['bug', 'Bug'], ['idea', 'Idea'], ['other', 'Other']];
 
@@ -16,11 +20,37 @@ export default function FeedbackScreen() {
   const [screen, setScreen] = useState('');
   const [copied, setCopied] = useState(false);
 
-  const send = () => {
+  // What the developer needs to reproduce it, added under every email.
+  const deviceLine = () => `ComicPill ${Constants.expoConfig?.version ?? '?'} · ${Platform.OS} ${String(Platform.Version)}`;
+  /** Opens the phone's email app, filled in. Without one, the address and the text are copied instead so nothing is lost. */
+  const email = async (subject: string, body: string) => {
+    const full = `${body}\n\n—\n${deviceLine()}`;
+    try {
+      await Linking.openURL(mailtoLink(SUPPORT_EMAIL, subject, full));
+      return true;
+    } catch {
+      await Clipboard.setStringAsync(`To: ${SUPPORT_EMAIL}\nSubject: ${subject}\n\n${full}`);
+      Alert.alert('No email app found', `The message is copied. Paste it into any app and send it to ${SUPPORT_EMAIL}.`);
+      return false;
+    }
+  };
+  const label = CATEGORIES.find(([id]) => id === category)?.[1] ?? 'Feedback';
+  const sendNow = async () => {
+    const text = message.trim();
+    if (!text) return;
+    // It is kept in the log too, so it isn't lost if the email is never sent.
+    feedback.submit(category, text, screen.trim() || null);
+    haptics.success();
+    await email(`ComicPill ${label.toLowerCase()}${screen.trim() ? ` · ${screen.trim()}` : ''}`, text);
+    setMessage(''); setScreen('');
+  };
+  const saveForLater = () => {
     feedback.submit(category, message, screen.trim() || null);
+    haptics.success();
     setMessage('');
     setScreen('');
   };
+  const emailAll = () => { void email(`ComicPill feedback (${feedback.entries.length})`, feedback.exportText()); };
 
   const copyAll = async () => {
     await Clipboard.setStringAsync(feedback.exportText());
@@ -29,12 +59,12 @@ export default function FeedbackScreen() {
   };
 
   return (
-    <ScrollView style={styles.page} contentContainerStyle={styles.content}>
+    <SafeAreaView style={styles.page} edges={['top']}>
+    <ScrollView style={styles.page} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text onPress={() => router.back()} style={styles.back}>‹ Settings</Text>
       <Text style={styles.title}>Help &amp; feedback</Text>
       <Text style={styles.subtitle}>
-        Logged on your device only — nothing is sent anywhere automatically.
-        Use &quot;Copy all&quot; below to hand a full report to the dev directly.
+        Tell us what went wrong or what would help. “Email it” opens your email app with the message ready to send to {SUPPORT_EMAIL}. Nothing is sent until you press send there.
       </Text>
 
       <View style={styles.form}>
@@ -55,16 +85,22 @@ export default function FeedbackScreen() {
           onChangeText={setScreen}
           style={styles.input}
         />
-        <Button disabled={!message.trim()} style={{ marginTop: space.md }} onPress={send}>Log it</Button>
+        <Button disabled={!message.trim()} style={{ marginTop: space.md }} onPress={() => { void sendNow(); }}>Email it</Button>
+        <Button kind="ghost" disabled={!message.trim()} onPress={saveForLater}>Save for later</Button>
       </View>
 
       <View style={styles.listHeader}>
-        <Text style={styles.listTitle}>Your log ({feedback.entries.length})</Text>
-        {feedback.entries.length ? <Pressable onPress={copyAll}><Text style={styles.copyAction}>{copied ? 'Copied ✓' : 'Copy all'}</Text></Pressable> : null}
+        <Text style={styles.listTitle}>Saved notes ({feedback.entries.length})</Text>
+        {feedback.entries.length ? (
+          <View style={styles.listActions}>
+            <Pressable accessibilityRole="button" onPress={emailAll} hitSlop={8}><Text style={styles.copyAction}>Email all</Text></Pressable>
+            <Pressable accessibilityRole="button" onPress={copyAll} hitSlop={8}><Text style={styles.copyAction}>{copied ? 'Copied ✓' : 'Copy all'}</Text></Pressable>
+          </View>
+        ) : null}
       </View>
 
       {feedback.entries.length === 0 ? (
-        <EmptyState mark="◇" title="Nothing logged yet" copy="Found something odd? Log it here as you go, then copy the whole list to send over." />
+        <EmptyState mark="◇" title="Nothing logged yet" copy="Found something odd but no time to write an email? Save it for later, then send them all at once." />
       ) : (
         feedback.entries.map((entry) => (
           <View key={entry.id} style={styles.entry}>
@@ -78,12 +114,13 @@ export default function FeedbackScreen() {
         ))
       )}
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: color.bg },
-  content: { padding: space.lg, paddingTop: 60, paddingBottom: 60 },
+  content: { padding: space.lg, paddingTop: space.lg, paddingBottom: 60 },
   back: { color: color.muted, fontFamily: font.bodyMedium, fontSize: type.body, marginBottom: 18 },
   title: { color: color.text, fontFamily: font.display, fontSize: 34 },
   subtitle: { color: color.muted, fontFamily: font.body, fontSize: type.body, lineHeight: 22, marginTop: 8 },
@@ -93,6 +130,7 @@ const styles = StyleSheet.create({
   input: { minHeight: 50, borderWidth: 1, borderColor: color.border, backgroundColor: color.surface2, borderRadius: radius.md, color: color.text, fontFamily: font.body, paddingHorizontal: 14, fontSize: type.body },
   listHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginTop: space.xxl, marginBottom: space.md },
   listTitle: { color: color.text, fontFamily: font.displayMedium, fontSize: type.title },
+  listActions: { flexDirection: 'row', gap: space.lg },
   copyAction: { color: color.accent, fontFamily: font.bodySemibold, fontSize: type.caption },
   entry: { backgroundColor: color.surface, borderWidth: 1, borderColor: color.border, borderRadius: radius.md, padding: space.md, marginBottom: space.sm },
   entryHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

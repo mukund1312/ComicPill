@@ -33,6 +33,7 @@ function TabBar({ active }: { active: Tab }) {
   const { theme, typography } = useAppearance(); const c = theme.colors;
   const layout = useLayout(); const bottom = useSafeAreaInsets().bottom;
   const width = Math.min(layout.width, 560); // on a tablet the floating bar stays a comfortable size instead of stretching across
+  const path = usePathname();
   const index = tabs.findIndex((t) => t.id === active);
   const tabWidth = (width - BAR_MARGIN * 2 - BAR_PAD * 2) / tabs.length;
   const x = useSharedValue(lastTabIndex * tabWidth);
@@ -53,7 +54,8 @@ function TabBar({ active }: { active: Tab }) {
           const on = tab.id === active;
           return (
             <Pressable key={tab.id} accessibilityRole="button" accessibilityLabel={tab.label} accessibilityState={{ selected: on }}
-              onPress={() => { if (!on) { feedback.select(); router.replace(tab.href as never); } }} style={[styles.tab, { width: tabWidth }]}>
+              // Tapping the tab you are in, from a page inside it (Playlists inside Library, say), goes back to that tab's home.
+              onPress={() => { if (!on) { feedback.select(); router.replace(tab.href as never); } else if (path !== tab.href) { feedback.select(); router.navigate(tab.href as never); } }} style={[styles.tab, { width: tabWidth }]}>
               <Animated.View style={on ? iconStyle : undefined}><Icon name={on ? tab.iconActive : tab.icon} size={22} color={on ? c.primary : c.textMuted} /></Animated.View>
               <Text numberOfLines={1} maxFontSizeMultiplier={1.15} adjustsFontSizeToFit minimumFontScale={0.8} style={[styles.tabLabel, { color: on ? c.primary : c.textMuted, fontFamily: on ? typography.bodySemibold : typography.bodyMedium }]}>{tab.label}</Text>
             </Pressable>

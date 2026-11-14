@@ -298,13 +298,13 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
 
   const addMenu = () => setSheet({
     options: [
-      { label: openFolder ? `Import files into “${insideName ?? 'this folder'}”…` : 'Import files…', onPress: importHere },
-      { label: 'Link a whole folder (Drive, iCloud, Files)…', onPress: () => runImport('Linking folder', 'Linked', (p) => linkWithCovers(() => pickAndLinkFolder({ parentId: openFolder ?? undefined, ...p }), p)) },
-      { label: 'Link individual comic files…', onPress: () => runImport('Linking', 'Linked', (p) => linkWithCovers(() => pickAndLinkComics({ folderId: openFolder ?? undefined, ...p }), p)) },
+      { label: openFolder ? `Copy files into “${insideName ?? 'this folder'}” (reads offline)…` : 'Copy files to this device (reads offline)…', onPress: importHere },
+      { label: 'Copy a whole folder (reads offline)…', onPress: () => runImport('Importing folder', 'Imported', (p) => pickAndImportFolder({ parentId: openFolder ?? undefined, ...p })) },
+      { label: 'Link a cloud folder (stays in Drive, iCloud…)…', onPress: () => runImport('Linking folder', 'Linked', (p) => linkWithCovers(() => pickAndLinkFolder({ parentId: openFolder ?? undefined, ...p }), p)) },
+      { label: 'Link cloud files (download when opened)…', onPress: () => runImport('Linking', 'Linked', (p) => linkWithCovers(() => pickAndLinkComics({ folderId: openFolder ?? undefined, ...p }), p)) },
       ...(unpreparedLinkIds().length ? [{ label: `Download covers for linked comics (${unpreparedLinkIds().length} left)…`, onPress: () => { void loadCoversNow(); } }] : []),
       { label: `Most comics kept on this device: ${keepLimit() || 'no limit'}…`, onPress: keepMenu },
-      { label: 'Browse an OPDS server…', onPress: () => router.push('/reader/opds') },
-      { label: 'Import a folder…', onPress: () => runImport('Importing folder', 'Imported', (p) => pickAndImportFolder({ parentId: openFolder ?? undefined, ...p })) },
+      { label: 'Browse your comic server (OPDS)…', onPress: () => router.push('/reader/opds') },
       { label: openFolder ? `New folder inside “${insideName ?? 'this folder'}”…` : 'New folder…', onPress: () => setPrompt({ title: 'New folder', submitLabel: 'Create', onSubmit: (name) => { createFolder(name, openFolder); feedback.success(); refresh(); } }) },
       ...(segment === 'library' ? [{ label: 'Select comics…', onPress: () => setSelecting(true) }] : []),
       { label: 'New collection…', onPress: () => setPrompt({ title: 'New collection', submitLabel: 'Create', onSubmit: (name) => { createCollection(name); feedback.success(); refresh(); } }) },

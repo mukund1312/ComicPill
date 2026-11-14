@@ -1,5 +1,5 @@
 // The Library tab: one tidy hub that points at everything you own — files on this phone, your collection, imports, and the extra tools.
-import { deviceIcon, onMyDevice } from '../../lib/platform/device';
+import { deviceIcon, deviceName, onMyDevice } from '../../lib/platform/device';
 import { useCallback, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
@@ -39,13 +39,24 @@ export default function LibraryHubScreen() {
     { icon: 'albums-outline', label: 'My Collection', sub: plural(counts.collection, 'comic', 'comics'), onPress: () => router.push('/collection') },
     { icon: 'folder-open-outline', label: 'Collections', sub: plural(counts.collections, 'collection', 'collections'), onPress: () => router.push('/reader/collections') },
   ];
+  // Two ways to bring files in, said plainly: a copy lives on the phone (reads offline, uses space); a link stays in the cloud app and is
+  // fetched when opened. Each then asks whether it's a few files or a whole folder, instead of four near-identical rows.
+  const busy = () => { if (running) Alert.alert('An import is running', 'Wait for it to finish, or press Stop on the bar at the bottom.'); return running; };
+  const filesOrFolder = (title: string, message: string, files: () => void, folder: () => void) => {
+    if (busy()) return;
+    Alert.alert(title, message, [{ text: 'Cancel', style: 'cancel' }, { text: 'A whole folder', onPress: folder }, { text: 'Files', onPress: files }]);
+  };
   const imports: Row[] = [
-    { icon: 'cloud-download-outline', label: 'Link a whole folder (Drive, iCloud, Files)', sub: 'Open the folder’s parent, tap the folder, press Open. Every comic inside comes in', tint: '#3B82F6', onPress: () => { if (!running) void runImport('Linking folder', 'Linked', (p) => linkWithCovers(() => pickAndLinkFolder(p), p)); } },
-    { icon: 'cloud-outline', label: running ? 'An import is running…' : 'Link comic files', sub: 'Pick individual files; they stay in the cloud', tint: '#3B82F6', onPress: () => { if (!running) void runImport('Linking', 'Linked', (p) => linkWithCovers(() => pickAndLinkComics(p), p)); } },
-    { icon: 'document-outline', label: 'Import from Files', sub: 'Keeps a copy on this device', tint: '#3B82F6', onPress: () => { if (!running) void runImport('Importing', 'Imported', (p) => pickAndImportComics(p)); } },
-    { icon: 'folder-outline', label: 'Import a folder', tint: '#3B82F6', onPress: () => { if (!running) void runImport('Importing folder', 'Imported', (p) => pickAndImportFolder(p)); } },
-    { icon: 'server-outline', label: 'Connect a server (OPDS)', onPress: () => router.push('/reader/opds') },
-    { icon: 'scan-outline', label: 'Scan Shelf', sub: 'Photograph your shelf and add many comics at once', onPress: () => router.push('/scan') },
+    { icon: deviceIcon(), label: `Copy to this ${deviceName()}`, sub: 'Reads offline. Uses space here. Pick files or a whole folder.', tint: '#3B82F6',
+      onPress: () => filesOrFolder(`Copy to this ${deviceName()}`, 'ComicPill keeps its own copy, so it reads without a connection.',
+        () => void runImport('Importing', 'Imported', (p) => pickAndImportComics(p)),
+        () => void runImport('Importing folder', 'Imported', (p) => pickAndImportFolder(p))) },
+    { icon: 'cloud-outline', label: 'Link from the cloud', sub: 'Drive, iCloud, Dropbox. Files stay there and download when you open them.', tint: '#3B82F6',
+      onPress: () => filesOrFolder('Link from the cloud', 'Nothing is copied now. Each comic downloads the first time you open it, and your cloud app keeps the original.',
+        () => void runImport('Linking', 'Linked', (p) => linkWithCovers(() => pickAndLinkComics(p), p)),
+        () => void runImport('Linking folder', 'Linked', (p) => linkWithCovers(() => pickAndLinkFolder(p), p))) },
+    { icon: 'server-outline', label: 'Connect a comic server', sub: 'Komga, Kavita, Calibre-Web or any OPDS server you run.', onPress: () => router.push('/reader/opds') },
+    { icon: 'scan-outline', label: 'Scan your shelf', sub: 'Photograph physical comics to list them in My Collection.', onPress: () => router.push('/scan') },
   ];
   const tools: Row[] = [
     { icon: 'list-outline', label: 'Playlists', onPress: () => router.push('/playlists') },
@@ -82,7 +93,7 @@ export default function LibraryHubScreen() {
     <AppShell active="library" title="Library">
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {group('Libraries', 'libraries', libraries, 0)}
-        {group('Import', 'imports', imports, 80)}
+        {group('Add comics', 'imports', imports, 80)}
         {group('Tools', 'tools', tools, 160)}
       </ScrollView>
     </AppShell>

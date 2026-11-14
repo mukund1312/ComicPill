@@ -138,3 +138,13 @@ Test comic: any `.cbz` with several panels per page and lettered balloons (the c
 - [ ] Onboarding "Want a hidden shelf?" step (after the storage step) — covered by the stage-order unit test only, not run on a device.
 - [x] Haptics recorded by the system (dumpsys vibrator_manager) for menus, selection, hide, unlock; the emulator plays them at 0 strength, so feel them on a real phone.
 - Note: on phones with gesture navigation, start the swipe away from the very right edge — a swipe from the edge itself is Android's Back gesture.
+
+## Design fixes (15 Nov 2026)
+
+- [x] Fresh install (Android 8): opens on the welcome screen, no sign-up. Settings → Create an account (optional) → signed in, email shown → Delete account → second prompt offers clearing reading data (Keep it) → relaunch opens Today, no sign-in.
+- [x] Library → Add comics: four rows (Copy to this phone / Link from the cloud / Connect a comic server / Scan your shelf); the first two ask Files or A whole folder.
+- [x] My Collection header: Search, Add, More only; Select · Filter · Sort written out above the grid. Discover: Search, "Wishlist" and "Filter" with words; Comics per row inside the filter sheet.
+- [x] Library sub-pages (Playlists, Wallet, Mind Space, Compare) have a back button; tapping the Library tab from them returns to Library home.
+- [x] Settings regrouped: You (profile, notifications, account), Reading, Privacy & security, Permissions, App, Help.
+- [x] Reader balloon bar: "Balloon 1 of 6 · reading left to right →", bigger A−/A+, page icon; one-time tip on the first lifted balloon, again from ⋯ → "What do the balloon buttons do?".
+- [x] Help & feedback: "Email it" opens the email app addressed to the support address (Gmail opened on the emulator); "Save for later" keeps notes; "Email all" sends saved notes.
