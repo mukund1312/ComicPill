@@ -516,7 +516,13 @@
       "./plugins/withBaselineProfile",
       "expo-sharing",
       "./plugins/withReleaseSigning",
-      "./plugins/withIosScenes"
+      "./plugins/withIosScenes",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "ComicPill uses Face ID to open your locked comics, folders and hidden shelf."
+        }
+      ]
     ]
   }
 }

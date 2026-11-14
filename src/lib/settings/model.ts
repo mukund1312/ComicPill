@@ -20,6 +20,8 @@ export interface AppSettings {
   aiModel: string;
   /** Once a day, ask GitHub whether a newer APK exists (Android sideload builds only). */
   checkForUpdates: boolean;
+  /** Locked comics, locked folders and the hidden shelf open with a fingerprint (or face) when the phone has one set up; the password always works too. */
+  biometricUnlock: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -33,6 +35,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   aiProvider: 'anthropic',
   aiModel: DEFAULT_MODEL.anthropic,
   checkForUpdates: true,
+  biometricUnlock: true,
 };
 
 const DEPTHS: ArcDepth[] = ['essential', 'recommended', 'completionist'];
@@ -60,6 +63,7 @@ export function sanitizeSettings(raw: unknown): AppSettings {
     aiProvider,
     aiModel,
     checkForUpdates: bool(r.checkForUpdates, d.checkForUpdates),
+    biometricUnlock: bool(r.biometricUnlock, d.biometricUnlock),
   };
 }
 

@@ -39,7 +39,7 @@
   <p>If you connect a comic server you run (Komga, Kavita, Calibre-Web or another OPDS server), ComicPill contacts only that address, to list and download comics you choose. A server's username and password are kept in your phone's secure storage. Servers on your home network can use plain <code>http</code>; that is your choice and your network. ComicPill sends nothing about this to us.</p>
 
   <h2>Hidden shelf, passcode and locks</h2>
-  <p>You can hide comics on a hidden shelf behind a password, lock single comics or folders, and ask for a passcode when the app opens. These passwords are stored only on your phone as salted hashes. They keep comics out of casual view; they do not encrypt the files. A forgotten hidden-shelf password can't be recovered, so starting over deletes the hidden comics.</p>
+  <p>You can hide comics on a hidden shelf behind a password, lock single comics or folders, and ask for a passcode when the app opens. Locked items and the hidden shelf can also be opened with your fingerprint or face; that check is done by your phone and ComicPill only learns whether it matched. These passwords are stored only on your phone as salted hashes. They keep comics out of casual view; they do not encrypt the files. A forgotten hidden-shelf password can't be recovered, so starting over deletes the hidden comics.</p>
 
   <h2>Photos and the camera</h2>
   <p><strong>ComicPill never reads your photo gallery.</strong> When you choose a picture (a cover, a profile photo, a screenshot for Mind Space), your phone's own photo picker shows its screen and hands the app only the pictures you selected. The camera is used only when you tap to photograph your comic shelf for scanning, or to take a profile photo. Shelf scanning reads the spine text on your phone; the picture is not uploaded.</p>
@@ -56,7 +56,7 @@
     <li><strong>Notifications</strong> — for the daily reading reminder and the weekly Mind Space plan, if you turn them on. They are scheduled on your phone; nothing is sent from a server.</li>
     <li><strong>Internet</strong> — for the lookups, servers and optional AI features described on this page.</li>
     <li><strong>Vibration</strong> — for light haptic feedback (you can turn it off in Settings → Accessibility).</li>
-    <li><strong>Biometrics</strong> — only if you use the app passcode, to unlock with your fingerprint or face.</li>
+    <li><strong>Biometrics</strong> — to open locked comics, locked folders and the hidden shelf with your fingerprint or face, if your phone has one set up (Settings → Unlock with fingerprint). The check happens in your phone's own secure hardware; ComicPill never sees or stores your fingerprint.</li>
   </ul>
   <p>ComicPill does not request access to your photos, videos, files, contacts, location or microphone. You can change any permission at any time in your phone's Settings.</p>
 

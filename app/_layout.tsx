@@ -2,6 +2,7 @@
 // (fonts, gesture root, local db init) but leaves screen composition to the
 // frontend build (see /docs for the design blueprint and API surface).
 import { useEffect, useState } from 'react';
+import { relockAll } from '../src/lib/reader/lock';
 import { Stack, router } from 'expo-router';
 import { installNavigationGuard } from '../src/lib/navigation/tapGuard';
 
@@ -10,7 +11,7 @@ installNavigationGuard(router);
 import { StatusBar } from 'expo-status-bar';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { View, ActivityIndicator, Dimensions } from 'react-native';
+import { View, ActivityIndicator, Dimensions, AppState } from 'react-native';
 import {
   useFonts,
   Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, Inter_800ExtraBold,
@@ -56,6 +57,12 @@ export default function RootLayout() {
     installCrashLog();
     return true;
   });
+
+  // Locked comics and folders opened this session lock again once the app goes to the background, as their lock message promises.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => { if (state === 'background') relockAll(); });
+    return () => sub.remove();
+  }, []);
 
   // The app is portrait-only; app.json allows rotation so the reader can unlock it for two-page landscape.
   // Phones stay portrait (the reader unlocks it for two-page landscape); tablets rotate freely.

@@ -55,7 +55,7 @@ The app has **not** been independently security reviewed unless you have had tha
 ## Permissions declarations
 
 The release manifest requests only: Camera, Internet, Network state, Vibrate, Wake lock, Notifications (Android 13+), Foreground service,
-Biometric (optional passcode), Boot completed (reschedule reminders) and Google's standard notification/install-referrer ones.
+Biometric (fingerprint unlock for locked comics, folders and the hidden shelf), Boot completed (reschedule reminders) and Google's standard notification/install-referrer ones.
 There are **no** photo, video, storage, location, contacts, microphone or SMS permissions, so no "sensitive permissions" or
 photo-and-video declaration form should appear. If Play Console asks about one anyway, tell me which and I will check the build.
 

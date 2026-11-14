@@ -158,3 +158,12 @@ Test comic: any `.cbz` with several panels per page and lettered balloons (the c
 - [x] Today: eyebrow is "TONIGHT'S PICK" (no internal bucket name); a new reader is told "A good place to start" instead of "Fits your taste" (covered by a unit test); mood chips render.
 - [x] expo install --fix: 14 packages on the SDK 57 versions; expo-doctor 21/21; tsc, lint (0 errors), 1,095 tests pass.
 - Not done here: pushing the privacy page to GitHub Pages and the Play Console forms (see docs/PLAY-CONSOLE.md).
+
+## Fingerprint unlock (15 Nov 2026, phone emulator with an enrolled fingerprint)
+
+- [x] Swipe to the hidden shelf: the system fingerprint prompt appears; a touch opens the shelf fully.
+- [x] Tap a locked comic: fingerprint prompt; a touch opens it in the reader.
+- [x] Cancel the prompt ("Use password"): ComicPill's password box appears, and the password opens it.
+- [x] Leaving the app (Home) and coming back locks the comic again (relockAll was never called before; now on going to the background).
+- [x] Settings → Privacy & security → "Unlock with fingerprint" (shown only when the phone has one); on by default.
+- [ ] iPhone/iPad Face ID: built in (NSFaceIDUsageDescription set) but not tried on a device.

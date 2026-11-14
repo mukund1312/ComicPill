@@ -9,6 +9,7 @@ import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withSpring } from '
 import { ActionSheet, PromptModal, type SheetOption } from './dialogs';
 import { DragStack, STACK_H, STACK_W } from './DragStack';
 import { feedback } from '../../lib/platform/feedback';
+import { biometricsOn, confirmWithBiometrics } from '../../lib/platform/biometrics';
 import { onMyDevice } from '../../lib/platform/device';
 import { AppShell } from '../../ui/AppShell';
 import { HeaderActions, HeaderButton } from '../../ui/Icon';
@@ -114,8 +115,13 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
       else { feedback.warning(); Alert.alert('Wrong password', 'Try again.'); }
     },
   });
+  // A fingerprint opens it when the phone has one (and it's on in Settings); "Use password", a failed scan or no fingerprint at all falls back to the password.
   const requireUnlock = (kind: 'comic' | 'folder', id: string, name: string, locked: boolean, then: () => void) => {
-    if (!locked || isUnlocked(kind, id)) then(); else askPassword(kind, id, name, then);
+    if (!locked || isUnlocked(kind, id)) { then(); return; }
+    void (async () => {
+      if ((await biometricsOn()) && (await confirmWithBiometrics(`“${name}”`))) { feedback.success(); markUnlocked(kind, id); refresh(); then(); return; }
+      askPassword(kind, id, name, then);
+    })();
   };
   const chooseLock = (kind: 'comic' | 'folder', id: string, name: string) => setPrompt({
     title: `Choose a password for “${name}”`, secure: true, submitLabel: 'Next',

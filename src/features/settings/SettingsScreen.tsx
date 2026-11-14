@@ -1,7 +1,7 @@
 // Settings. Every row does something real: switches persist and take effect,
 // links open real screens, actions confirm before anything destructive, and
 // permission rows show the phone's actual status and act on it.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Share } from 'react-native';
 import { router } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
@@ -18,6 +18,7 @@ import { exportFileName, serializeExport, summarizeExport } from '../../lib/sett
 import { PERMISSION_COPY, STATE_LABEL, type PermissionKey } from '../../lib/platform/permissionsCore';
 import { syncReminder } from '../../lib/platform/reminders';
 import { feedback } from '../../lib/platform/feedback';
+import { biometricName, biometricsAvailable } from '../../lib/platform/biometrics';
 import { clearUserData, exportUserData } from '../../lib/db/queries/userData';
 import { DEPTHS } from '../arc/useArc';
 import type { ArcDepth } from '../../lib/engines/arc/types';
@@ -66,6 +67,9 @@ export default function SettingsScreen() {
   const setDigitalOnly = useTravelMode((t) => t.setDigitalOnly);
   const perms = usePermissions();
   const ai = useAiConfig();
+  // Only offered on a phone with a fingerprint (or face) set up.
+  const [bioName, setBioName] = useState<string | null>(null);
+  useEffect(() => { let live = true; void biometricsAvailable().then(async (ok) => { if (ok && live) setBioName(await biometricName()); }); return () => { live = false; }; }, []);
 
   const [sheet, setSheet] = useState<null | 'depth' | 'language' | 'currency' | 'export'>(null);
   const [exportNote, setExportNote] = useState('');
@@ -161,6 +165,7 @@ export default function SettingsScreen() {
 
       <SettingsSection title="Privacy & security" footer={`Everything you add stays on this device. ComicPill only goes online when you ask it to: looking up a comic, reading from your own comic servers, or using your own AI key${updatesSupported() ? ', plus a daily check for a newer version' : ''}.`}>
         <LinkRow label="Passcode" detail="Ask for a passcode when ComicPill opens." onPress={() => router.push('/passcode')} />
+        {bioName ? <ToggleRow label={`Unlock with ${bioName}`} detail="Open locked comics, locked folders and the hidden shelf without typing the password. The password always works too." value={s.biometricUnlock} onChange={(v) => s.update({ biometricUnlock: v })} /> : null}
         <ToggleRow label="Personalized recommendations" detail="Use what ComicPill has learned about your taste. Off: Today and Compare treat you as a new reader." value={s.personalizedRecommendations} onChange={(v) => s.update({ personalizedRecommendations: v })} />
         {updatesSupported() ? <ToggleRow label="Check for updates" detail="Once a day, asks GitHub if a newer ComicPill exists. Sends no personal data." value={s.checkForUpdates} onChange={(v) => s.update({ checkForUpdates: v })} /> : null}
         <InfoRow label="Analytics" value="None collected" detail="This version doesn’t track your usage." />

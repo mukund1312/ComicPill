@@ -10,6 +10,7 @@ import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSequence, 
 import { scheduleOnRN } from 'react-native-worklets';
 import { feedback } from '../../lib/platform/feedback';
 import { onMyDevice } from '../../lib/platform/device';
+import { biometricName, biometricsOn, confirmWithBiometrics } from '../../lib/platform/biometrics';
 import { Icon } from '../../ui/Icon';
 import { Button } from '../../ui/primitives';
 import { useAppearance, type ThemeColors, type TypographyPreset } from '../../ui/theme';
@@ -63,6 +64,9 @@ export function HiddenShelf({ enabled, onOpenComic, onShelfChanged, children }: 
   const [sheet, setSheet] = useState<{ title?: string; options: SheetOption[] } | null>(null);
 
   const reload = useCallback(() => setComics(listHiddenComics()), []);
+  // With a fingerprint set up (and allowed in Settings) the half-open panel asks for it first; the password is always there too.
+  const [bio, setBio] = useState<string | null>(null);
+  useEffect(() => { let live = true; void biometricsOn().then(async (on) => { if (on && live) setBio(await biometricName()); }); return () => { live = false; }; }, []);
 
   // `animate` is off when the app is leaving the foreground: animations don't run in the background, so the panel would stay drawn where it was.
   const goTo = useCallback((next: PanelStop, animate = true) => {
@@ -76,6 +80,9 @@ export function HiddenShelf({ enabled, onOpenComic, onShelfChanged, children }: 
     if (next === 'closed') { setPassword(''); setWrong(false); setSetup(null); }
   }, [W, offset, rest]);
   const close = useCallback(() => goTo('closed'), [goTo]);
+  const unlockWithBio = useCallback(async () => {
+    if (await confirmWithBiometrics('the hidden shelf')) { feedback.success(); setPassword(''); setWrong(false); reload(); goTo('open'); }
+  }, [reload, goTo]);
   const stayPut = useCallback(() => goTo(stop), [goTo, stop]);
 
   // Back closes the panel instead of leaving the shelf; leaving the app locks it.
@@ -87,7 +94,8 @@ export function HiddenShelf({ enabled, onOpenComic, onShelfChanged, children }: 
   }, [stop, close]));
   useEffect(() => {
     if (stop === 'closed') return undefined;
-    const sub = AppState.addEventListener('change', (s) => { if (s !== 'active') goTo('closed', false); });
+    // Only a real trip to the background locks it: iOS reports 'inactive' while Face ID is asking.
+    const sub = AppState.addEventListener('change', (s) => { if (s === 'background') goTo('closed', false); });
     return () => sub.remove();
   }, [stop, goTo]);
 
@@ -98,7 +106,8 @@ export function HiddenShelf({ enabled, onOpenComic, onShelfChanged, children }: 
     const next = settleAfterSwipe(dx, vx, W);
     if (next === 'half') feedback.tap();
     goTo(next);
-  }, [W, goTo]);
+    if (next === 'half' && bio && hiddenShelfReady()) void unlockWithBio();
+  }, [W, goTo, bio, unlockWithBio]);
   // Right-to-left on the shelf pulls the panel out. It only starts once the finger has clearly gone sideways, so scrolling is untouched.
   const pullOut = useMemo(() => Gesture.Pan()
     .enabled(enabled && stop === 'closed')
@@ -186,10 +195,11 @@ export function HiddenShelf({ enabled, onOpenComic, onShelfChanged, children }: 
     <Animated.View style={[styles.halfBody, { width: W / 2 }]}>
       <Icon name="lock-closed" size={32} color={c.primary} />
       <Text style={styles.halfTitle}>Hidden shelf</Text>
-      <TextInput autoFocus value={password} onChangeText={(t) => { setPassword(t); setWrong(false); }} onSubmitEditing={unlock} secureTextEntry placeholder="Password" placeholderTextColor={c.textMuted}
+      <TextInput autoFocus={!bio} value={password} onChangeText={(t) => { setPassword(t); setWrong(false); }} onSubmitEditing={unlock} secureTextEntry placeholder="Password" placeholderTextColor={c.textMuted}
         autoCapitalize="none" autoCorrect={false} returnKeyType="go" submitBehavior="submit" style={[styles.input, wrong && { borderColor: c.destructive }]} accessibilityLabel="Hidden shelf password" />
       {wrong ? <Text style={styles.wrong}>Wrong password</Text> : null}
       <Button onPress={unlock} disabled={!password}>Unlock</Button>
+      {bio ? <Button kind="secondary" onPress={() => { void unlockWithBio(); }}>{`Use ${bio}`}</Button> : null}
       <Pressable onPress={forgot} hitSlop={8}><Text style={styles.link}>Forgot it?</Text></Pressable>
     </Animated.View>
   );
