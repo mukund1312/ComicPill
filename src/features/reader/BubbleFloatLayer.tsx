@@ -10,8 +10,11 @@ export type FloatTarget = { key: string; image: SkImage; from: Rect; to: Rect };
 const OUT_MS = 150;
 const IN_MS = 320;
 const COMMIT_MS = 140;
-const SCRIM = 0.22;
+/** How dark the page goes behind a lifted balloon: enough that the balloon is clearly the subject, the page still readable as context. */
+const SCRIM = 0.6;
 const RESIZE_MS = 220;
+/** Mitchell cubic resampling: an enlarged balloon keeps crisp lettering instead of the soft look of plain linear scaling. */
+const CUBIC = { B: 1 / 3, C: 1 / 3 };
 
 type Props = {
   /** The balloon up close, and the ones either side of it in reading order (so a finger can slide between them). */
@@ -144,12 +147,12 @@ function Lifted({ id, target, p, skim, curId, prevId, nextId }: { id: number; ta
   const transform = useDerivedValue(() => [{ scale: 1 + (geo.value.s - 1) * progress.value }]);
   const origin = useDerivedValue(() => ({ x: geo.value.px, y: geo.value.py }));
   const opacity = useDerivedValue(() => (progress.value > 0.002 ? 1 : 0));
-  const blur = useDerivedValue(() => 2 + 14 * progress.value);
-  const dy = useDerivedValue(() => 1 + 10 * progress.value);
+  const blur = useDerivedValue(() => 2 + 22 * progress.value);
+  const dy = useDerivedValue(() => 1 + 14 * progress.value);
   return (
-    <Group opacity={opacity} layer={<Paint><Shadow dx={0} dy={dy} blur={blur} color="rgba(0,0,0,0.55)" /></Paint>}>
+    <Group opacity={opacity} layer={<Paint><Shadow dx={0} dy={dy} blur={blur} color="rgba(0,0,0,0.75)" /></Paint>}>
       <Group transform={transform} origin={origin}>
-        <SkiaImage image={target.image} x={target.from.x} y={target.from.y} width={target.from.w} height={target.from.h} fit="fill" />
+        <SkiaImage image={target.image} x={target.from.x} y={target.from.y} width={target.from.w} height={target.from.h} fit="fill" sampling={CUBIC} />
       </Group>
     </Group>
   );

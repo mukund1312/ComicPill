@@ -194,3 +194,8 @@ Test comic: any `.cbz` with several panels per page and lettered balloons (the c
 ## Opening animation (15 Nov 2026)
 
 - [x] The "ComicPill" wordmark is a pre-rendered transparent PNG (assets/comicpill-wordmark.png, Inter ExtraBold, red "Pill"), not live text. Sequence: icon centred like the native splash → slides aside as the wordmark unrolls → light sweep over the lettering → logo pushes in while dissolving into Today. Checked frame by frame on the emulator.
+
+## Balloon pop-up polish (15 Nov 2026)
+
+- [x] Lifted balloons get a clean 2.4px ink outline traced around the silhouette, lettering is sharpened (unsharp mask) and drawn with cubic resampling, the page dims to 60% behind it, and the shadow is deeper. Before/after compared on MidnightSons p.70 (balloons 1 and 4).
+- Not changed: the detector model and the silhouette tracing. Balloons with no outline (captions straight on art) still lift as a rounded card.

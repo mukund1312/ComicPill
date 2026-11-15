@@ -104,15 +104,20 @@ function findSilhouette(rgba: Uint8Array, w: number, h: number): Silhouette | nu
   return mask ? { alpha: mask.alpha, sw, sh } : null;
 }
 
+/** Width of the ink line drawn around a silhouette, in cut-out pixels: the clean, printed edge a lifted balloon wears. */
+const RIM_PX = 2.4;
+/** How much the lettering is sharpened (an unsharp mask on the cut-out), so it stays crisp when the balloon is enlarged. */
+const SHARPEN = 0.45;
+
 function build(rgba: Uint8Array, w: number, h: number, mask: Silhouette | null, crop: Bubble, win?: { x0: number; y0: number; x1: number; y1: number }): Extracted | null {
   const padX = 0.006; const padY = 0.008;
   const wx0 = win ? Math.max(0, win.x0 - padX) * w : 0; const wx1 = win ? Math.min(1, win.x1 + padX) * w : w;
   const wy0 = win ? Math.max(0, win.y0 - padY) * h : 0; const wy1 = win ? Math.min(1, win.y1 + padY) * h : h;
 
-  const out = new Uint8Array(w * h * 4);
+  // 1. The shape: the silhouette stretched back to full size with a crisp edge (or a rounded card when there is none).
+  const alpha = new Float32Array(w * h);
+  const sh = mask ? mask.sh : 1; const sw = mask ? mask.sw : 1;
   for (let y = 0; y < h; y++) {
-    // Which two rows of the small mask this row sits between, and how far between.
-    const sh = mask ? mask.sh : 1; const sw = mask ? mask.sw : 1;
     const fy = Math.min(sh - 1, Math.max(0, (y + 0.5) / MASK_SHRINK - 0.5)); const y0 = Math.floor(fy); const y1 = Math.min(sh - 1, y0 + 1); const ty = fy - y0;
     for (let x = 0; x < w; x++) {
       let a: number;
@@ -123,12 +128,58 @@ function build(rgba: Uint8Array, w: number, h: number, mask: Silhouette | null, 
         a = Math.max(0, Math.min(255, (v - 128) * 3 + 128)); // steepen the soft upsampled edge so it is crisp but not stair-stepped
       } else a = roundedAlpha(x - wx0, y - wy0, wx1 - wx0, wy1 - wy0);
       if (x < wx0 || x >= wx1 || y < wy0 || y >= wy1) a = 0;
-      const i = (y * w + x) * 4;
-      out[i] = (rgba[i] * a) / 255; out[i + 1] = (rgba[i + 1] * a) / 255; out[i + 2] = (rgba[i + 2] * a) / 255; out[i + 3] = a; // premultiplied
+      alpha[y * w + x] = a / 255;
     }
+  }
+
+  // 2. The ink rim: how far outside the shape each pixel is, within RIM_PX (a small distance pass), so the line has a smooth, even width.
+  const rim = mask ? rimAlpha(alpha, w, h, RIM_PX) : null;
+
+  // 3. Lettering sharpened (unsharp mask against a 3×3 blur), only inside the shape.
+  const out = new Uint8Array(w * h * 4);
+  const INK = 14; // the outline's colour: near-black, like printed ink
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const k = y * w + x; const i = k * 4;
+    const a = alpha[k];
+    let r = rgba[i]; let g = rgba[i + 1]; let b = rgba[i + 2];
+    if (a > 0 && x > 0 && y > 0 && x < w - 1 && y < h - 1) {
+      let br = 0; let bg = 0; let bb = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const j = ((y + dy) * w + (x + dx)) * 4; br += rgba[j]; bg += rgba[j + 1]; bb += rgba[j + 2]; }
+      r = clamp(r + (r - br / 9) * SHARPEN); g = clamp(g + (g - bg / 9) * SHARPEN); b = clamp(b + (b - bb / 9) * SHARPEN);
+    }
+    // Composite: the balloon over its ink rim (premultiplied).
+    const ra = rim ? rim[k] * (1 - a) : 0;
+    const A = a + ra;
+    out[i] = Math.round((r * a + INK * ra)); out[i + 1] = Math.round((g * a + INK * ra)); out[i + 2] = Math.round((b * a + INK * ra)); out[i + 3] = Math.round(A * 255);
   }
   const image = Skia.Image.MakeImage({ width: w, height: h, colorType: ColorType.RGBA_8888, alphaType: AlphaType.Premul }, Skia.Data.fromBytes(out), w * 4);
   return image ? { image, crop, silhouette: !!mask } : null;
+}
+
+const clamp = (v: number) => (v < 0 ? 0 : v > 255 ? 255 : v);
+
+/**
+ * The outline band around a shape: 1 within `r` pixels outside it, fading over the last pixel, 0 beyond. A two-pass chamfer distance
+ * (3-4 weights) from the shape's solid part is close enough to a true circle for a line this thin.
+ */
+function rimAlpha(alpha: Float32Array, w: number, h: number, r: number): Float32Array {
+  const BIG = 1e6; const d = new Float32Array(w * h);
+  for (let k = 0; k < d.length; k++) d[k] = alpha[k] >= 0.5 ? 0 : BIG;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const k = y * w + x; let v = d[k];
+    if (x > 0) v = Math.min(v, d[k - 1] + 3);
+    if (y > 0) { v = Math.min(v, d[k - w] + 3); if (x > 0) v = Math.min(v, d[k - w - 1] + 4); if (x < w - 1) v = Math.min(v, d[k - w + 1] + 4); }
+    d[k] = v;
+  }
+  for (let y = h - 1; y >= 0; y--) for (let x = w - 1; x >= 0; x--) {
+    const k = y * w + x; let v = d[k];
+    if (x < w - 1) v = Math.min(v, d[k + 1] + 3);
+    if (y < h - 1) { v = Math.min(v, d[k + w] + 3); if (x < w - 1) v = Math.min(v, d[k + w + 1] + 4); if (x > 0) v = Math.min(v, d[k + w - 1] + 4); }
+    d[k] = v;
+  }
+  const out = new Float32Array(w * h);
+  for (let k = 0; k < out.length; k++) { const dist = d[k] / 3; out[k] = dist <= r ? 1 : dist >= r + 1 ? 0 : r + 1 - dist; }
+  return out;
 }
 
 /** A rounded-rectangle alpha for when no silhouette is found. */
