@@ -5,12 +5,14 @@ import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSheetDrag } from '../../ui/sheetDrag';
 import { feedback } from '../../lib/platform/feedback';
-import { color, font, radius, space, type } from '../../ui/tokens';
+import { font, radius, space, type } from '../../ui/tokens';
+import { useThemed, type Palette } from '../../ui/theme';
 
 export type SheetOption = { label: string; onPress: () => void; destructive?: boolean; checked?: boolean };
 
 /** Bottom action sheet (Android has no Alert with more than three buttons). */
 export function ActionSheet({ visible, title, options, onClose }: { visible: boolean; title?: string; options: SheetOption[]; onClose: () => void }) {
+  const { styles } = useThemed(makeStyles);
   const insets = useSafeAreaInsets();
   const drag = useSheetDrag(onClose);
   // Never taller than the screen (a phone on its side is short): the list scrolls instead, and dragging the handle still closes it.
@@ -56,6 +58,7 @@ export function PromptModal({ visible, title, initial = '', placeholder, submitL
 }
 
 function PromptBody({ title, initial, placeholder, submitLabel, secure, onSubmit, onClose }: { title: string; initial: string; placeholder?: string; submitLabel: string; secure: boolean; onSubmit: (value: string) => void; onClose: () => void }) {
+  const { color, styles } = useThemed(makeStyles);
   const [value, setValue] = useState(initial);
   const field = useRef<TextInput>(null);
   // autoFocus alone is unreliable inside an Android Modal: ask again once the dialog has settled.
@@ -75,7 +78,7 @@ function PromptBody({ title, initial, placeholder, submitLabel, secure, onSubmit
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (color: Palette) => StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: '#000000aa', justifyContent: 'flex-end' },
   center: { justifyContent: 'center', padding: space.xl },
   sheet: { width: '100%', maxWidth: 560, alignSelf: 'center', backgroundColor: color.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, paddingTop: space.md, paddingHorizontal: space.lg },

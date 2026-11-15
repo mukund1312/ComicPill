@@ -1,15 +1,16 @@
 // Settings → Hidden shelf: set it up, change its password, turn it off, or start over after forgetting the password.
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { SettingsPage } from '../../ui/SettingsPage';
-import { ActionRow, InfoRow, SettingsSection, TextField } from '../../ui/settingsUi';
+import { ActionRow, InfoRow, SettingsSection, TextField, ToggleRow } from '../../ui/settingsUi';
 import { Button } from '../../ui/primitives';
 import { useAppearance } from '../../ui/theme';
 import { space } from '../../ui/tokens';
 import { feedback } from '../../lib/platform/feedback';
+import { askToUseBiometrics, biometricName, biometricsAvailable } from '../../lib/platform/biometrics';
 import {
-  changeHiddenShelfPassword, countHiddenComics, hiddenShelfReady, markHiddenShelfAsked, newPasswordProblem, resetHiddenShelf, setUpHiddenShelf, turnOffHiddenShelf,
+  changeHiddenShelfPassword, countHiddenComics, hiddenShelfReady, hiddenShelfUsesBiometrics, setHiddenShelfBiometrics, markHiddenShelfAsked, newPasswordProblem, resetHiddenShelf, setUpHiddenShelf, turnOffHiddenShelf,
 } from '../../lib/reader/hiddenShelf';
 import { onMyDevice } from '../../lib/platform/device';
 
@@ -22,7 +23,10 @@ export default function HiddenShelfScreen() {
   const [form, setForm] = useState<Form>(null);
   const [current, setCurrent] = useState(''); const [pw, setPw] = useState(''); const [again, setAgain] = useState('');
   const [error, setError] = useState<string | undefined>();
-  const reload = useCallback(() => { setReady(hiddenShelfReady()); setCount(countHiddenComics()); }, []);
+  const [bioName, setBioName] = useState<string | null>(null);
+  const [useBio, setUseBio] = useState(hiddenShelfUsesBiometrics);
+  useEffect(() => { let live = true; void biometricsAvailable().then(async (ok) => { if (ok && live) setBioName(await biometricName()); }); return () => { live = false; }; }, []);
+  const reload = useCallback(() => { setReady(hiddenShelfReady()); setCount(countHiddenComics()); setUseBio(hiddenShelfUsesBiometrics()); }, []);
   useFocusEffect(reload);
 
   const openForm = (f: Form) => { setForm(f); setCurrent(''); setPw(''); setAgain(''); setError(undefined); };
@@ -43,6 +47,7 @@ export default function HiddenShelfScreen() {
       return;
     }
     await setUpHiddenShelf(pw);
+    setHiddenShelfBiometrics(await askToUseBiometrics('the hidden shelf'));
     feedback.success(); openForm(null); reload();
   };
 
@@ -86,6 +91,7 @@ export default function HiddenShelfScreen() {
           <InfoRow label="Status" value="On" />
           <InfoRow label="Hidden comics" value={String(count)} />
           <ActionRow label="Open it now" detail={`Takes you to ${onMyDevice()}. Swipe from right to left.`} onPress={() => router.push('/reader/phone')} />
+          {bioName ? <ToggleRow label={`Open with ${bioName}`} detail="Off: only the password opens it." value={useBio} onChange={(v) => { setHiddenShelfBiometrics(v); setUseBio(v); }} /> : null}
           <ActionRow label="Change password" onPress={() => openForm('change')} />
           <ActionRow label="Forgot the password" detail="Deletes the hidden comics and lets you start over." onPress={forgot} />
           <ActionRow label="Turn off hidden shelf" detail="Moves every hidden comic back to your shelf." destructive onPress={() => openForm('off')} last />

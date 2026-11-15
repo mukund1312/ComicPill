@@ -304,8 +304,16 @@ export const getLock = (kind: LockKind, id: string): Lock | null => {
   return r?.lock_hash && r.lock_salt ? { hash: r.lock_hash, salt: r.lock_salt } : null;
 };
 
-export const setLock = (kind: LockKind, id: string, lock: Lock | null): void => {
-  sqlite.runSync(`UPDATE ${lockTable(kind)} SET lock_hash = ?, lock_salt = ? WHERE id = ?`, lock?.hash ?? null, lock?.salt ?? null, id);
+/** `bio`: whether this lock also opens with a fingerprint (the reader chooses when locking). */
+export const setLock = (kind: LockKind, id: string, lock: Lock | null, bio = true): void => {
+  sqlite.runSync(`UPDATE ${lockTable(kind)} SET lock_hash = ?, lock_salt = ?, lock_bio = ? WHERE id = ?`, lock?.hash ?? null, lock?.salt ?? null, bio ? 1 : 0, id);
+};
+
+export const lockUsesBiometrics = (kind: LockKind, id: string): boolean =>
+  (sqlite.getFirstSync<{ lock_bio: number | null }>(`SELECT lock_bio FROM ${lockTable(kind)} WHERE id = ?`, id)?.lock_bio ?? 1) === 1;
+
+export const setLockBiometrics = (kind: LockKind, id: string, on: boolean): void => {
+  sqlite.runSync(`UPDATE ${lockTable(kind)} SET lock_bio = ? WHERE id = ?`, on ? 1 : 0, id);
 };
 
 /** Where a comic's file lives now: a local path, or (for a cloud link) a cloud address with no local copy yet. */

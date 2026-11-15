@@ -8,7 +8,8 @@ import { space } from '../../ui/tokens';
 import { Icon } from '../../ui/Icon';
 import { feedback } from '../../lib/platform/feedback';
 import { onMyDevice } from '../../lib/platform/device';
-import { hiddenShelfReady, markHiddenShelfAsked, newPasswordProblem, setUpHiddenShelf } from '../../lib/reader/hiddenShelf';
+import { hiddenShelfReady, markHiddenShelfAsked, newPasswordProblem, setHiddenShelfBiometrics, setUpHiddenShelf } from '../../lib/reader/hiddenShelf';
+import { askToUseBiometrics } from '../../lib/platform/biometrics';
 
 export function HiddenShelfStage({ onNext }: { onNext: () => void }) {
   const { theme, typography } = useAppearance(); const c = theme.colors;
@@ -42,6 +43,7 @@ export function HiddenShelfStage({ onNext }: { onNext: () => void }) {
     const problem = newPasswordProblem(pw, again);
     if (problem) { feedback.warning(); setError(problem); return; }
     await setUpHiddenShelf(pw);
+    setHiddenShelfBiometrics(await askToUseBiometrics('the hidden shelf'));
     feedback.success(); onNext();
   };
   return (

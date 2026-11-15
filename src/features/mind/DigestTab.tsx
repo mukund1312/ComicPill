@@ -7,10 +7,12 @@ import type { Digest, DigestCard } from '../../lib/mind/engine/digest';
 import { getSeriesRow } from '../../lib/mind/queries';
 import { buildAndSaveDigest } from '../../lib/mind/digestDb';
 import { EmptyState } from '../../ui/primitives';
-import { color, font, space, type } from '../../ui/tokens';
+import { font, space, type } from '../../ui/tokens';
+import { useThemed, type Palette } from '../../ui/theme';
 import type { MindData } from './useMindData';
 
 export default function DigestTab({ data, refresh, goInbox }: { data: MindData; refresh: () => void; goInbox: () => void }) {
+  const { styles } = useThemed(makeStyles);
   const [viewing, setViewing] = useState<Digest | null>(null);
   const notQuite = useNotQuite(() => { try { buildAndSaveDigest(); } catch { /* keep the old one */ } refresh(); });
   const digest = viewing ?? data.digest;
@@ -39,6 +41,7 @@ export default function DigestTab({ data, refresh, goInbox }: { data: MindData; 
 }
 
 function PastWeeks({ past, onPick }: { past: Digest[]; onPick: (d: Digest) => void }) {
+  const { styles } = useThemed(makeStyles);
   return (
     <View>
       <SectionTitle>Past weeks</SectionTitle>
@@ -52,6 +55,7 @@ function PastWeeks({ past, onPick }: { past: Digest[]; onPick: (d: Digest) => vo
 }
 
 function DigestCardView({ card, compact, onNotQuite }: { card: DigestCard; compact?: boolean; onNotQuite: () => void }) {
+  const { styles } = useThemed(makeStyles);
   const known = !card.unverified || card.confidence !== 'low';
   return (
     <Card onPress={() => router.push(`/mind/series/${encodeURIComponent(card.seriesId)}`)}>
@@ -84,7 +88,7 @@ function DigestCardView({ card, compact, onNotQuite }: { card: DigestCard; compa
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (color: Palette) => StyleSheet.create({
   week: { color: color.muted, fontFamily: font.body, fontSize: type.caption },
   headline: { color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle, lineHeight: 24 },
   back: { color: color.accent, fontFamily: font.bodySemibold, fontSize: type.body },

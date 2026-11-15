@@ -3,14 +3,16 @@ import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { checkPassword, markUnlocked } from '../../lib/reader/lock';
 import { sha256 } from '../../lib/reader/lockCrypto';
-import { getLock } from '../../lib/reader/readerLibrary';
+import { getLock, lockUsesBiometrics } from '../../lib/reader/readerLibrary';
 import { Button } from '../../ui/primitives';
 import { biometricName, biometricsOn, confirmWithBiometrics } from '../../lib/platform/biometrics';
 import { feedback } from '../../lib/platform/feedback';
-import { color, font, radius, space, type } from '../../ui/tokens';
+import { font, radius, space, type } from '../../ui/tokens';
+import { useThemed, type Palette } from '../../ui/theme';
 
 /** In the way of a locked comic (or one in a locked folder), however the reader got here — shelf, link or Mind Space. */
 export function UnlockGate({ kind, id, name, onUnlocked }: { kind: 'comic' | 'folder'; id: string; name: string; onUnlocked: () => void }) {
+  const { color, styles } = useThemed(makeStyles);
   const [pw, setPw] = useState(''); const [wrong, setWrong] = useState(false); const [busy, setBusy] = useState(false);
   const [bio, setBio] = useState<string | null>(null); // the fingerprint button's name, once we know the phone has one
   const tryBiometrics = useCallback(async () => {
@@ -19,7 +21,7 @@ export function UnlockGate({ kind, id, name, onUnlocked }: { kind: 'comic' | 'fo
   // Offered straight away when there is a fingerprint; the password field stays underneath for "Use password".
   useEffect(() => {
     let live = true;
-    void (async () => { if (await biometricsOn()) { const n = await biometricName(); if (!live) return; setBio(n); void tryBiometrics(); } })();
+    void (async () => { if (lockUsesBiometrics(kind, id) && (await biometricsOn())) { const n = await biometricName(); if (!live) return; setBio(n); void tryBiometrics(); } })();
     return () => { live = false; };
   }, [tryBiometrics]);
   const submit = async () => {
@@ -41,7 +43,7 @@ export function UnlockGate({ kind, id, name, onUnlocked }: { kind: 'comic' | 'fo
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (color: Palette) => StyleSheet.create({
   root: { flex: 1, backgroundColor: color.bg, alignItems: 'center', justifyContent: 'center', padding: space.xl, gap: space.md },
   lock: { fontSize: 44 },
   title: { color: color.text, fontFamily: font.displayMedium, fontSize: type.title },

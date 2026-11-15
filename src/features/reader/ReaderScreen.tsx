@@ -55,7 +55,8 @@ import {
   type ReaderComic, type ReaderMode,
 } from '../../lib/reader/readerLibrary';
 import { listPresets, loadReaderSettings, saveReaderSettings, type ReaderSettings } from '../../lib/reader/readerSettings';
-import { color, font, radius, space, type } from '../../ui/tokens';
+import { font, radius, space, type } from '../../ui/tokens';
+import { useThemed, type Palette } from '../../ui/theme';
 
 type Sizes = Array<PageSize | null>;
 
@@ -74,6 +75,7 @@ async function loadSizes(comic: ReaderComic, source: ComicSource, isLive: () => 
 }
 
 export default function ReaderScreen() {
+  const { color, styles } = useThemed(makeStyles);
   const { id } = useLocalSearchParams<{ id: string }>();
   const [comic] = useState<ReaderComic | null>(() => (id ? getReaderComic(id) : null));
   const [source, setSource] = useState<ComicSource | null>(null);
@@ -187,6 +189,7 @@ const NO_BUBBLES: Record<number, Bubble[]> = {};
  * one activates, cancel ordinary buttons that sit over it, so a plain Pressable here would never fire.
  */
 function BarButton({ label, onPress, children }: { label: string; onPress: () => void; children: ReactNode }) {
+  const { styles } = useThemed(makeStyles);
   const tap = useMemo(() => Gesture.Tap().runOnJS(true).maxDuration(600).onEnd((_e, ok) => { if (ok) onPress(); }), [onPress]);
   return (
     <GestureDetector gesture={tap}>
@@ -203,6 +206,7 @@ function fadeTo(sv: SharedValue<number>, to: number, ms: number) { sv.value = wi
  * left for manga); `which` picks the left-hand or right-hand one so a bar can put its count between them.
  */
 function StepButton({ which, noun, rtl, onStep, before }: { which: 'left' | 'right'; noun: string; rtl: boolean; onStep: (d: Step) => void; before?: () => void }) {
+  const { styles } = useThemed(makeStyles);
   const forwardOnRight = nextSide(rtl ? 'rtl' : 'ltr') === 'right';
   const forward = (which === 'right') === forwardOnRight;
   return (
@@ -213,6 +217,7 @@ function StepButton({ which, noun, rtl, onStep, before }: { which: 'left' | 'rig
 }
 
 function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComic; source: ComicSource; sizes: Sizes | null; reading: Reading; settings: ReaderSettings }) {
+  const { styles } = useThemed(makeStyles);
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const total = source.pageCount;
@@ -1032,6 +1037,7 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
 }
 
 function PageImage({ source, page, width, height, crop }: { source: ComicSource; page: number; width: number; height: number; crop?: Panel | null }) {
+  const { styles } = useThemed(makeStyles);
   const [uri, setUri] = useState<string | null>(null);
   useEffect(() => {
     let live = true;
@@ -1066,6 +1072,7 @@ function PagedUnit({ register, source, unit, sizes, width, height, rtl, fit, bg,
 
 /** Webtoon strips lay out at full width; height comes from the known shape, or the image once it loads. */
 function WebtoonPage({ source, page, width, height, bg, onTap }: { source: ComicSource; page: number; width: number; height?: number; bg: string; onTap: () => void }) {
+  const { styles } = useThemed(makeStyles);
   const [uri, setUri] = useState<string | null>(null);
   const [ratio, setRatio] = useState(WEBTOON_FALLBACK_RATIO);
   useEffect(() => {
@@ -1081,6 +1088,7 @@ function WebtoonPage({ source, page, width, height, bg, onTap }: { source: Comic
 }
 
 function Scrubber({ page, total, rtl, onSeek }: { page: number; total: number; rtl: boolean; onSeek: (p: number) => void }) {
+  const { styles } = useThemed(makeStyles);
   const [trackWidth, setTrackWidth] = useState(1);
   const seek = (x: number) => {
     const f = Math.min(1, Math.max(0, x / trackWidth));
@@ -1100,7 +1108,7 @@ function Scrubber({ page, total, rtl, onSeek }: { page: number; total: number; r
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (color: Palette) => StyleSheet.create({
   bubbleBar: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   // Wraps to a second line rather than running off a narrow screen.
   bubblePill: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '94%', rowGap: space.xs, alignItems: 'center', gap: space.lg, paddingHorizontal: space.lg, paddingVertical: space.sm, borderRadius: radius.lg, backgroundColor: '#000000cc' },

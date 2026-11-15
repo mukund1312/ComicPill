@@ -3,7 +3,8 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { router, useFocusEffect } from 'expo-router';
 import { AppShell } from '../../ui/AppShell';
 import { Button, Input, Pill, Progress } from '../../ui/primitives';
-import { color, font, radius, space, type } from '../../ui/tokens';
+import { font, radius, space, type } from '../../ui/tokens';
+import { useThemed, type Palette } from '../../ui/theme';
 import { READING_ORDERS } from '../../lib/readingOrders/data';
 import { findOrders, summaryLine } from '../../lib/readingOrders/match';
 import { makePlaylistFrom, ownedWorks, viewOrder, type OrderView } from '../../lib/readingOrders/owned';
@@ -15,6 +16,7 @@ type Show = 'all' | 'essential' | 'missing';
  * optional, and which you already have in My Collection. Type what you want to read in the box to find it.
  */
 export default function ReadingOrdersScreen() {
+  const { styles } = useThemed(makeStyles);
   const [query, setQuery] = useState('');
   const [openId, setOpenId] = useState<string | null>(null);
   const [show, setShow] = useState<Show>('all');
@@ -55,6 +57,7 @@ export default function ReadingOrdersScreen() {
 }
 
 function Detail({ view, show, onShow }: { view: OrderView; show: Show; onShow: (s: Show) => void }) {
+  const { styles } = useThemed(makeStyles);
   const entries = view.entries.filter((e) => (show === 'essential' ? e.entry.role === 'essential' : show === 'missing' ? !e.owned : true));
   const make = (essentialOnly: boolean) => {
     const { added } = makePlaylistFrom(view, { essentialOnly });
@@ -92,7 +95,7 @@ function Detail({ view, show, onShow }: { view: OrderView; show: Show; onShow: (
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (color: Palette) => StyleSheet.create({
   content: { padding: space.lg, paddingBottom: 105, gap: space.sm },
   intro: { color: color.text, fontFamily: font.display, fontSize: 24, lineHeight: 30, maxWidth: 520 },
   search: { marginVertical: space.sm },

@@ -12,12 +12,14 @@ import { useMindSettings } from '../../lib/mind/settings';
 import { sqliteStore } from '../../lib/mind/sqliteStore';
 import { syncMind } from '../../lib/mind/sync';
 import { EmptyState } from '../../ui/primitives';
-import { color, font, radius, space, type } from '../../ui/tokens';
+import { font, radius, space, type } from '../../ui/tokens';
+import { useThemed, type Palette } from '../../ui/theme';
 import type { MindData } from './useMindData';
 
 const DAY = 24 * 60 * 60 * 1000;
 
 export default function InboxTab({ data, refresh }: { data: MindData; refresh: () => void }) {
+  const { color, styles } = useThemed(makeStyles);
   const settings = useMindSettings();
   const [busy, setBusy] = useState<string | null>(null);
   const [picked, setPicked] = useState<Set<string> | null>(null); // null = everything pre-selected
@@ -140,7 +142,7 @@ export default function InboxTab({ data, refresh }: { data: MindData; refresh: (
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (color: Palette) => StyleSheet.create({
   actions: { flexDirection: 'row', gap: space.sm, alignItems: 'center', flexWrap: 'wrap' },
   reviewTitle: { color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle, lineHeight: 24 },
   small: { color: color.muted, fontFamily: font.body, fontSize: 12, lineHeight: 17 },

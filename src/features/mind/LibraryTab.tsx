@@ -10,7 +10,8 @@ import type { ReadStatus } from '../../lib/mind/engine/types';
 import { makeScorer } from '../../lib/mind/taste';
 import { useMindSettings } from '../../lib/mind/settings';
 import { EmptyState, Pill } from '../../ui/primitives';
-import { color, font, space } from '../../ui/tokens';
+import { font, space } from '../../ui/tokens';
+import { useThemed, type Palette } from '../../ui/theme';
 import type { MindData } from './useMindData';
 
 type StatusFilter = 'all' | ReadStatus;
@@ -18,6 +19,7 @@ const STATUSES: Array<[StatusFilter, string]> = [['all', 'All'], ['planned', 'Pl
 const SCORES: Array<[number, string]> = [[0, 'Any score'], [70, '70+'], [85, '85+']];
 
 export default function LibraryTab({ data, refresh }: { data: MindData; refresh: () => void }) {
+  const { color, styles } = useThemed(makeStyles);
   const { width } = useWindowDimensions();
   const settings = useMindSettings();
   const [status, setStatus] = useState<StatusFilter>('all');
@@ -77,7 +79,7 @@ export default function LibraryTab({ data, refresh }: { data: MindData; refresh:
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (color: Palette) => StyleSheet.create({
   addRow: { flexDirection: 'row', gap: space.sm, alignItems: 'center' },
   pills: { gap: 8 },
   score: { position: 'absolute', bottom: 4, right: 4, backgroundColor: '#000000cc', borderRadius: 8 },

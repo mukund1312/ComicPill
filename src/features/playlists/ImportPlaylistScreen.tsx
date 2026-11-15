@@ -7,7 +7,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { importSharedPlaylist, type ImportResult } from '../../lib/db/queries/playlists';
 import { Button } from '../../ui/primitives';
-import { color, font, space, type } from '../../ui/tokens';
+import { font, space, type } from '../../ui/tokens';
+import { useThemed, type Palette } from '../../ui/theme';
 
 // One import per link per session: opening the same link again (or the screen mounting twice) shows the earlier result instead of adding a
 // second copy of the playlist.
@@ -21,6 +22,7 @@ function importOnce(code: string): ImportResult {
 }
 
 export default function ImportPlaylistScreen() {
+  const { styles } = useThemed(makeStyles);
   const { d } = useLocalSearchParams<{ d?: string }>();
   const [result, setResult] = useState<ImportResult | 'pending' | 'missing'>('pending');
 
@@ -53,7 +55,7 @@ export default function ImportPlaylistScreen() {
   </View>;
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (color: Palette) => StyleSheet.create({
   page: { flex: 1, backgroundColor: color.bg, alignItems: 'center', justifyContent: 'center', padding: space.xl, gap: space.sm },
   title: { color: color.text, fontFamily: font.display, fontSize: type.title, textAlign: 'center' },
   copy: { color: color.muted, fontFamily: font.body, fontSize: type.body, lineHeight: 22, textAlign: 'center' },

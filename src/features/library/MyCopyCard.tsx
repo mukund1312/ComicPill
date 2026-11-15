@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Eyebrow, Pill } from '../../ui/primitives';
-import { color, font, radius, space, type } from '../../ui/tokens';
+import { font, radius, space, type } from '../../ui/tokens';
+import { useThemed, type Palette } from '../../ui/theme';
 import { getMyCopy, saveMyCopy, type MyCopy } from '../../lib/db/queries/myCopy';
 import type { ReadStatus } from '../../lib/types/domain';
 import { feedback } from '../../lib/platform/feedback';
@@ -11,6 +12,7 @@ const RATING_WORDS = ['', 'Not for me', 'It was okay', 'Liked it', 'Really good'
 
 /** What the reader thinks of their own copy: whether they've read it, a star rating, and a comment. Saves as they go. */
 export function MyCopyCard({ workId }: { workId: string }) {
+  const { color, styles } = useThemed(makeStyles);
   const [copy, setCopy] = useState<MyCopy>(() => getMyCopy(workId));
   const [draft, setDraft] = useState(copy.notes);
   const update = (patch: Partial<MyCopy>) => { saveMyCopy(workId, patch); setCopy((c) => ({ ...c, ...patch })); };
@@ -37,7 +39,7 @@ export function MyCopyCard({ workId }: { workId: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (color: Palette) => StyleSheet.create({
   card: { backgroundColor: color.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: color.border, padding: space.lg, gap: space.md, marginBottom: space.lg },
   pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   stars: { flexDirection: 'row', alignItems: 'center', gap: 6 },

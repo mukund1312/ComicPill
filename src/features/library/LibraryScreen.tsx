@@ -10,7 +10,8 @@ import { HeaderActions, HeaderButton } from '../../ui/Icon';
 import { useAppearance } from '../../ui/theme';
 import { useLayout } from '../../ui/layout';
 import { ActionSheet } from '../reader/dialogs';
-import { color, font, radius, space, type } from '../../ui/tokens';
+import { font, radius, space, type } from '../../ui/tokens';
+import { useThemed, type Palette } from '../../ui/theme';
 import { isAccessible, isFormatOwned } from '../../lib/util/own';
 import { useTravelMode } from '../../lib/state/travelMode';
 import { linkWithCovers, pickAndLinkComics, pickAndLinkFolder } from '../../lib/reader/importComics';
@@ -37,6 +38,7 @@ const isSort = (v: string | null): v is Sort => SORTS.some(([k]) => k === v);
 const PUBLISHERS: PublisherFilter[] = ['Marvel', 'DC', 'Indie', 'Manga'];
 
 export default function LibraryScreen() {
+  const { styles } = useThemed(makeStyles);
   const layout = useLayout(); const cols = useGridColumns(layout.isTablet ? 220 : 170); const [perRowOpen, setPerRowOpen] = useState(false);
   const library = useLibrary(); const [filter, setFilter] = useState<Filter>('all'); const [query, setQuery] = useState(''); const [filtersOpen, setFiltersOpen] = useState(false); const [moreOpen, setMoreOpen] = useState(false); const c0 = useAppearance().theme.colors;
   const [comicFilters, setComicFilters] = useState<ComicFilters>(EMPTY_COMIC_FILTERS);
@@ -148,6 +150,7 @@ export default function LibraryScreen() {
 }
 
 function LibraryCell({ item, selecting, picked, downloaded, readerId, onToggle, onRead }: { item: LibraryItem; selecting: boolean; picked: boolean; downloaded: boolean; readerId?: string; onToggle: (workId: string) => void; onRead: (readerId: string) => void }) {
+  const { styles } = useThemed(makeStyles);
   const { theme, typography } = useAppearance(); const c = theme.colors;
   const statusLabel = item.status === 'reading' ? 'Reading' : item.status === 'done' ? 'Read' : item.status === 'dropped' ? 'Dropped' : item.own === 'wishlist' ? 'Wishlist' : item.own === 'ordered' ? 'Ordered' : 'Unread';
   return (
@@ -163,7 +166,7 @@ function LibraryCell({ item, selecting, picked, downloaded, readerId, onToggle, 
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (color: Palette) => StyleSheet.create({
   content: { padding: space.lg, paddingBottom: 105 }, header: { marginBottom: 2 }, actions: { flexDirection: 'row', gap: 18 }, action: { color: color.text, fontSize: 25 }, actionActive: { color: color.accent }, count: { fontFamily: font.body, fontSize: 13, marginTop: 2 }, subrow: { marginTop: 12, marginBottom: 6 }, playlistsLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: space.md, paddingHorizontal: space.md, minHeight: 48, borderWidth: 1, borderColor: color.border, borderRadius: radius.md, backgroundColor: color.surface2 }, playlistsLinkText: { color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle }, playlistsArrow: { color: color.accent, fontSize: 26 }, pills: { gap: 8, paddingVertical: space.lg },
   // The fixed title/status zone makes every three-column grid row start at
   // the same baseline, even when one comic has a much longer title.

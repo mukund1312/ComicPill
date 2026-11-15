@@ -13,7 +13,8 @@ import { useComicFund } from '../wallet/useComicFund';
 import type { ComicDetail, DetailEdition } from '../../lib/db/queries/detail';
 import { ComicCover, coverSourceFor } from '../../ui/comic';
 import { Button, Eyebrow, Input, Pill, Progress, PurchaseBadge, SectionHeader, Sheet } from '../../ui/primitives';
-import { color, font, radius, space, type } from '../../ui/tokens';
+import { font, radius, space, type } from '../../ui/tokens';
+import { useThemed, type Palette } from '../../ui/theme';
 import { isAccessible } from '../../lib/util/own';
 import ArcRelevance from '../arc/ArcRelevance';
 import MeetCharacters from '../arc/MeetCharacters';
@@ -37,6 +38,7 @@ function formatPrice(paise: number | null): string {
 }
 
 export default function ComicDetailScreen() {
+  const { styles } = useThemed(makeStyles);
   const { id } = useLocalSearchParams<{ id: string }>();
   const library = useLibrary();
   const { detail } = useComicDetail(id);
@@ -82,6 +84,7 @@ function Detail({ item, detail, setStatus, label, linkedBank, purchase, onSave, 
   purchase: ReturnType<typeof useComicFund>['verdictFor'] extends (...args: never[]) => infer R ? R : never;
   onSave: () => void; onBuy: () => void; onAdd: () => void;
 }) {
+  const { styles } = useThemed(makeStyles);
   return (
     <>
       <SeriesHeader item={item} detail={detail} label={label} />
@@ -176,6 +179,7 @@ function useSeriesMates(workId: string) {
 
 /** The Panels-style top of a series page: a blurred backdrop, the fanned covers, a tagline and the title. */
 function SeriesHeader({ item, detail, label }: { item: LibraryItem; detail: ComicDetail; label: 'collect' | 'digital_is_fine' | 'try_digital_first' }) {
+  const { styles } = useThemed(makeStyles);
   const mates = useSeriesMates(item.workId).filter((m) => m.id !== item.workId);
   const stack = [{ title: item.title, workId: item.workId }, ...mates.slice(0, 2).map((m) => ({ title: m.title, workId: m.id }))];
   const backdrop = coverSourceFor(item.workId);
@@ -194,6 +198,7 @@ function SeriesHeader({ item, detail, label }: { item: LibraryItem; detail: Comi
 }
 
 function SeriesList({ workId }: { workId: string }) {
+  const { color, styles } = useThemed(makeStyles);
   const mates = useSeriesMates(workId);
   if (mates.length < 2) return null;
   return (
@@ -214,6 +219,7 @@ function SeriesList({ workId }: { workId: string }) {
 }
 
 function EditionRow({ edition }: { edition: DetailEdition }) {
+  const { styles } = useThemed(makeStyles);
   return (
     <View style={styles.editionRow}>
       <View style={{ flex: 1, minWidth: 0 }}>
@@ -226,16 +232,18 @@ function EditionRow({ edition }: { edition: DetailEdition }) {
 }
 
 function OwnershipLine({ label, active }: { label: string; active: boolean }) {
+  const { styles } = useThemed(makeStyles);
   return <View style={styles.ownershipLine}><Text style={styles.ownershipLabel}>{label}</Text><Text style={[styles.ownershipValue, active ? styles.ownershipActive : styles.ownershipInactive]}>{active ? '✓' : '—'}</Text></View>;
 }
 
 // A minimal pressable text row — kept local since it's only used for the
 // previous/next path nav and the related-works list on this screen.
 function Pressable_({ onPress, label, align, full }: { onPress: () => void; label: string; align: 'left' | 'right'; full?: boolean }) {
+  const { styles } = useThemed(makeStyles);
   return <Pressable onPress={onPress} style={[styles.navItem, full && { width: '100%' }]}><Text numberOfLines={1} style={[styles.navText, align === 'right' && { textAlign: 'right' }]}>{label}</Text></Pressable>;
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (color: Palette) => StyleSheet.create({
   page: { flex: 1, backgroundColor: color.bg },
   content: { paddingHorizontal: space.lg, paddingTop: 0, paddingBottom: 60 },
   seriesHeader: { marginHorizontal: -space.lg, paddingTop: 54, paddingBottom: 18, paddingHorizontal: space.lg, overflow: 'hidden' },

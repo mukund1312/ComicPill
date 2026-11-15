@@ -5,7 +5,8 @@ import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSheetDrag } from '../../ui/sheetDrag';
 import { optionalNative } from '../../lib/reader/nativeArchive';
-import { color, font, radius, space, type } from '../../ui/tokens';
+import { font, radius, space, type } from '../../ui/tokens';
+import { useThemed, type Palette } from '../../ui/theme';
 
 export type PageText = { loading: boolean; text: string | null; unavailable?: boolean } | null;
 
@@ -19,6 +20,7 @@ export const translateUrl = (text: string) => `https://translate.google.com/?sl=
 
 /** Text read off the page on this phone, ready to copy, translate or share. */
 export function PageTextSheet({ value, onClose }: { value: PageText; onClose: () => void }) {
+  const { color, styles } = useThemed(makeStyles);
   const insets = useSafeAreaInsets();
   const drag = useSheetDrag(onClose);
   const text = value?.text?.trim() ?? '';
@@ -51,7 +53,7 @@ export function PageTextSheet({ value, onClose }: { value: PageText; onClose: ()
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (color: Palette) => StyleSheet.create({
   backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#00000066' },
   sheet: { width: '100%', maxWidth: 560, alignSelf: 'center', maxHeight: '75%', backgroundColor: color.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: space.lg, gap: space.md },
   handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: color.border },

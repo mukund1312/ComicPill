@@ -167,3 +167,13 @@ Test comic: any `.cbz` with several panels per page and lettered balloons (the c
 - [x] Leaving the app (Home) and coming back locks the comic again (relockAll was never called before; now on going to the background).
 - [x] Settings → Privacy & security → "Unlock with fingerprint" (shown only when the phone has one); on by default.
 - [ ] iPhone/iPad Face ID: built in (NSFaceIDUsageDescription set) but not tried on a device.
+
+## Theme, appearance and fingerprint choice (15 Nov 2026, phone emulator)
+
+- [x] Appearance: tapping a theme previews it and shows "Apply <name>" + Cancel right under that card; same for fonts. The saved one says "✓ Current". Page no longer scrolls under the status bar.
+- [x] Gotham applied: Library, Playlists, Mind Space, Wallet, Compare, On My Phone and the tab bar all gold (37 screens used to read fixed crimson tokens; their stylesheets are now built from the theme).
+- [x] Amazon (light) applied: Playlists, Mind Space, Help & feedback, shelf, action sheets readable on parchment.
+- [x] Locking a comic with a fingerprint enrolled asks "Open this comic with your fingerprint?" → Password only → reopening asks only for the password (no fingerprint prompt).
+- [x] The shelf redraws when the app comes back, so a re-locked cover is masked straight away.
+- [ ] Hidden-shelf setup question (panel, Settings, onboarding) and the per-item "Open with fingerprint" menu switch use the same code path; not each clicked through on the device.
+- Note: the comic page background in the reader stays dark on every theme (comics read best on dark; the reader's display settings change it).

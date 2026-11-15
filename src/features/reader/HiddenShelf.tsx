@@ -10,14 +10,14 @@ import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSequence, 
 import { scheduleOnRN } from 'react-native-worklets';
 import { feedback } from '../../lib/platform/feedback';
 import { onMyDevice } from '../../lib/platform/device';
-import { biometricName, biometricsOn, confirmWithBiometrics } from '../../lib/platform/biometrics';
+import { askToUseBiometrics, biometricName, biometricsOn, confirmWithBiometrics } from '../../lib/platform/biometrics';
 import { Icon } from '../../ui/Icon';
 import { Button } from '../../ui/primitives';
 import { useAppearance, type ThemeColors, type TypographyPreset } from '../../ui/theme';
 import { radius, space } from '../../ui/tokens';
 import { ActionSheet, type SheetOption } from './dialogs';
 import {
-  checkHiddenShelfPassword, hiddenShelfReady, hideComics, listHiddenComics, newPasswordProblem, offsetFor, resetHiddenShelf, settleAfterSwipe,
+  checkHiddenShelfPassword, hiddenShelfReady, hiddenShelfUsesBiometrics, setHiddenShelfBiometrics, hideComics, listHiddenComics, newPasswordProblem, offsetFor, resetHiddenShelf, settleAfterSwipe,
   setUpHiddenShelf, unhideComics, type PanelStop,
 } from '../../lib/reader/hiddenShelf';
 import { allReaderComicIds, type ReaderComic } from '../../lib/reader/readerLibrary';
@@ -66,7 +66,8 @@ export function HiddenShelf({ enabled, onOpenComic, onShelfChanged, children }: 
   const reload = useCallback(() => setComics(listHiddenComics()), []);
   // With a fingerprint set up (and allowed in Settings) the half-open panel asks for it first; the password is always there too.
   const [bio, setBio] = useState<string | null>(null);
-  useEffect(() => { let live = true; void biometricsOn().then(async (on) => { if (on && live) setBio(await biometricName()); }); return () => { live = false; }; }, []);
+  // (Re-checked each time the panel opens: the choice can change in Settings → Hidden shelf.)
+  useEffect(() => { if (stop !== 'closed') return undefined; let live = true; void biometricsOn().then(async (on) => { if (!live) return; setBio(on && hiddenShelfUsesBiometrics() ? await biometricName() : null); }); return () => { live = false; }; }, [stop]);
 
   // `animate` is off when the app is leaving the foreground: animations don't run in the background, so the panel would stay drawn where it was.
   const goTo = useCallback((next: PanelStop, animate = true) => {
@@ -154,6 +155,7 @@ export function HiddenShelf({ enabled, onOpenComic, onShelfChanged, children }: 
     const problem = newPasswordProblem(setup.pw, setup.again);
     if (problem) { feedback.warning(); Alert.alert('Check the password', problem); return; }
     await setUpHiddenShelf(setup.pw);
+    setHiddenShelfBiometrics(await askToUseBiometrics('the hidden shelf'));
     feedback.success(); setSetup(null); reload(); goTo('open');
   };
 

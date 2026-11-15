@@ -1,5 +1,6 @@
 // Fingerprint / face unlock for the things ComicPill locks (comics, folders, the hidden shelf). It only ever stands in for typing the
 // password: the password is still checked the usual way when the reader types it, and works whatever the fingerprint says.
+import { Alert } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useSettings } from '../state/settings';
 
@@ -32,4 +33,19 @@ export async function confirmWithBiometrics(what: string): Promise<boolean> {
     const r = await LocalAuthentication.authenticateAsync({ promptMessage: `Open ${what}`, cancelLabel: 'Use password', disableDeviceFallback: true, fallbackLabel: '' });
     return r.success;
   } catch { return false; }
+}
+
+/**
+ * Asked when a lock is made: open it with a fingerprint too, or only with the password? Phones without a fingerprint set up skip the
+ * question (password only). Answers true for "fingerprint too".
+ */
+export async function askToUseBiometrics(what: string): Promise<boolean> {
+  if (!(await biometricsAvailable())) return false;
+  const name = await biometricName();
+  return new Promise((resolve) => {
+    Alert.alert(`Open ${what} with your ${name}?`, `You can open it with your ${name} or the password. Choose “Password only” if others have their ${name} on this phone.`, [
+      { text: 'Password only', onPress: () => resolve(false) },
+      { text: `Use ${name}`, onPress: () => resolve(true) },
+    ], { cancelable: false });
+  });
 }

@@ -25,6 +25,11 @@ export const hiddenShelfReady = (): boolean => readLock() !== null;
 export const hiddenShelfAsked = (): boolean => getMeta(ASKED_KEY) === '1';
 export const markHiddenShelfAsked = (): void => setMeta(ASKED_KEY, '1');
 
+/** Whether the hidden shelf also opens with a fingerprint. Asked when it is set up; changeable in Settings → Hidden shelf. */
+const BIO_KEY = 'hidden_shelf_bio';
+export const hiddenShelfUsesBiometrics = (): boolean => getMeta(BIO_KEY) !== '0';
+export const setHiddenShelfBiometrics = (on: boolean): void => setMeta(BIO_KEY, on ? '1' : '0');
+
 export async function setUpHiddenShelf(password: string): Promise<void> {
   setMeta(LOCK_KEY, JSON.stringify(await makeLock(password, sha256, newSalt())));
   markHiddenShelfAsked();

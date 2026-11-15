@@ -6,9 +6,11 @@ import { loadFeed } from '../../lib/opds/client';
 import { SettingsPage } from '../../ui/SettingsPage';
 import { ActionRow, LinkRow, SettingsSection, TextField } from '../../ui/settingsUi';
 import { Button } from '../../ui/primitives';
-import { color, font, space } from '../../ui/tokens';
+import { font, space } from '../../ui/tokens';
+import { useThemed, type Palette } from '../../ui/theme';
 
 export default function OpdsServersScreen() {
+  const { styles } = useThemed(makeStyles);
   const [servers, setServers] = useState<OpdsServer[]>(() => listServers());
   const [editing, setEditing] = useState<OpdsServer | 'new' | null>(null);
   const [name, setName] = useState(''); const [url, setUrl] = useState(''); const [user, setUser] = useState(''); const [pass, setPass] = useState('');
@@ -56,7 +58,7 @@ export default function OpdsServersScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (color: Palette) => StyleSheet.create({
   form: { gap: space.md, marginTop: space.md },
   heading: { color: color.text, fontFamily: font.displayMedium, fontSize: 20 },
   note: { color: color.muted, fontFamily: font.body, fontSize: 12, lineHeight: 17 },

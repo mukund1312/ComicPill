@@ -5,40 +5,45 @@ import type { Confidence } from '../../lib/mind/engine/tasteScorer';
 import { OUTCOME_LABEL, type Outcome } from '../../lib/mind/engine/verdictRules';
 import type { ShotStatus } from '../../lib/mind/model';
 import { COVER_ASSETS } from '../../ui/coverAssets';
-import { color, font, radius, space, type } from '../../ui/tokens';
+import { font, radius, space, type } from '../../ui/tokens';
+import { useThemed, type Palette } from '../../ui/theme';
 
-const scoreColor = (s: number) => (s >= 80 ? color.positive : s >= 60 ? color.warning : color.accent);
+const scoreColor = (s: number, color: Palette) => (s >= 80 ? color.positive : s >= 60 ? color.warning : color.accent);
 
 /** 0–100, greyed out when the app doesn't have enough of your ratings to be sure. */
 export function ScoreBadge({ score, confidence, known = true, size = 'md' }: { score: number; confidence: Confidence; known?: boolean; size?: 'sm' | 'md' }) {
+  const { color, styles } = useThemed(makeStyles);
   const low = confidence === 'low' || !known;
   const dim = size === 'sm';
   return (
-    <View style={[styles.badge, dim && styles.badgeSm, { borderColor: low ? color.faint : scoreColor(score) }]} accessibilityLabel={known ? `Taste score ${score}${low ? ', low confidence' : ''}` : 'No score yet'}>
-      <Text style={[styles.badgeNum, dim && styles.badgeNumSm, { color: low ? color.faint : scoreColor(score) }]}>{known ? score : '–'}</Text>
+    <View style={[styles.badge, dim && styles.badgeSm, { borderColor: low ? color.faint : scoreColor(score, color) }]} accessibilityLabel={known ? `Taste score ${score}${low ? ', low confidence' : ''}` : 'No score yet'}>
+      <Text style={[styles.badgeNum, dim && styles.badgeNumSm, { color: low ? color.faint : scoreColor(score, color) }]}>{known ? score : '–'}</Text>
       {size === 'md' ? <Text style={styles.badgeLabel}>{!known ? 'no score' : low ? 'low confidence' : 'taste'}</Text> : null}
     </View>
   );
 }
 
-const OUTCOME_COLOR: Record<Outcome, string> = { buy_physical: color.collectGold, digital: color.digital, borrow: color.tryDigital, wait_sale: color.warning };
+const outcomeColor = (color: Palette): Record<Outcome, string> => ({ buy_physical: color.collectGold, digital: color.digital, borrow: color.tryDigital, wait_sale: color.warning });
 
 export function VerdictChip({ outcome }: { outcome: Outcome }) {
-  return <View style={[styles.chip, { borderColor: OUTCOME_COLOR[outcome] }]}><Text style={[styles.chipText, { color: OUTCOME_COLOR[outcome] }]}>{OUTCOME_LABEL[outcome]}</Text></View>;
+  const { color, styles } = useThemed(makeStyles);
+  return <View style={[styles.chip, { borderColor: outcomeColor(color)[outcome] }]}><Text style={[styles.chipText, { color: outcomeColor(color)[outcome] }]}>{OUTCOME_LABEL[outcome]}</Text></View>;
 }
 
 export const SHOT_LABEL: Record<ShotStatus, string> = {
   new: 'Checking…', skipped: 'Skipped', sensitive: 'Private — never sent', awaiting_approval: 'Waiting for you', queued: 'Waiting to send', processing: 'Processing', ready: 'Ready', needs_review: 'Needs your eye', error: 'Couldn’t read',
 };
-const SHOT_COLOR: Partial<Record<ShotStatus, string>> = { ready: color.positive, needs_review: color.warning, processing: color.digital, queued: color.digital, error: color.accent, awaiting_approval: color.warning };
+const shotColor = (color: Palette): Partial<Record<ShotStatus, string>> => ({ ready: color.positive, needs_review: color.warning, processing: color.digital, queued: color.digital, error: color.accent, awaiting_approval: color.warning });
 
 export function StatusChip({ status }: { status: ShotStatus }) {
-  const c = SHOT_COLOR[status] ?? color.faint;
+  const { color, styles } = useThemed(makeStyles);
+  const c = shotColor(color)[status] ?? color.faint;
   return <View style={[styles.chip, { borderColor: c }]}><Text style={[styles.chipText, { color: c }]}>{SHOT_LABEL[status]}</Text></View>;
 }
 
 /** `local:<workId>` means a book from ComicPill's own catalog, whose cover ships with the app. */
 export function Cover({ uri, width = 64, children }: { uri: string | null | undefined; width?: number; children?: ReactNode }) {
+  const { styles } = useThemed(makeStyles);
   const asset = uri?.startsWith('local:') ? COVER_ASSETS[uri.slice(6)] : undefined;
   const source = asset ?? (uri && !uri.startsWith('local:') ? { uri } : null);
   return (
@@ -50,6 +55,7 @@ export function Cover({ uri, width = 64, children }: { uri: string | null | unde
 }
 
 export function SectionTitle({ children, action, onAction }: { children: string; action?: string; onAction?: () => void }) {
+  const { styles } = useThemed(makeStyles);
   return (
     <View style={styles.sectionRow}>
       <Text style={styles.section}>{children}</Text>
@@ -59,11 +65,13 @@ export function SectionTitle({ children, action, onAction }: { children: string;
 }
 
 export function Card({ children, onPress, style }: { children: ReactNode; onPress?: () => void; style?: object }) {
+  const { styles } = useThemed(makeStyles);
   const body = <View style={[styles.card, style]}>{children}</View>;
   return onPress ? <Pressable accessibilityRole="button" onPress={onPress}>{body}</Pressable> : body;
 }
 
 export function SmallButton({ label, onPress, kind = 'secondary', disabled }: { label: string; onPress: () => void; kind?: 'primary' | 'secondary' | 'ghost'; disabled?: boolean }) {
+  const { styles } = useThemed(makeStyles);
   return (
     <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress} style={[styles.btn, kind === 'primary' && styles.btnPrimary, kind === 'ghost' && styles.btnGhost, disabled && { opacity: 0.4 }]}>
       <Text style={[styles.btnText, kind === 'primary' && styles.btnTextPrimary]}>{label}</Text>
@@ -73,6 +81,7 @@ export function SmallButton({ label, onPress, kind = 'secondary', disabled }: { 
 
 /** A relation's source: Verified (from a database) or AI-suggested, which carries a warning and a "looks wrong" button. */
 export function ConfidenceTag({ confidence }: { confidence: 'verified' | 'ai_suggested' }) {
+  const { styles } = useThemed(makeStyles);
   return confidence === 'verified'
     ? <Text style={styles.verified}>✓ Verified</Text>
     : <Text style={styles.suggested}>⚠ AI-suggested</Text>;
@@ -85,7 +94,7 @@ export const relativeTime = (ms: number, now = Date.now()): string => {
   const days = Math.round(h / 24); return days === 1 ? 'yesterday' : `${days} days ago`;
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (color: Palette) => StyleSheet.create({
   fill: { width: '100%', height: '100%' },
   badge: { minWidth: 64, paddingHorizontal: space.sm, paddingVertical: 6, borderRadius: radius.md, borderWidth: 2, alignItems: 'center' },
   badgeSm: { minWidth: 36, paddingVertical: 2, paddingHorizontal: 6 },

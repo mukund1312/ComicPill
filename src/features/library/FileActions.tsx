@@ -8,10 +8,12 @@ import { downloadComics, planFor, putAway, readerComicForWork, toDownload } from
 import { freeSpaceFor, isCached, readyComics } from '../../lib/reader/cloudCache';
 import { runJob, useJob } from '../../lib/reader/importJob';
 import { formatBytes } from '../../lib/reader/bytes';
-import { color, font, space, type } from '../../ui/tokens';
+import { font, space, type } from '../../ui/tokens';
+import { useThemed, type Palette } from '../../ui/theme';
 import type { RoomPlan } from '../../lib/reader/makeRoom';
 
 export function FileActions({ workId }: { workId: string }) {
+  const { styles } = useThemed(makeStyles);
   const [tick, setTick] = useState(0);
   const running = useJob().running;
   const [room, setRoom] = useState<RoomPlan | null>(null);
@@ -45,7 +47,7 @@ export function FileActions({ workId }: { workId: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (color: Palette) => StyleSheet.create({
   box: { marginTop: space.lg, gap: space.sm },
   note: { color: color.muted, fontFamily: font.body, fontSize: type.caption },
 });

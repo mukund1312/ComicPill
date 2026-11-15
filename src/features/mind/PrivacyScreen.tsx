@@ -1,12 +1,14 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { SettingsPage } from '../../ui/SettingsPage';
 import { SettingsSection } from '../../ui/settingsUi';
-import { color, font, space, type } from '../../ui/tokens';
+import { font, space, type } from '../../ui/tokens';
+import { useThemed, type Palette } from '../../ui/theme';
 
-const P = ({ children }: { children: string }) => <Text style={styles.p}>{children}</Text>;
+function P({ children }: { children: string }) { const { styles } = useThemed(makeStyles); return <Text style={styles.p}>{children}</Text>; }
 
 /** A plain-words page on exactly what Mind Space does with screenshots. Keep it in step with the code. */
 export default function PrivacyScreen() {
+  const { styles } = useThemed(makeStyles);
   return (
     <SettingsPage title="What is sent" subtitle="Mind Space reads your screenshots to build a reading plan. Here is everything it does, in order.">
       <SettingsSection title="On your phone, always first">
@@ -41,7 +43,7 @@ export default function PrivacyScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (color: Palette) => StyleSheet.create({
   box: { padding: space.md, gap: space.sm },
   p: { color: color.text, fontFamily: font.body, fontSize: type.body, lineHeight: 22 },
 });

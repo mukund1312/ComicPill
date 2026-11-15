@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Alert, AppState, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Image } from 'expo-image';
@@ -9,7 +9,7 @@ import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withSpring } from '
 import { ActionSheet, PromptModal, type SheetOption } from './dialogs';
 import { DragStack, STACK_H, STACK_W } from './DragStack';
 import { feedback } from '../../lib/platform/feedback';
-import { biometricsOn, confirmWithBiometrics } from '../../lib/platform/biometrics';
+import { askToUseBiometrics, biometricsAvailable, biometricsOn, confirmWithBiometrics } from '../../lib/platform/biometrics';
 import { onMyDevice } from '../../lib/platform/device';
 import { AppShell } from '../../ui/AppShell';
 import { HeaderActions, HeaderButton } from '../../ui/Icon';
@@ -21,7 +21,7 @@ import type { ThemeColors } from '../../ui/theme';
 import { space, radius } from '../../ui/tokens';
 import { getMeta, setMeta } from '../../lib/db/queries/meta';
 import {
-  collectionComicIds, collectionsForComic, createCollection, createFolder, deleteCollection, deleteFolder, getLock, listCollections, listFolders,
+  collectionComicIds, collectionsForComic, createCollection, createFolder, deleteCollection, deleteFolder, getLock, listCollections, listFolders, lockUsesBiometrics, setLockBiometrics,
   listReaderComics, markComic, moveItems, unpreparedLinkIds, renameCollection, renameFolder, renameReaderComic, setComicFolder, setComicPreset, setFolderPreset, setLock, toggleInCollection,
   type ReaderCollection, type ReaderComic, type ReaderFolder,
 } from '../../lib/reader/readerLibrary';
@@ -97,6 +97,8 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
 
   const refresh = useCallback(() => { setComics(listReaderComics()); setFolders(listFolders()); setCollections(listCollections()); }, []);
   useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
+  // Locks close when the app goes to the background; redraw on the way back so no unlocked cover is left showing.
+  useEffect(() => { const sub = AppState.addEventListener('change', (st) => { if (st === 'active') refresh(); }); return () => sub.remove(); }, [refresh]);
 
   const setView = (v: View_) => { setViewState(v); setMeta(VIEW_KEY, v); };
 
@@ -119,7 +121,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   const requireUnlock = (kind: 'comic' | 'folder', id: string, name: string, locked: boolean, then: () => void) => {
     if (!locked || isUnlocked(kind, id)) { then(); return; }
     void (async () => {
-      if ((await biometricsOn()) && (await confirmWithBiometrics(`“${name}”`))) { feedback.success(); markUnlocked(kind, id); refresh(); then(); return; }
+      if (lockUsesBiometrics(kind, id) && (await biometricsOn()) && (await confirmWithBiometrics(`“${name}”`))) { feedback.success(); markUnlocked(kind, id); refresh(); then(); return; }
       askPassword(kind, id, name, then);
     })();
   };
@@ -130,11 +132,20 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
       if (problem) { Alert.alert('Too short', problem); return; }
       setPrompt({ title: 'Type it again to confirm', secure: true, submitLabel: 'Lock', onSubmit: async (again) => {
         if (again !== pw) { feedback.warning(); Alert.alert('Those don’t match', 'Nothing was locked.'); return; }
-        setLock(kind, id, await makeLock(pw, sha256, newSalt())); markUnlocked(kind, id); refresh(); feedback.success();
+        const lock = await makeLock(pw, sha256, newSalt());
+        const bio = await askToUseBiometrics(kind === 'comic' ? 'this comic' : 'this folder');
+        setLock(kind, id, lock, bio); markUnlocked(kind, id); refresh(); feedback.success();
         Alert.alert('Locked', 'It asks for this password whenever the app has been closed or left. This hides it from casual eyes; it doesn’t encrypt the file.');
       } });
     },
   });
+  // A locked item's menu can switch its fingerprint unlock on or off (changing it needs the item open first).
+  const [hasBio, setHasBio] = useState(false);
+  useEffect(() => { let live = true; void biometricsAvailable().then((ok) => { if (live) setHasBio(ok); }); return () => { live = false; }; }, []);
+  const bioOption = (kind: 'comic' | 'folder', id: string, name: string) => {
+    const on = lockUsesBiometrics(kind, id);
+    return { label: on ? 'Open with fingerprint: on (turn off)' : 'Open with fingerprint: off (turn on)', checked: on, onPress: () => requireUnlock(kind, id, name, true, () => { setLockBiometrics(kind, id, !on); feedback.success(); flash(on ? 'Password only from now on' : 'Opens with your fingerprint too'); }) };
+  };
   const removeLock = (kind: 'comic' | 'folder', id: string, name: string) => requireUnlock(kind, id, name, true, () => { setLock(kind, id, null); refresh(); });
 
   // Imports run as the app's one background job: they keep going if you leave this screen, and the bar at the bottom of every screen shows how they are doing.
@@ -245,6 +256,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
       { label: 'Move to folder…', onPress: () => pickFolderFor(comic) },
       { label: 'Reading preset…', onPress: () => pickPreset(comic.presetId, 'Reading preset', (id) => { setComicPreset(comic.id, id); refresh(); }) },
       comic.locked ? { label: 'Remove password lock', onPress: () => removeLock('comic', comic.id, comic.title) } : { label: 'Lock with a password…', onPress: () => chooseLock('comic', comic.id, comic.title) },
+      ...(comic.locked && hasBio ? [bioOption('comic', comic.id, comic.title)] : []),
       ...(mode === 'phone' ? [{ label: 'Move to hidden shelf', onPress: () => requireUnlock('comic', comic.id, comic.title, comic.locked, () => moveToHidden([comic.id])) }] : []),
       { label: 'Delete from device', destructive: true, onPress: () => requireUnlock('comic', comic.id, comic.title, comic.locked, () => Alert.alert('Delete comic?', `"${comic.title}" will be removed from this device.`, [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => { removeComic(comic.id); feedback.warning(); refresh(); flash('Deleted'); } }])) },
     ],
@@ -258,6 +270,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
       { label: 'Move to folder…', onPress: () => requireUnlock('folder', f.id, f.name, f.locked, () => chooseDestination(`Move “${f.name}”`, (id) => !canMoveFolders(folders, [f.id], id), f.parentId, (target) => { moveItems([], [f.id], target); refresh(); })) },
       { label: 'Reading preset for this folder…', onPress: () => pickPreset(f.presetId, 'Folder preset', (id) => { setFolderPreset(f.id, id); refresh(); }) },
       f.locked ? { label: 'Remove password lock', onPress: () => removeLock('folder', f.id, f.name) } : { label: 'Lock with a password…', onPress: () => chooseLock('folder', f.id, f.name) },
+      ...(f.locked && hasBio ? [bioOption('folder', f.id, f.name)] : []),
       { label: 'Delete folder…', destructive: true, onPress: () => requireUnlock('folder', f.id, f.name, f.locked, () => askDeleteFolders([f.id], [], (n) => { refresh(); flash(`Deleted ${n}`); })) },
     ],
   }); };

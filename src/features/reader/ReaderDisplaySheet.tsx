@@ -5,7 +5,8 @@ import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSheetDrag } from '../../ui/sheetDrag';
 import type { GuidedMask, LandscapeLayout, PageAnimation, ReaderFilter } from '../../lib/reader/readerSettings';
-import { color, font, radius, space, type } from '../../ui/tokens';
+import { font, radius, space, type } from '../../ui/tokens';
+import { useThemed, type Palette } from '../../ui/theme';
 
 export type Display = { brightness: number; filter: ReaderFilter; pageAnimation: PageAnimation; trimBorders: boolean; guidedMask: GuidedMask; landscapeLayout: LandscapeLayout; bubbleSize: number; bubbleSfx: boolean; guidedMs: number; bridgeMs: number; doubleTapPanel: boolean };
 
@@ -20,10 +21,12 @@ const ANIMATIONS: Array<[PageAnimation, string]> = [['slide', 'Slide'], ['fade',
 export const supportsViewFilters = Platform.OS === 'android' ? Number(Platform.Version) >= 31 : true;
 
 function Chip({ label, active, disabled, onPress }: { label: string; active: boolean; disabled?: boolean; onPress: () => void }) {
+  const { styles } = useThemed(makeStyles);
   return <Pressable accessibilityRole="button" accessibilityState={{ selected: active, disabled }} disabled={disabled} onPress={onPress} style={[styles.chip, active && styles.chipOn, disabled && { opacity: 0.35 }]}><Text style={[styles.chipText, active && styles.chipTextOn]}>{label}</Text></Pressable>;
 }
 
 function Slider({ value, min, max, onChange }: { value: number; min: number; max: number; onChange: (v: number) => void }) {
+  const { styles } = useThemed(makeStyles);
   const [w, setW] = useState(1);
   const set = (x: number) => onChange(Math.round((min + Math.min(1, Math.max(0, x / w)) * (max - min)) * 100) / 100);
   const frac = (value - min) / (max - min);
@@ -36,6 +39,7 @@ function Slider({ value, min, max, onChange }: { value: number; min: number; max
 }
 
 export function ReaderDisplaySheet({ visible, value, onChange, onClose }: { visible: boolean; value: Display; onChange: (patch: Partial<Display>) => void; onClose: () => void }) {
+  const { styles } = useThemed(makeStyles);
   const insets = useSafeAreaInsets();
   const drag = useSheetDrag(onClose);
   // Never taller than the screen (a phone on its side is short): the settings scroll, and dragging the handle still closes the sheet.
@@ -105,7 +109,7 @@ export function ReaderDisplaySheet({ visible, value, onChange, onClose }: { visi
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (color: Palette) => StyleSheet.create({
   backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#00000066' },
   sheet: { width: '100%', maxWidth: 560, alignSelf: 'center', backgroundColor: color.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: space.lg },
   body: { flexShrink: 1 },

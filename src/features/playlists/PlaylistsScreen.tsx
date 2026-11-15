@@ -9,7 +9,8 @@ import type { SearchWorkResult } from '../../lib/db/queries/search';
 import { AppShell } from '../../ui/AppShell';
 import { ComicCover, ComicRow } from '../../ui/comic';
 import { Button, EmptyState, Eyebrow, Input, Pill, Progress, SectionHeader, Sheet } from '../../ui/primitives';
-import { color, font, radius, space, type } from '../../ui/tokens';
+import { font, radius, space, type } from '../../ui/tokens';
+import { useThemed, type Palette } from '../../ui/theme';
 
 const moods = [
   ['dark', 'Dark'], ['mysterious', 'Mysterious'], ['epic', 'Epic'],
@@ -25,6 +26,7 @@ function isSearchWork(item: BrowseItem): item is SearchWorkResult {
 }
 
 export default function PlaylistsScreen() {
+  const { styles } = useThemed(makeStyles);
   const state = usePlaylists();
   const [newOpen, setNewOpen] = useState(false);
   const [generateOpen, setGenerateOpen] = useState(false);
@@ -120,10 +122,12 @@ export default function PlaylistsScreen() {
 function importCodeValue(value: string) { return value.trim(); }
 
 function PlaylistListHeader({ query, onQuery, searching, characters, onJourney, onNew, onGenerate, onImport }: { query: string; onQuery: (query: string) => void; searching: boolean; characters: string[]; onJourney: (character: string) => void; onNew: () => void; onGenerate: () => void; onImport: () => void }) {
+  const { styles } = useThemed(makeStyles);
   return <View><Input placeholder="Search comics, creators, characters" value={query} onChangeText={onQuery} />{searching ? <>{characters.length ? <View style={styles.journeySuggestions}>{characters.map((character) => <Pressable key={character} accessibilityRole="button" onPress={() => onJourney(character)} style={styles.journeySuggestion}><Text style={styles.journeySuggestionText}>Build {character}’s journey</Text><Text style={styles.journeySuggestionArrow}>›</Text></Pressable>)}</View> : null}<SectionHeader title="Search results" /></> : <><Text style={styles.intro}>A few intentional lists, ready when a path or a mood calls for one.</Text><View style={styles.actions}><Button style={styles.actionButton} onPress={onNew}>+ New playlist</Button><Button kind="secondary" style={styles.actionButton} onPress={onGenerate}>Ask ComicPill</Button></View><Pressable accessibilityRole="button" onPress={onImport} style={styles.importLink}><Text style={styles.importLinkText}>Import a shared code</Text><Text style={styles.importArrow}>›</Text></Pressable><Pressable accessibilityRole="button" onPress={() => router.push('/reading-orders')} style={styles.importLink}><Text style={styles.importLinkText}>Reading orders: what to read first</Text><Text style={styles.importArrow}>›</Text></Pressable><SectionHeader title="Your playlists" /></>}</View>;
 }
 
 function PlaylistRow({ playlist, onPress }: { playlist: Playlist; onPress: () => void }) {
+  const { styles } = useThemed(makeStyles);
   const meta = `${playlist.items.length} ${playlist.items.length === 1 ? 'comic' : 'comics'}${playlist.sourceHint ? ` · ${playlist.sourceHint}` : ''}`;
   return <View style={styles.playlistRow}><ComicRow title={playlist.name} recyclingKey={playlist.id} meta={meta} status={playlist.createdBy === 'app' ? 'App-made' : 'Personal'} onPress={onPress} /></View>;
 }
@@ -131,6 +135,7 @@ function PlaylistRow({ playlist, onPress }: { playlist: Playlist; onPress: () =>
 function PlaylistDetail({ playlist, query, searchResults, onQuery, onBack, onAdd, onRemoveItem, onReorder, onShare, onDelete, onAddWork, pickerOpen, closePicker, shareUrl, closeShare, copied, onCopy, onShareVia }: {
   playlist: Playlist; query: string; searchResults: ReturnType<typeof usePlaylists>['searchResults']; onQuery: (query: string) => void; onBack: () => void; onAdd: () => void; onRemoveItem: (workId: string) => void; onReorder: (orderedWorkIds: string[]) => void; onShare: () => void; onDelete: () => void; onAddWork: (workId: string) => void; pickerOpen: boolean; closePicker: () => void; shareUrl: string | null; closeShare: () => void; copied: boolean; onCopy: () => void; onShareVia: () => void;
 }) {
+  const { styles } = useThemed(makeStyles);
   const completed = useMemo(() => playlist.items.filter((item) => item.status === 'done').length, [playlist.items]);
   const move = (index: number, direction: -1 | 1) => {
     const nextIndex = index + direction;
@@ -157,28 +162,33 @@ function PlaylistDetail({ playlist, query, searchResults, onQuery, onBack, onAdd
 }
 
 function PlaylistTimelineItem({ item, index, length, onRemove, onMove }: { item: Playlist['items'][number]; index: number; length: number; onRemove: () => void; onMove: (direction: -1 | 1) => void }) {
+  const { styles } = useThemed(makeStyles);
   return <View style={styles.timelineItem}><View style={[styles.node, item.status === 'done' && styles.nodeDone]}><Text style={styles.nodeText}>{item.status === 'done' ? '✓' : index + 1}</Text></View>{index < length - 1 ? <View style={styles.line} /> : null}<ComicCover title={item.title} workId={item.workId} size="tiny" recyclingKey={item.workId} /><View style={styles.itemBody}><Text numberOfLines={2} ellipsizeMode="tail" style={styles.itemTitle}>{item.title}</Text><Text style={styles.itemMeta}>{item.status === 'done' ? 'Completed' : item.status === 'reading' ? 'Reading' : 'Unread'}</Text></View><View style={styles.itemControls}><Pressable accessibilityLabel={`Move ${item.title} up`} disabled={index === 0} onPress={() => onMove(-1)} style={[styles.orderButton, index === 0 && styles.disabled]}><Text style={styles.orderText}>↑</Text></Pressable><Pressable accessibilityLabel={`Move ${item.title} down`} disabled={index === length - 1} onPress={() => onMove(1)} style={[styles.orderButton, index === length - 1 && styles.disabled]}><Text style={styles.orderText}>↓</Text></Pressable><Pressable accessibilityLabel={`Remove ${item.title}`} onPress={onRemove} style={styles.removeButton}><Text style={styles.removeText}>×</Text></Pressable></View></View>;
 }
 
 function PickerOverlay({ query, results, existing, onQuery, onAdd, onClose }: { query: string; results: ReturnType<typeof usePlaylists>['searchResults']; existing: Set<string>; onQuery: (query: string) => void; onAdd: (workId: string) => void; onClose: () => void }) {
+  const { styles } = useThemed(makeStyles);
   return <View style={styles.pickerOverlay}><Sheet title="Add books" onClose={onClose}><Input placeholder="Search titles, creators, characters" value={query} onChangeText={onQuery} /><FlashList data={results} keyExtractor={(item) => item.workId} getItemType={() => 'playlist-search-result'} renderItem={({ item }) => <View style={styles.searchResult}><ComicCover title={item.title} workId={item.workId} size="tiny" recyclingKey={item.workId} /><View style={styles.searchBody}><Text numberOfLines={2} style={styles.searchTitle}>{item.title}</Text><Text numberOfLines={1} style={styles.searchMeta}>{item.creators[0] ?? item.characters[0] ?? 'ComicPill catalog'}</Text></View><Pressable disabled={existing.has(item.workId)} onPress={() => onAdd(item.workId)} style={[styles.addButton, existing.has(item.workId) && styles.disabled]}><Text style={styles.addText}>{existing.has(item.workId) ? 'Added' : 'Add'}</Text></Pressable></View>} ListEmptyComponent={query ? <EmptyState title="No matching comics" copy="Try a title, creator, or character." /> : <EmptyState title="Find a book" copy="Search your ComicPill catalog to add it here." />} style={styles.searchList} /><Button kind="ghost" onPress={onClose}>Done</Button></Sheet></View>;
 }
 
 function CountStepper({ value, onChange }: { value: number; onChange: (value: number) => void }) {
+  const { styles } = useThemed(makeStyles);
   return <View style={styles.stepper}><Text style={styles.stepperLabel}>List length</Text><View style={styles.stepperControls}><Pressable accessibilityLabel="Fewer comics" onPress={() => onChange(Math.max(4, value - 1))} style={styles.stepperButton}><Text style={styles.stepperText}>−</Text></Pressable><Text style={styles.stepperValue}>{value} comics</Text><Pressable accessibilityLabel="More comics" onPress={() => onChange(Math.min(16, value + 1))} style={styles.stepperButton}><Text style={styles.stepperText}>+</Text></Pressable></View></View>;
 }
 
 function ImportMessage({ result }: { result: ImportOutcome }) {
+  const { styles } = useThemed(makeStyles);
   if (!result.playlist) return <Text style={styles.importError}>That code could not be read. Ask the sender to share the complete code again.</Text>;
   if (result.resolvedCount === 0) return <View style={styles.importResult}><Text style={styles.importError}>The code was read, but none of its comics match this device’s catalog yet.</Text>{result.unresolvedTitles.map((title) => <Text key={title} style={styles.unresolved}>• {title}</Text>)}</View>;
   return <View style={styles.importResult}><Text style={styles.importSuccess}>{result.resolvedCount} {result.resolvedCount === 1 ? 'comic made it in' : 'comics made it in'}.</Text>{result.unresolvedTitles.length ? <><Text style={styles.importError}>Not available in this catalog yet:</Text>{result.unresolvedTitles.map((title) => <Text key={title} style={styles.unresolved}>• {title}</Text>)}</> : null}</View>;
 }
 
 function SheetOverlay({ title, children, onClose }: PropsWithChildren<{ title: string; onClose: () => void }>) {
+  const { styles } = useThemed(makeStyles);
   return <View style={styles.overlay}><Sheet title={title} onClose={onClose}>{children}</Sheet></View>;
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (color: Palette) => StyleSheet.create({
   content: { padding: space.lg, paddingBottom: 105 },
   intro: { color: color.text, fontFamily: font.display, fontSize: 27, lineHeight: 34, maxWidth: 324 },
   journeySuggestions: { gap: space.sm, marginTop: space.md }, journeySuggestion: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space.md, borderRadius: radius.md, borderWidth: 1, borderColor: color.accentDeep, backgroundColor: color.surface2 }, journeySuggestionText: { color: color.text, fontFamily: font.bodySemibold, fontSize: type.caption }, journeySuggestionArrow: { color: color.accent, fontSize: 24 },

@@ -3,7 +3,8 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { formatBytes } from '../../lib/reader/bytes';
 import { BUDGET_CHOICES_GB, KEEP_CHOICES, cloudBudgetBytes, cloudBudgetGb, keepLimit, setCloudBudgetGb, setKeepLimit } from '../../lib/reader/cloudBudget';
 import type { ReadyComic, RoomPlan } from '../../lib/reader/makeRoom';
-import { color, font, radius, space, type } from '../../ui/tokens';
+import { font, radius, space, type } from '../../ui/tokens';
+import { useThemed, type Palette } from '../../ui/theme';
 
 const ago = (ms: number): string => {
   const days = Math.floor((Date.now() - ms) / 86400000);
@@ -15,6 +16,7 @@ const ago = (ms: number): string => {
  * to begin with; putting them away only removes the downloaded copy, since the comic stays linked and comes back when opened.
  */
 export function MakeRoomSheet({ title, need, plan: firstPlan, ready, onConfirm, onCancel, recompute, verb = 'open' }: { verb?: string; /** Works out the plan again after the limit is changed here. Without it the limits can't be edited from this sheet. */ recompute?: () => RoomPlan; budget?: number; title: string; need: number; plan: RoomPlan; ready: ReadyComic[]; onConfirm: (ids: string[]) => void; onCancel: () => void }) {
+  const { styles } = useThemed(makeStyles);
   const [plan, setPlan] = useState(firstPlan);
   const [chosen, setChosen] = useState<Set<string>>(() => new Set(firstPlan.suggested));
   const [editing, setEditing] = useState(false);
@@ -75,7 +77,7 @@ export function MakeRoomSheet({ title, need, plan: firstPlan, ready, onConfirm, 
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (color: Palette) => StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: '#000000AA', justifyContent: 'flex-end', alignItems: 'center' },
   sheet: { width: '100%', maxWidth: 560, maxHeight: '88%', backgroundColor: color.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: space.lg, gap: space.md },
   title: { color: color.text, fontFamily: font.bodySemibold, fontSize: type.body + 3 },

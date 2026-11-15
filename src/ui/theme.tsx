@@ -105,3 +105,27 @@ export function AppearanceProvider({ children }: PropsWithChildren) {
 }
 
 export function useAppearance() { const value = useContext(AppearanceContext); if (!value) throw new Error('useAppearance must be used inside AppearanceProvider'); return value; }
+
+/** The older flat colour names (`color.accent`, `color.bg`…) that many screens' stylesheets use, filled from the active theme. */
+export type Palette = {
+  bg: string; surface: string; surface2: string; border: string; text: string; muted: string; faint: string;
+  accent: string; accentDeep: string; accentPressed: string; positive: string; warning: string; collectGold: string; digital: string; tryDigital: string; danger: string;
+  /** Text that sits on `accent`. */
+  onAccent: string;
+};
+
+export function paletteOf(c: ThemeColors): Palette {
+  return {
+    bg: c.background, surface: c.surface, surface2: c.surfaceRaised, border: c.border, text: c.textPrimary, muted: c.textSecondary, faint: c.textMuted,
+    accent: c.primary, accentDeep: c.primary, accentPressed: c.primaryHover, positive: c.success, warning: c.warning, collectGold: '#D4AF37',
+    digital: '#5B87B8', tryDigital: '#8B6BAE', danger: c.destructive, onAccent: c.primaryForeground,
+  };
+}
+
+/** A screen's stylesheet, rebuilt when the theme changes: `const { color, styles } = useThemed(makeStyles)`. */
+export function useThemed<S>(make: (color: Palette) => S): { color: Palette; styles: S } {
+  const { theme } = useAppearance();
+  const color = useMemo(() => paletteOf(theme.colors), [theme.colors]);
+  const styles = useMemo(() => make(color), [make, color]);
+  return { color, styles };
+}

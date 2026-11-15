@@ -16,7 +16,8 @@ import { useDiscover } from './useDiscover';
 import { AppShell } from '../../ui/AppShell';
 import { ComicCover, coverSourceFor } from '../../ui/comic';
 import { Button, EmptyState, Input, Pill, Sheet } from '../../ui/primitives';
-import { color, font, radius, space, type } from '../../ui/tokens';
+import { font, radius, space, type } from '../../ui/tokens';
+import { useThemed, type Palette } from '../../ui/theme';
 import { isAccessible } from '../../lib/util/own';
 import { PerRowSheet } from '../reader/PerRowSheet';
 import { useGridColumns } from '../../ui/gridColumns';
@@ -25,6 +26,7 @@ import { EMPTY_COMIC_FILTERS, type PublisherFilter } from '../../lib/util/comicF
 const PUBLISHERS: PublisherFilter[] = ['Marvel', 'DC', 'Indie', 'Manga'];
 
 export default function DiscoverScreen() {
+  const { styles } = useThemed(makeStyles);
   const layout = useLayout(); const cols = useGridColumns(layout.isTablet ? 220 : 170); const [perRowOpen, setPerRowOpen] = useState(false);
   const discover = useDiscover(); const [rating, setRating] = useState(false); const [filtersOpen, setFiltersOpen] = useState(false); const query = '';
   const catalog = useMemo(() => discover.catalog.filter((work) => work.title.toLowerCase().includes(query.trim().toLowerCase())).sort((a, b) => Number(b.workId.startsWith('file-')) - Number(a.workId.startsWith('file-'))), [discover.catalog, query]);
@@ -37,6 +39,7 @@ export default function DiscoverScreen() {
 }
 
 function Featured({ discover }: { discover: ReturnType<typeof useDiscover> }) {
+  const { styles } = useThemed(makeStyles);
   const layout = useLayout(); const { theme, typography } = useAppearance(); const c = theme.colors;
   const width = layout.maxContent;
   const [page, setPage] = useState(0);
@@ -69,6 +72,7 @@ function Featured({ discover }: { discover: ReturnType<typeof useDiscover> }) {
 }
 
 function DiscoverHeader({ discover, catalogCount, openRating }: { discover: ReturnType<typeof useDiscover>; catalogCount: number; openRating: () => void }) {
+  const { styles } = useThemed(makeStyles);
   const { theme, typography } = useAppearance(); const c = theme.colors;
   const card = discover.current;
   const fresh = discover.catalog.filter((w) => w.own === 'none').slice(0, 12);
@@ -117,6 +121,7 @@ function DiscoverHeader({ discover, catalogCount, openRating }: { discover: Retu
 }
 
 function CatalogCell({ item }: { item: ReturnType<typeof useDiscover>['catalog'][number] }) {
+  const { styles } = useThemed(makeStyles);
   const { theme, typography } = useAppearance(); const c = theme.colors;
   const inLibrary = item.own !== 'none';
   return (
@@ -128,7 +133,7 @@ function CatalogCell({ item }: { item: ReturnType<typeof useDiscover>['catalog']
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (color: Palette) => StyleSheet.create({
   featured: { borderRadius: 28, overflow: 'hidden', paddingTop: 26, paddingBottom: 22, paddingHorizontal: 16, alignItems: 'center' },
   featuredGenre: { fontSize: 10.5, letterSpacing: 1.6, marginTop: 6 },
   featuredTitle: { fontSize: 26, lineHeight: 30, letterSpacing: -0.5, textAlign: 'center', marginTop: 8 },

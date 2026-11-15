@@ -6,7 +6,8 @@ import { router } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { useFeedback } from './useFeedback';
 import { Button, EmptyState, Pill } from '../../ui/primitives';
-import { color, font, radius, space, type } from '../../ui/tokens';
+import { font, radius, space, type } from '../../ui/tokens';
+import { useThemed, type Palette } from '../../ui/theme';
 import type { FeedbackCategory } from '../../lib/types/domain';
 import { SUPPORT_EMAIL, mailtoLink } from '../../lib/support';
 import { feedback as haptics } from '../../lib/platform/feedback';
@@ -14,6 +15,7 @@ import { feedback as haptics } from '../../lib/platform/feedback';
 const CATEGORIES: Array<[FeedbackCategory, string]> = [['bug', 'Bug'], ['idea', 'Idea'], ['other', 'Other']];
 
 export default function FeedbackScreen() {
+  const { color, styles } = useThemed(makeStyles);
   const feedback = useFeedback();
   const [category, setCategory] = useState<FeedbackCategory>('bug');
   const [message, setMessage] = useState('');
@@ -118,7 +120,7 @@ export default function FeedbackScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (color: Palette) => StyleSheet.create({
   page: { flex: 1, backgroundColor: color.bg },
   content: { padding: space.lg, paddingTop: space.lg, paddingBottom: 60 },
   back: { color: color.muted, fontFamily: font.bodyMedium, fontSize: type.body, marginBottom: 18 },

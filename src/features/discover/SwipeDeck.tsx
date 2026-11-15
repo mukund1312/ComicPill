@@ -5,7 +5,8 @@ import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSpring, wi
 import { scheduleOnRN } from 'react-native-worklets';
 import ArcRelevance from '../arc/ArcRelevance';
 import { ComicCover } from '../../ui/comic';
-import { color, font, radius } from '../../ui/tokens';
+import { font, radius } from '../../ui/tokens';
+import { useThemed, type Palette } from '../../ui/theme';
 import { isAccessible } from '../../lib/util/own';
 import type { buildDeck } from '../../lib/engines/recommend/deck';
 
@@ -19,6 +20,7 @@ const SWIPE_VELOCITY = 800;
  * Right = save / read, left = pass, up = rate (the card stays and the rating sheet opens). The buttons do the same thing.
  */
 export function SwipeDeck({ card, next, onPass, onSave, onRate }: { card: DeckCard; next: DeckCard | null; onPass: () => void; onSave: () => void; onRate: () => void }) {
+  const { color, styles } = useThemed(makeStyles);
   const { width } = useWindowDimensions();
   const x = useSharedValue(0); const y = useSharedValue(0);
   const away = width * 1.5;
@@ -74,6 +76,7 @@ export function SwipeDeck({ card, next, onPass, onSave, onRate }: { card: DeckCa
 }
 
 function CardFace({ card }: { card: DeckCard }) {
+  const { styles } = useThemed(makeStyles);
   return (
     <View style={styles.card}>
       <ComicCover title={card.work.title} workId={card.work.id} size="hero" recyclingKey={`deck-${card.work.id}`} />
@@ -88,7 +91,7 @@ function CardFace({ card }: { card: DeckCard }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (color: Palette) => StyleSheet.create({
   deck: { minHeight: 270, justifyContent: 'center', alignItems: 'center', marginTop: 8 },
   cardWrap: { width: '92%' },
   behind: { position: 'absolute' },

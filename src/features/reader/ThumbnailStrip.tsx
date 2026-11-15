@@ -2,13 +2,15 @@ import { memo, useEffect, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import type { ComicSource } from '../../lib/reader/ComicSource';
-import { color, radius } from '../../ui/tokens';
+import { radius } from '../../ui/tokens';
+import { useThemed, type Palette } from '../../ui/theme';
 
 const GAP = 6;
 
 type Props = { source: ComicSource; pages: number[]; current: number; bookmarks: Set<number>; onSelect: (page: number) => void; compact?: boolean };
 
 export function ThumbnailStrip({ source, pages, current, bookmarks, onSelect, compact = false }: Props) {
+  const { styles } = useThemed(makeStyles);
   const THUMB_W = compact ? 36 : 52; const THUMB_H = compact ? 54 : 78;
   const index = Math.max(0, pages.indexOf(current));
   return (
@@ -29,6 +31,7 @@ export function ThumbnailStrip({ source, pages, current, bookmarks, onSelect, co
 }
 
 export const Thumb = memo(function Thumb({ source, page, active, marked, onSelect, w, h }: { source: ComicSource; page: number; active: boolean; marked: boolean; onSelect: (p: number) => void; w: number; h: number }) {
+  const { styles } = useThemed(makeStyles);
   const [uri, setUri] = useState<string | null>(null);
   useEffect(() => {
     let live = true;
@@ -44,7 +47,7 @@ export const Thumb = memo(function Thumb({ source, page, active, marked, onSelec
   );
 });
 
-const styles = StyleSheet.create({
+const makeStyles = (color: Palette) => StyleSheet.create({
   content: { gap: GAP },
   thumb: { borderRadius: radius.sm / 2, overflow: 'hidden', backgroundColor: color.surface2, borderWidth: 2, borderColor: 'transparent' },
   active: { borderColor: color.accent },

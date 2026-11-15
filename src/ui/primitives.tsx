@@ -5,19 +5,23 @@ import { useSheetDrag } from './sheetDrag';
 import { Pressable, StyleSheet, Text, TextInput, View, type ViewStyle } from 'react-native';
 import { PressableScale } from './PressableScale';
 import { Icon } from './Icon';
-import { color, font, radius, space, type } from './tokens';
+import { font, radius, space, type } from './tokens';
+import { useThemed, type Palette } from './theme';
 import { useAppearance } from './theme';
 import { feedback } from '../lib/platform/feedback';
 
 export function Wordmark({ small = false }: { small?: boolean }) {
+  const { styles } = useThemed(makeStyles);
   const { theme, typography } = useAppearance(); return <Text style={[styles.wordmark, { color: theme.colors.textPrimary, fontFamily: typography.display }, small && styles.wordmarkSmall]}>Comic<Text style={{ color: theme.colors.primary }}>Pill</Text></Text>;
 }
 
 export function Eyebrow({ children }: PropsWithChildren) {
+  const { styles } = useThemed(makeStyles);
   const { theme, typography } = useAppearance(); return <Text style={[styles.eyebrow, { color: theme.colors.textSecondary, fontFamily: typography.bodySemibold }]}>{children}</Text>;
 }
 
 export function Button({ children, onPress, kind = 'primary', disabled = false, style }: { children: ReactNode; onPress?: () => void; kind?: 'primary' | 'secondary' | 'ghost' | 'destructive'; disabled?: boolean; style?: ViewStyle }) {
+  const { styles } = useThemed(makeStyles);
   const { theme, typography } = useAppearance(); const c = theme.colors;
   const bg = kind === 'primary' ? c.secondary : kind === 'secondary' ? c.surfaceRaised : kind === 'destructive' ? `${c.destructive}22` : 'transparent';
   const fg = kind === 'primary' ? c.secondaryForeground : kind === 'destructive' ? c.destructive : c.textPrimary;
@@ -30,6 +34,7 @@ export function Button({ children, onPress, kind = 'primary', disabled = false, 
 }
 
 export function Pill({ label, active = false, onPress }: { label: string; active?: boolean; onPress?: () => void }) {
+  const { styles } = useThemed(makeStyles);
   const { theme, typography } = useAppearance(); const c = theme.colors;
   return (
     <PressableScale accessibilityRole="button" accessibilityState={{ selected: active }} to={0.94} hitSlop={{ top: 4, bottom: 4, left: 2, right: 2 }} onPress={() => { feedback.select(); onPress?.(); }}
@@ -40,6 +45,7 @@ export function Pill({ label, active = false, onPress }: { label: string; active
 }
 
 export function PurchaseBadge({ label }: { label: 'collect' | 'buy_on_sale' | 'digital_is_fine' | 'try_digital_first' | 'skip' }) {
+  const { color, styles } = useThemed(makeStyles);
   const meta = {
     collect: ['♛', 'Collect', color.collectGold], buy_on_sale: ['◈', 'Buy on sale', color.warning],
     digital_is_fine: ['▣', 'Digital is fine', color.digital], try_digital_first: ['◐', 'Try digital first', color.tryDigital], skip: ['⊘', 'Skip', color.faint],
@@ -49,6 +55,7 @@ export function PurchaseBadge({ label }: { label: 'collect' | 'buy_on_sale' | 'd
 }
 
 export function SectionHeader({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) {
+  const { styles } = useThemed(makeStyles);
   const { theme, typography } = useAppearance();
   return (
     <View style={styles.sectionHeader}>
@@ -59,11 +66,13 @@ export function SectionHeader({ title, action, onAction }: { title: string; acti
 }
 
 export function Progress({ value }: { value: number }) {
+  const { styles } = useThemed(makeStyles);
   const { theme } = useAppearance(); return <View style={[styles.progressTrack, { backgroundColor: theme.colors.border }]}><View style={[styles.progressFill, { backgroundColor: theme.colors.progress, width: `${Math.max(0, Math.min(1, value)) * 100}%` }]} /></View>;
 }
 
 /** A bottom sheet. With `onClose` it also closes when you tap outside it or drag it down. */
 export function Sheet({ title, children, onClose }: PropsWithChildren<{ title?: string; onClose?: () => void }>) {
+  const { styles } = useThemed(makeStyles);
   const { theme, typography } = useAppearance();
   const drag = useSheetDrag(onClose);
   return (
@@ -81,10 +90,12 @@ export function Sheet({ title, children, onClose }: PropsWithChildren<{ title?: 
 }
 
 export function Input({ placeholder, value, onChangeText, secureTextEntry = false }: { placeholder: string; value?: string; onChangeText?: (text: string) => void; secureTextEntry?: boolean }) {
+  const { styles } = useThemed(makeStyles);
   const { theme, typography } = useAppearance(); return <TextInput accessibilityLabel={placeholder} placeholder={placeholder} placeholderTextColor={theme.colors.textMuted} value={value} onChangeText={onChangeText} secureTextEntry={secureTextEntry} style={[styles.input, { borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceRaised, color: theme.colors.textPrimary, fontFamily: typography.body }]} />;
 }
 
 export function EmptyState({ title, copy, action, onAction }: { mark?: string; title: string; copy: string; action?: string; onAction?: () => void }) {
+  const { styles } = useThemed(makeStyles);
   const { theme, typography } = useAppearance(); const c = theme.colors;
   return (
     <View style={styles.empty}>
@@ -96,7 +107,7 @@ export function EmptyState({ title, copy, action, onAction }: { mark?: string; t
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (color: Palette) => StyleSheet.create({
   wordmark: { color: color.text, fontFamily: font.display, fontSize: 32, letterSpacing: -1.2 },
   wordmarkSmall: { fontSize: 24 },
   eyebrow: { color: color.muted, fontFamily: font.bodySemibold, fontSize: 11, letterSpacing: 1.4, textTransform: 'uppercase' },

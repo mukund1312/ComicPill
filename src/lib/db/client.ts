@@ -289,7 +289,7 @@ export function ensureSchema(): void {
     ['progress_offset', 'REAL NOT NULL DEFAULT 0'], ['sizes_json', 'TEXT'],
     ['series', 'TEXT'], ['issue', 'TEXT'], ['writer', 'TEXT'], ['folder_id', 'TEXT'], ['preset_id', 'TEXT'],
     ['lock_hash', 'TEXT'], ['lock_salt', 'TEXT'], ['work_id', 'TEXT'], ['size_bytes', 'INTEGER'], ['source_uri', 'TEXT'], ['source_key', 'TEXT'],
-    ['hidden', 'INTEGER NOT NULL DEFAULT 0'],
+    ['hidden', 'INTEGER NOT NULL DEFAULT 0'], ['lock_bio', 'INTEGER NOT NULL DEFAULT 1'],
   ];
   for (const [name, def] of added) if (!cols.includes(name)) sqlite.execSync(`ALTER TABLE reader_comics ADD COLUMN ${name} ${def}`);
   const libraryCols = sqlite.getAllSync<{ name: string }>('PRAGMA table_info(user_library)').map((c) => c.name);
@@ -299,6 +299,8 @@ export function ensureSchema(): void {
   sqlite.execSync("UPDATE works SET cover_path = NULL WHERE id LIKE 'scan-%' AND cover_path IS NOT NULL");
   const folderCols = sqlite.getAllSync<{ name: string }>('PRAGMA table_info(reader_folders)').map((c) => c.name);
   for (const name of ['lock_hash', 'lock_salt', 'parent_id']) if (!folderCols.includes(name)) sqlite.execSync(`ALTER TABLE reader_folders ADD COLUMN ${name} TEXT`);
+  // Whether a lock also opens with a fingerprint (asked when the lock is made).
+  if (!folderCols.includes('lock_bio')) sqlite.execSync('ALTER TABLE reader_folders ADD COLUMN lock_bio INTEGER NOT NULL DEFAULT 1');
   const collectionCols = sqlite.getAllSync<{ name: string }>('PRAGMA table_info(reader_collections)').map((c) => c.name);
   if (!collectionCols.includes('parent_id')) sqlite.execSync('ALTER TABLE reader_collections ADD COLUMN parent_id TEXT');
   // Collections used to hold files; carry what they held over to the comics' works, once.

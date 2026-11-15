@@ -2,7 +2,7 @@ import { forwardRef, useImperativeHandle, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withDecay, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
-import { color } from '../../ui/tokens';
+import { useThemed, type Palette } from '../../ui/theme';
 import type { Panel } from '../../lib/reader/guided/panels';
 import { cameraFor } from '../../lib/reader/guided/camera';
 
@@ -56,7 +56,8 @@ const ONE_FINGER_PER_DOUBLING = 140;
  * Pinch (about the fingers), double-tap (about the tap), and pan with momentum. At 1× — or when
  * pushed against an edge — pan steps aside so the pager can swipe to the next page.
  */
-export const ZoomableView = forwardRef<ZoomHandle, Props>(function ZoomableView({ width, height, contentWidth = width, contentHeight = height, onTap, onDoubleTap, onPullDown, background = color.bg, passive = false, children }, ref) {
+export const ZoomableView = forwardRef<ZoomHandle, Props>(function ZoomableView({ width, height, contentWidth = width, contentHeight = height, onTap, onDoubleTap, onPullDown, background = '#0A0A0D', passive = false, children }, ref) {
+  const { styles } = useThemed(makeStyles);
   // A fit-width page can be taller than the screen: it scrolls vertically even at 1×.
   const tallPage = contentHeight > height + 1;
   // Tall pages start at the top, not the middle. (A rotation re-mounts the list, so this runs again.)
@@ -187,7 +188,7 @@ export const ZoomableView = forwardRef<ZoomHandle, Props>(function ZoomableView(
   );
 });
 
-const styles = StyleSheet.create({
-  page: { backgroundColor: color.bg, overflow: 'hidden' },
+const makeStyles = (color: Palette) => StyleSheet.create({
+  page: { backgroundColor: '#0A0A0D', overflow: 'hidden' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });
