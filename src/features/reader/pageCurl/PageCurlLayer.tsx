@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { PixelRatio, StyleSheet } from 'react-native';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { Canvas, Fill, ImageShader, Shader, Skia, type SkImage } from '@shopify/react-native-skia';
@@ -119,8 +119,8 @@ function SpreadSheet({ imgs, rFrom, rTo, turning, scrollX, width, height, color 
   }, [turning, width]);
   const uniforms = useDerivedValue(() => {
     const t = progress.value;
-    const { a, R } = spreadGeometry(t, S, E);
-    return { rFromL: rFrom.left, rFromR: rFrom.right, rToL: rTo.left, rToR: rTo.right, size: [width, height], S, E, a, R, t, tilt: 0.08 * (1 - t), bg: color };
+    const { a, R, phi } = spreadGeometry(t, S, E, rFrom.right[3] - rFrom.right[1]);
+    return { rFromL: rFrom.left, rFromR: rFrom.right, rToL: rTo.left, rToR: rTo.right, size: [width, height], S, E, a, R, t, phi, bg: color };
   }, [S, E, width, height, color, rFrom, rTo]);
   const style = useAnimatedStyle(() => ({ opacity: progress.value > 0 ? 1 : 0 }));
   if (!spreadCurlEffect) return null;
@@ -143,6 +143,12 @@ function SpreadSheet({ imgs, rFrom, rTo, turning, scrollX, width, height, color 
 
 /** One sheet: `from` turns away over `to` while the pager sits between page `turning` and the one after it. */
 function Sheet({ from, to, turning, scrollX, width, height, color }: { from: SkImage; to: SkImage; turning: number; scrollX: SharedValue<number>; width: number; height: number; color: [number, number, number] }) {
+  // Where the page sits on screen (fitted like the reader fits it): the sheet that turns is exactly this rectangle.
+  const pageR = useMemo((): [number, number, number, number] => {
+    const k = Math.min(width / from.width(), height / from.height());
+    const w = from.width() * k; const h = from.height() * k; const x = (width - w) / 2; const y = (height - h) / 2;
+    return [x, y, x + w, y + h];
+  }, [from, width, height]);
   // Progress of this sheet's turn: 0 while the pager rests on `turning`, 1 once it reaches the next page; otherwise this sheet is idle.
   const progress = useDerivedValue(() => {
     const s = scrollX.value / width - turning;
@@ -151,9 +157,10 @@ function Sheet({ from, to, turning, scrollX, width, height, color }: { from: SkI
 
   const uniforms = useDerivedValue(() => {
     const t = progress.value;
-    const { a, R } = curlGeometry(t, width);
-    return { size: [width, height], a, R, t, bg: color, paper: paperFor(color), tilt: 0.1 * (1 - t) };
-  }, [width, height, color]);
+    // The sheet is the page itself (fitted inside the screen), not the letterbox around it: it peels from the page's own corner.
+    const { a, R, phi } = curlGeometry(t, pageR[2] - pageR[0], pageR[3] - pageR[1]);
+    return { size: [width, height], a, R, t, bg: color, paper: paperFor(color), phi, pageR };
+  }, [width, height, color, pageR]);
 
   const style = useAnimatedStyle(() => ({ opacity: progress.value > 0 ? 1 : 0 }));
   if (!curlEffect) return null;

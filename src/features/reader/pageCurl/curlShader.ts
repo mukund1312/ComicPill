@@ -19,66 +19,70 @@ uniform float R;
 uniform float t;
 uniform half3 bg;
 uniform half3 paper;
-uniform float tilt;
-
-float hash(float2 p) { return fract(sin(dot(p, float2(12.9898, 78.233))) * 43758.5453); }
+uniform float phi;
+uniform float4 pageR;
 
 const float PI = 3.14159265;
 
+float hash(float2 p) { return fract(sin(dot(p, float2(12.9898, 78.233))) * 43758.5453); }
 half3 opaque(half4 c) { return c.rgb + bg * (1.0 - c.a); }
+bool inPage(float2 q) { return q.x >= pageR.x && q.x <= pageR.z && q.y >= pageR.y && q.y <= pageR.w; }
+// Distance from a point on the sheet to the sheet's own edge (for the thin bright edge paper has).
+float edgeDist(float2 q) { return min(min(q.x - pageR.x, pageR.z - q.x), min(q.y - pageR.y, pageR.w - q.y)); }
 
 half4 main(float2 xy) {
-  float W = size.x;
-  float x = xy.x;
-  float y = xy.y;
-  // The fold is not quite upright: it leans like a page lifted from a lower corner, and straightens as the turn completes.
-  float xr = x + tilt * W * (y / size.y - 0.5);
-  // A faint paper grain for the back of the sheet.
-  float grain = (hash(floor(xy / 1.5)) - 0.5) * 0.035;
+  float W = pageR.z - pageR.x;
+  // The fold runs across the page at an angle: the page is lifted by its lower right corner, and the fold straightens as the turn completes.
+  // Everything is measured along d, at right angles to the fold.
+  float2 d = float2(cos(phi), sin(phi));
+  float s = dot(xy - float2(pageR.x, (pageR.y + pageR.w) * 0.5), d);
+  float grain = (hash(floor(xy / 1.5)) - 0.5) * 0.03;
 
-  // Next page underneath; it is darkened by the sheet above it, less so as the sheet lifts away.
+  // Next page underneath, in the soft shadow of the sheet above it (less as the sheet lifts away).
   half3 under = opaque(toImg.eval(xy));
   float ex = a + R;
   float leaving = 1.0 - smoothstep(0.82, 1.0, t);
-  float shadow = 0.42 * clamp(t * 6.0, 0.0, 1.0) * leaving * exp(-max(xr - ex, 0.0) / (0.11 * W));
-  if (xr > ex) { return half4(under * (1.0 - shadow), 1.0); }
+  float shadow = 0.5 * clamp(t * 6.0, 0.0, 1.0) * leaving * exp(-max(s - ex, 0.0) / (0.10 * W));
+  if (s > ex) { return half4(under * (1.0 - shadow), 1.0); }
 
-  if (xr >= a) {
-    float s = clamp((xr - a) / R, 0.0, 1.0);
-    float th1 = asin(s);
-    float u1 = a + th1 * R;
-    float u2 = a + (PI - th1) * R;
-    if (u2 <= W) {
-      // The far half of the cylinder: the back of the paper, lit more as it faces us.
-      half3 art = opaque(fromImg.eval(float2(u2, y)));
-      half3 col = (mix(paper, art, 0.13) + grain) * 0.985;
-      float facing = sqrt(max(1.0 - s * s, 0.0));
-      float lit = 0.55 + 0.45 * facing + 0.17 * exp(-pow((s - 0.5) / 0.18, 2.0));
-      return half4(col * lit, 1.0);
+  if (s >= a) {
+    float k = clamp((s - a) / R, 0.0, 1.0);
+    float th1 = asin(k);
+    float2 q2 = xy + (a + (PI - th1) * R - s) * d;   // the far, upper half of the roll: the paper's back
+    float2 q1 = xy + (a + th1 * R - s) * d;          // the near half: the artwork curving away
+    float facing = sqrt(max(1.0 - k * k, 0.0));
+    if (inPage(q2)) {
+      half3 col = mix(paper, opaque(fromImg.eval(q2)), 0.16) + grain;
+      float lit = 0.6 + 0.4 * facing;
+      // A glossy band of reflected light running along the roll, as on a printed sheet.
+      float sheen = 0.34 * exp(-pow((k - 0.6) / 0.11, 2.0)) + 0.10 * exp(-pow((k - 0.25) / 0.2, 2.0));
+      col = col * lit + half3(sheen);
+      col = mix(col, half3(1.0), smoothstep(2.0, 0.0, edgeDist(q2)) * 0.7);
+      return half4(col, 1.0);
     }
-    if (u1 <= W) {
-      // The near half: the artwork curving away, darker as it turns from the light, with a soft dark line where it leaves the page.
-      half3 art = opaque(fromImg.eval(float2(u1, y)));
-      float lit = 0.5 + 0.5 * cos(th1) - 0.12 * smoothstep(0.5, 1.0, s);
-      return half4(art * lit, 1.0);
+    if (inPage(q1)) {
+      half3 art = opaque(fromImg.eval(q1));
+      float lit = 0.48 + 0.52 * cos(th1) - 0.14 * smoothstep(0.55, 1.0, k);
+      float sheen = 0.16 * exp(-pow((k - 0.32) / 0.1, 2.0));
+      return half4(art * lit + half3(sheen), 1.0);
     }
     return half4(under * (1.0 - shadow), 1.0);
   }
 
-  // Flat part, left of the cylinder.
-  float ub = 2.0 * a + PI * R - xr;
-  if (ub <= W) {
-    half3 art = opaque(fromImg.eval(float2(ub, y)));
-    half3 col = (mix(paper, art, 0.13) + grain) * 0.985;
-    // Gently darker the further the flat sheet lies from the fold.
-    col *= 1.0 - 0.09 * smoothstep(0.0, 0.5 * W, a - xr);
-    // The sheet's own edge: a thin bright line, as paper has thickness.
-    float edge = smoothstep(W - 2.0, W, ub);
-    col = mix(col, half3(0.99), edge * 0.85);
+  // Before the roll: where the turned-over part lies, its back shows (mirrored across the fold); elsewhere the page is still flat.
+  float2 qb = xy + (2.0 * a + PI * R - 2.0 * s) * d;
+  if (inPage(qb)) {
+    half3 col = mix(paper, opaque(fromImg.eval(qb)), 0.16) + grain;
+    // Light falls off away from the roll, with a faint sheen just after it, and the sheet's cut edge catches the light.
+    float away = a - s;
+    col *= 1.0 - 0.10 * smoothstep(0.0, 0.5 * W, away);
+    col += half3(0.06 * exp(-away / (0.08 * W)));
+    col = mix(col, half3(1.0), smoothstep(2.0, 0.0, edgeDist(qb)) * 0.8);
     return half4(col, 1.0);
   }
+  // The flat page, with a contact shadow tucked under the roll.
   half3 art = opaque(fromImg.eval(xy));
-  float contact = 0.30 * clamp(t * 8.0, 0.0, 1.0) * exp(-(a - xr) / (0.06 * W));
+  float contact = 0.36 * clamp(t * 8.0, 0.0, 1.0) * exp(-(a - s) / (0.05 * W));
   return half4(art * (1.0 - contact), 1.0);
 }
 `;
@@ -92,17 +96,25 @@ export const curlEffect = compile(SKSL);
 
 /** Where the cylinder is, and how fat, at turn progress `t` (0 = flat, 1 = gone off the left edge). */
 /** The paper colour for the back of the sheet: warm cream on a light reader, a dim warm grey on a dark one, so it never glares. */
-export function paperFor(bg: [number, number, number]): [number, number, number] {
+export function paperFor(_bg: [number, number, number]): [number, number, number] {
   'worklet';
-  const lum = 0.299 * bg[0] + 0.587 * bg[1] + 0.114 * bg[2];
-  return lum > 0.5 ? [0.945, 0.925, 0.875] : [0.20 + bg[0] * 0.3, 0.19 + bg[1] * 0.3, 0.17 + bg[2] * 0.3];
+  // Real comic paper is white whatever the reader's background: the bright back of the sheet is what sells the turn.
+  return [0.94, 0.925, 0.89];
 }
 
-export function curlGeometry(t: number, width: number) {
+/**
+ * The fold's angle, roll radius and position at turn progress `t` (0 = flat, 1 = gone). The page is lifted by its lower corner, so the fold
+ * starts tilted (about 17°) and straightens as it goes over; the roll is fattest mid-turn, like a real sheet held loosely.
+ */
+export function curlGeometry(t: number, width: number, height: number) {
   'worklet';
-  const R = width * (0.1 + 0.1 * Math.sin(Math.PI * t));
-  const a = width - t * (width + 2 * R);
-  return { a, R };
+  const phi = 0.3 * Math.pow(1 - t, 1.3);
+  const R = width * (0.09 + 0.11 * Math.sin(Math.PI * t));
+  // Measured at right angles to the fold, from the left edge's middle: the page reaches from sMin (top left) to sMax (bottom right corner).
+  const sMax = width * Math.cos(phi) + (height / 2) * Math.sin(phi);
+  const sMin = -(height / 2) * Math.sin(phi);
+  const a = sMax - t * (sMax - sMin + 2 * R);
+  return { a, R, phi };
 }
 
 /**
@@ -126,7 +138,7 @@ uniform float E;
 uniform float a;
 uniform float R;
 uniform float t;
-uniform float tilt;
+uniform float phi;
 uniform half3 bg;
 
 const float PI = 3.14159265;
@@ -135,67 +147,69 @@ bool inside(float4 r, float2 p) { return p.x >= r.x && p.x < r.z && p.y >= r.y &
 half3 opaque(half4 c) { return c.rgb + bg * (1.0 - c.a); }
 half3 fromAt(float2 p) { if (inside(rFromL, p)) return opaque(fromL.eval(p)); if (inside(rFromR, p)) return opaque(fromR.eval(p)); return bg; }
 half3 toAt(float2 p) { if (inside(rToL, p)) return opaque(toL.eval(p)); if (inside(rToR, p)) return opaque(toR.eval(p)); return bg; }
+// The turning sheet is the right page; its back (the next left page) is the same rectangle mirrored about the spine.
+bool onSheet(float2 q) { return inside(rFromR, q); }
+half3 backAt(float2 q) { return toAt(float2(2.0 * S - q.x, q.y)); }
+float edgeDist(float2 q) { return min(min(q.x - rFromR.x, rFromR.z - q.x), min(q.y - rFromR.y, rFromR.w - q.y)); }
 
 half4 main(float2 xy) {
-  float x = xy.x;
-  float y = xy.y;
   float P = max(E - S, 1.0);
-  // The fold leans as if the page were lifted by its lower corner, and straightens as it lands.
-  float xr = x + tilt * P * (y / size.y - 0.5);
-  float ex = a + R;
+  float2 d = float2(cos(phi), sin(phi));
+  float s = dot(xy - float2(S, (rFromR.y + rFromR.w) * 0.5), d);
 
-  // Not under the sheet: the next spread's right page to the right of the spine, this spread's left page to the left of it.
-  half3 base = x >= S ? toAt(xy) : fromAt(xy);
-  // The lifted sheet throws a soft shadow on the page it is uncovering.
+  half3 base = xy.x >= S ? toAt(xy) : fromAt(xy);
   float leaving = 1.0 - smoothstep(0.8, 1.0, t);
-  float castShade = x >= S ? 0.40 * clamp(t * 6.0, 0.0, 1.0) * leaving * exp(-max(xr - ex, 0.0) / (0.12 * P)) : 0.0;
-  if (xr > ex) return half4(base * (1.0 - castShade), 1.0);
+  float ex = a + R;
+  float castShade = xy.x >= S ? 0.45 * clamp(t * 6.0, 0.0, 1.0) * leaving * exp(-max(s - ex, 0.0) / (0.11 * P)) : 0.0;
+  if (s > ex) return half4(base * (1.0 - castShade), 1.0);
 
-  if (xr >= a) {
-    float s = clamp((xr - a) / R, 0.0, 1.0);
-    float th1 = asin(s);
-    float u1 = a + th1 * R;
-    float u2 = a + (PI - th1) * R;
-    if (u2 <= E && u2 >= S) {
-      // The far half of the roll: the back of the page (the next left page), brighter where it faces us.
-      half3 back = toAt(float2(2.0 * S - u2, y));
-      float facing = sqrt(max(1.0 - s * s, 0.0));
-      float lit = 0.55 + 0.45 * facing + 0.15 * exp(-pow((s - 0.5) / 0.18, 2.0));
-      return half4(back * lit, 1.0);
+  if (s >= a) {
+    float k = clamp((s - a) / R, 0.0, 1.0);
+    float th1 = asin(k);
+    float2 q2 = xy + (a + (PI - th1) * R - s) * d;
+    float2 q1 = xy + (a + th1 * R - s) * d;
+    float facing = sqrt(max(1.0 - k * k, 0.0));
+    if (onSheet(q2)) {
+      half3 col = backAt(q2) * (0.6 + 0.4 * facing);
+      col += half3(0.30 * exp(-pow((k - 0.6) / 0.11, 2.0)) + 0.08 * exp(-pow((k - 0.25) / 0.2, 2.0)));
+      col = mix(col, half3(1.0), smoothstep(2.0, 0.0, edgeDist(q2)) * 0.6);
+      return half4(col, 1.0);
     }
-    if (u1 <= E && u1 >= S) {
-      // The near half: this page's art curving away from the light, with a dark line where it leaves the paper.
-      half3 art = fromAt(float2(u1, y));
-      float lit = 0.5 + 0.5 * cos(th1) - 0.12 * smoothstep(0.5, 1.0, s);
-      return half4(art * lit, 1.0);
+    if (onSheet(q1)) {
+      half3 art = fromAt(q1);
+      float lit = 0.48 + 0.52 * cos(th1) - 0.14 * smoothstep(0.55, 1.0, k);
+      return half4(art * lit + half3(0.14 * exp(-pow((k - 0.32) / 0.1, 2.0))), 1.0);
     }
     return half4(base * (1.0 - castShade), 1.0);
   }
 
-  // Left of the roll. Where the turned-over part lies, its back shows (mirrored about the spine, exactly where it will rest).
-  float ub = 2.0 * a + PI * R - xr;
-  if (ub <= E && ub >= S) {
-    half3 back = toAt(float2(2.0 * S - ub, y));
-    back *= 1.0 - 0.08 * smoothstep(0.0, 0.5 * P, a - xr);
-    float edge = smoothstep(E - 2.0, E, ub);
-    back = mix(back, half3(0.95), edge * 0.6);
+  float2 qb = xy + (2.0 * a + PI * R - 2.0 * s) * d;
+  if (onSheet(qb)) {
+    float away = a - s;
+    half3 back = backAt(qb) * (1.0 - 0.08 * smoothstep(0.0, 0.5 * P, away));
+    back += half3(0.05 * exp(-away / (0.08 * P)));
+    back = mix(back, half3(0.97), smoothstep(2.0, 0.0, edgeDist(qb)) * 0.6);
     return half4(back, 1.0);
   }
-  // Uncovered: the flat rest of this page right of the spine, or the left page, darkened a little just ahead of the landing edge.
-  float landing = 2.0 * a + PI * R - E;
-  float shade = x < S ? 0.35 * clamp(t * 4.0, 0.0, 1.0) * exp(-max(x - landing, 0.0) / (0.06 * P)) * step(landing, x) : 0.30 * clamp(t * 8.0, 0.0, 1.0) * exp(-(a - xr) / (0.06 * P));
-  return half4(fromAt(xy) * (1.0 - shade), 1.0);
+  // Uncovered: this spread's pages, with a contact shadow under the roll and a soft shade ahead of where the sheet lands on the left.
+  float contact = xy.x >= S ? 0.32 * clamp(t * 8.0, 0.0, 1.0) * exp(-(a - s) / (0.05 * P)) : 0.0;
+  float landing = 2.0 * a + PI * R;
+  float land = xy.x < S ? 0.35 * clamp(t * 4.0, 0.0, 1.0) * exp(-max(s - landing, 0.0) / (0.06 * P)) * step(landing, s) : 0.0;
+  return half4(fromAt(xy) * (1.0 - contact - land), 1.0);
 }
 `;
 
 export const spreadCurlEffect = compile(SPREAD_SKSL);
 
 /** The roll for a spread: it starts at the outer edge `E`, ends at the spine `S` (thin again), and is fattest half-way. */
-export function spreadGeometry(t: number, S: number, E: number) {
+export function spreadGeometry(t: number, S: number, E: number, pageH: number) {
   'worklet';
   const P = E - S;
+  const phi = 0.24 * Math.pow(1 - t, 1.3);
   const R = P * (0.02 + 0.16 * Math.sin(Math.PI * t));
-  // At t = 1 the turned page lies mirrored about the spine: 2a + πR = 2S.
-  const a = E - t * (E - S) - t * ((Math.PI * R) / 2);
-  return { a, R };
+  // Measured at right angles to the fold from the spine: the right page reaches out to its lower outer corner at sMax.
+  const sMax = P * Math.cos(phi) + (pageH / 2) * Math.sin(phi);
+  // At t = 1 the turned page lies mirrored about the spine (and the fold is upright): 2a + πR = 0.
+  const a = sMax - t * sMax - t * ((Math.PI * R) / 2);
+  return { a, R, phi };
 }
