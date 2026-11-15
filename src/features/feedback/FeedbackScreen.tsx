@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { useFeedback } from './useFeedback';
+import { BackButton } from '../../ui/Icon';
 import { Button, EmptyState, Pill } from '../../ui/primitives';
 import { radius, space, type } from '../../ui/tokens';
 
@@ -64,7 +65,7 @@ export default function FeedbackScreen() {
   return (
     <SafeAreaView style={styles.page} edges={['top']}>
     <ScrollView style={styles.page} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Text onPress={() => router.back()} style={styles.back}>‹ Settings</Text>
+      <BackButton onPress={() => router.back()} label="Settings" />
       <Text style={styles.title}>Help &amp; feedback</Text>
       <Text style={styles.subtitle}>
         Tell us what went wrong or what would help. “Email it” opens your email app with the message ready to send to {SUPPORT_EMAIL}. Nothing is sent until you press send there.

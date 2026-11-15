@@ -10,7 +10,8 @@ import { PressableScale } from '../../ui/PressableScale';
 import { useAppearance } from '../../ui/theme';
 import { space } from '../../ui/tokens';
 import { sqlite } from '../../lib/db/client';
-import { listCollections } from '../../lib/reader/readerLibrary';
+import { listCollections, listReaderComics, type ReaderComic } from '../../lib/reader/readerLibrary';
+import { Image } from 'expo-image';
 import { linkWithCovers, pickAndImportComics, pickAndImportFolder, pickAndLinkComics, pickAndLinkFolder, type ImportProgress, type ImportResult } from '../../lib/reader/importComics';
 import { runJob, useJob } from '../../lib/reader/importJob';
 
@@ -19,12 +20,15 @@ type Row = { icon: IconName; label: string; sub?: string; tint?: string; onPress
 export default function LibraryHubScreen() {
   const { theme, typography } = useAppearance(); const c = theme.colors;
   const [counts, setCounts] = useState({ phone: 0, collection: 0, collections: 0 });
-  const [open, setOpen] = useState({ libraries: true, imports: true, tools: true });
+  // Your comics lead; adding comics and the extra tools are a tap away (More starts folded so the page stays calm).
+  const [open, setOpen] = useState({ libraries: true, imports: true, tools: false });
+  const [recent, setRecent] = useState<ReaderComic[]>([]);
   const running = useJob().running;
   useFocusEffect(useCallback(() => {
     const phone = sqlite.getFirstSync<{ n: number }>('SELECT COUNT(*) AS n FROM reader_comics WHERE hidden = 0')?.n ?? 0;
     const collection = sqlite.getFirstSync<{ n: number }>("SELECT COUNT(*) AS n FROM user_library WHERE own <> 'none'")?.n ?? 0;
     setCounts({ phone, collection, collections: listCollections().length });
+    setRecent(listReaderComics().filter((comic) => !comic.locked && comic.coverPath).slice(0, 12));
   }, []));
 
   // Imports run as the app's one background job; the bar at the bottom of every screen shows progress and how it went.
@@ -92,9 +96,25 @@ export default function LibraryHubScreen() {
   return (
     <AppShell active="library" title="Library">
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {recent.length ? (
+          <Animated.View entering={FadeInDown.duration(380)}>
+            <View style={styles.shelfHead}>
+              <Text style={[styles.groupTitle, { color: c.textPrimary, fontFamily: typography.display }]}>On your shelf</Text>
+              <Pressable accessibilityRole="button" onPress={() => router.push('/reader/phone')} hitSlop={8}><Text style={[styles.seeAll, { color: c.primary, fontFamily: typography.bodySemibold }]}>See all</Text></Pressable>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shelf}>
+              {recent.map((comic) => (
+                <PressableScale key={comic.id} to={0.96} onPress={() => router.push(`/reader/${comic.id}`)} style={styles.shelfItem} accessibilityRole="button" accessibilityLabel={comic.title}>
+                  <View style={[styles.shelfCover, { backgroundColor: c.surfaceRaised, borderColor: c.border }]}><Image source={{ uri: comic.coverPath ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} recyclingKey={`hub-${comic.id}`} /></View>
+                  <Text numberOfLines={1} style={[styles.shelfTitle, { color: c.textPrimary, fontFamily: typography.bodyMedium }]}>{comic.title}</Text>
+                </PressableScale>
+              ))}
+            </ScrollView>
+          </Animated.View>
+        ) : null}
         {group('Libraries', 'libraries', libraries, 0)}
         {group('Add comics', 'imports', imports, 80)}
-        {group('Tools', 'tools', tools, 160)}
+        {group('More', 'tools', tools, 160)}
       </ScrollView>
     </AppShell>
   );
@@ -102,6 +122,12 @@ export default function LibraryHubScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: space.lg, paddingBottom: 130 },
+  shelfHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 18, marginBottom: 12 },
+  seeAll: { fontSize: 14 },
+  shelf: { gap: 14, paddingRight: space.lg },
+  shelfItem: { width: 122 },
+  shelfCover: { width: 122, height: 183, borderRadius: 14, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 10, shadowOffset: { width: 0, height: 6 }, elevation: 6 },
+  shelfTitle: { fontSize: 13, marginTop: 8 },
   groupHead: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 22, marginBottom: 10, alignSelf: 'flex-start' },
   groupTitle: { fontSize: 22, letterSpacing: -0.4 },
   card: { borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },

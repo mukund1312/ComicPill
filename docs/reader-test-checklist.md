@@ -199,3 +199,11 @@ Test comic: any `.cbz` with several panels per page and lettered balloons (the c
 
 - [x] Lifted balloons get a clean 2.4px ink outline traced around the silhouette, lettering is sharpened (unsharp mask) and drawn with cubic resampling, the page dims to 60% behind it, and the shadow is deeper. Before/after compared on MidnightSons p.70 (balloons 1 and 4).
 - Not changed: the detector model and the silhouette tracing. Balloons with no outline (captions straight on art) still lift as a rounded card.
+
+## Premium pass (15 Nov 2026)
+
+- [x] Page curl: corner peel along a rotated fold (portrait and landscape spread), white paper back with art showing through, moving specular sheen, contact shadow, lit edge; the sheet is the page, not the letterbox. Checked mid-drag on the emulator.
+- [x] Icons: reader top bar (back, bookmark, more), balloon bar (prev/next, remove, add, close), lock tiles, folder/collection tiles, Mind Space settings all use the Ionicons set instead of emoji/text glyphs.
+- [x] One back control: Appearance, Help & feedback and the journey screens use the round back button; duplicate text links removed from Playlist and Piggy Bank detail.
+- [x] Library opens with "On your shelf" (large covers, See all), then Libraries and Add comics; Playlists/Compare/Mind Space/Wallet/Paths moved into a folded "More".
+- Not done: store screenshots (need comic art you may show: public-domain or your own), real-phone test, Play Console forms.

@@ -24,6 +24,7 @@ import { intentOptionsFromEnv, interpretReadingIntent, type InterpretResult } fr
 import { resolveArc, type ResolvedArc } from '../../lib/intent/resolve';
 import { describeResult } from './compose';
 import { DEPTHS, depthCounts } from './useArc';
+import { BackButton } from '../../ui/Icon';
 
 
 const KIND_LABEL: Record<string, string> = {
@@ -111,7 +112,7 @@ export default function NewArcScreen({ initialTemplateKey }: { initialTemplateKe
   return (
     <AppShell active="none" title="Build me an arc">
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text onPress={() => router.back()} style={[styles.back, { color: c.textSecondary, fontFamily: typography.bodyMedium }]}>‹ Paths</Text>
+        <BackButton onPress={() => router.back()} />
         <Text style={[styles.lead, { color: c.textPrimary, fontFamily: typography.display }]}>Tell me what you want to read.</Text>
         <Text style={[styles.body, { color: c.textSecondary, fontFamily: typography.body }]}>
           Say it however it comes out — what you’re reading, what’s confusing, where you want to end up. I’ll turn it into a curated journey built around what you own and have read.

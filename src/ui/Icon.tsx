@@ -35,4 +35,10 @@ const styles = StyleSheet.create({
   headerPill: { width: undefined, flexDirection: 'row', gap: 5, paddingHorizontal: 12 },
   headerLabel: { fontSize: 13 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  backWrap: { alignSelf: 'flex-start', marginBottom: 14 },
 });
+
+/** The one back control every full-page screen uses: the round chevron button, in the top-left corner. */
+export function BackButton({ onPress, label = 'Back' }: { onPress: () => void; label?: string }) {
+  return <View style={styles.backWrap}><HeaderButton icon="chevron-back" label={label} onPress={onPress} /></View>;
+}

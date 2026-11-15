@@ -5,6 +5,7 @@ import { checkPassword, markUnlocked } from '../../lib/reader/lock';
 import { sha256 } from '../../lib/reader/lockCrypto';
 import { getLock, lockUsesBiometrics } from '../../lib/reader/readerLibrary';
 import { Button } from '../../ui/primitives';
+import { Icon } from '../../ui/Icon';
 import { biometricName, biometricsOn, confirmWithBiometrics } from '../../lib/platform/biometrics';
 import { feedback } from '../../lib/platform/feedback';
 import { radius, space, type } from '../../ui/tokens';
@@ -34,7 +35,7 @@ export function UnlockGate({ kind, id, name, onUnlocked }: { kind: 'comic' | 'fo
   };
   return (
     <View style={styles.root}>
-      <Text style={styles.lock}>🔒</Text>
+      <Icon name="lock-closed" size={40} color={color.accent} />
       <Text style={styles.title}>{kind === 'folder' ? 'This folder is locked' : 'This comic is locked'}</Text>
       <Text style={styles.sub}>{name}</Text>
       <TextInput secureTextEntry value={pw} onChangeText={(t) => { setPw(t); setWrong(false); }} onSubmitEditing={submit} placeholder="Password" placeholderTextColor={color.faint} style={[styles.input, wrong && styles.inputWrong]} autoCapitalize="none" autoCorrect={false} returnKeyType="go" />

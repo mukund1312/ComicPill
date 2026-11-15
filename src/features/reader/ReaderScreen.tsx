@@ -35,7 +35,7 @@ import { BubbleFloatLayer, type FloatTarget } from './BubbleFloatLayer';
 import { extractBubble } from '../../lib/reader/bubbles/extract';
 import { BUBBLE_SIZE_STEP, clampBubbleSize, settleRect } from '../../lib/reader/bubbles/pop';
 import { feedback } from '../../lib/platform/feedback';
-import { Icon } from '../../ui/Icon';
+import { Icon, type IconName } from '../../ui/Icon';
 import { makeSerialQueue, nextSide, stepForSide, stepForVolume, stepPosition, type NavMode, type NavPosition, type Step } from '../../lib/reader/navigation/readerNav';
 import { useHardwareKeys, type HardwareKey } from './useHardwareKeys';
 import { combineUnit, fromUnit, slotAt, slotFor, toUnit, unitPanels, unitSlots, type Origin } from '../../lib/reader/unitLayout';
@@ -212,13 +212,13 @@ function StepButton({ which, noun, rtl, onStep, before }: { which: 'left' | 'rig
   const forward = (which === 'right') === forwardOnRight;
   return (
     <BarButton label={`${forward ? 'Next' : 'Previous'} ${noun}`} onPress={() => { before?.(); onStep(forward ? 1 : -1); }}>
-      <Text style={styles.bubbleBtn}>{which === 'right' ? '›' : '‹'}</Text>
+      <Icon name={which === 'right' ? 'chevron-forward' : 'chevron-back'} size={24} color="#fff" />
     </BarButton>
   );
 }
 
 function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComic; source: ComicSource; sizes: Sizes | null; reading: Reading; settings: ReaderSettings }) {
-  const { styles } = useThemed(makeStyles);
+  const { color, styles } = useThemed(makeStyles);
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const total = source.pageCount;
@@ -908,12 +908,12 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
       {display.brightness < 1 ? <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#000', opacity: 1 - display.brightness }]} /> : null}
       {overlay ? <>
         <Animated.View entering={FadeInUp.duration(180)} exiting={FadeOutUp.duration(140)} style={[styles.top, { paddingTop: insets.top + space.sm }]}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={() => router.back()} hitSlop={12}><Text style={styles.back}>‹</Text></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={() => router.back()} hitSlop={12}><Icon name="chevron-back" size={26} color="#fff" /></Pressable>
           <Text numberOfLines={1} style={styles.title}>{comic.title}</Text>
           <Pressable accessibilityRole="button" accessibilityLabel={bookmarks.has(page) ? 'Remove bookmark' : 'Add bookmark'} onPress={onToggleBookmark} hitSlop={10}>
-            <Text style={[styles.icon, bookmarks.has(page) && styles.iconActive]}>{bookmarks.has(page) ? '★' : '☆'}</Text>
+            <Icon name={bookmarks.has(page) ? 'bookmark' : 'bookmark-outline'} size={22} color={bookmarks.has(page) ? color.accent : '#fff'} />
           </Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel="More" onPress={() => setMenuOpen(true)} hitSlop={10}><Text style={styles.icon}>⋯</Text></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="More" onPress={() => setMenuOpen(true)} hitSlop={10}><Icon name="ellipsis-horizontal" size={24} color="#fff" /></Pressable>
         </Animated.View>
         {/* A slim strip along the bottom edge, so the page being read stays visible above it. */}
         <Animated.View entering={FadeInDown.duration(180)} exiting={FadeOutDown.duration(140)} style={[styles.bottom, { paddingBottom: insets.bottom + 2 }]}>
@@ -934,8 +934,8 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
             <Pressable accessibilityRole="button" accessibilityLabel={`Other panels: ${display.guidedMask === 'dim' ? 'dimmed' : display.guidedMask === 'solid' ? 'hidden' : 'shown'}. Tap to change`} onPress={() => { showBar(); changeDisplay({ guidedMask: display.guidedMask === 'dim' ? 'solid' : display.guidedMask === 'solid' ? 'none' : 'dim' }); }} hitSlop={10}>
               <Text style={styles.bubbleBtn}>{display.guidedMask === 'dim' ? '◐' : display.guidedMask === 'solid' ? '●' : '○'}</Text>
             </Pressable>
-            <BarButton label="More" onPress={() => setMenuOpen(true)}><Text style={styles.bubbleBtn}>⋯</Text></BarButton>
-            <BarButton label="Leave guided reading" onPress={() => setGuided(false)}><Text style={styles.bubbleBtn}>✕</Text></BarButton>
+            <BarButton label="More" onPress={() => setMenuOpen(true)}><Icon name="ellipsis-horizontal" size={24} color="#fff" /></BarButton>
+            <BarButton label="Leave guided reading" onPress={() => setGuided(false)}><Icon name="close" size={24} color="#fff" /></BarButton>
           </View>
         </Animated.View>
       ) : null}
@@ -961,13 +961,13 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
                 <BarButton label="Smaller balloon" onPress={() => nudgeBubbleSize(-BUBBLE_SIZE_STEP)}><Text style={[styles.bubbleBtn, styles.bubbleSizeBtn]}>A−</Text></BarButton>
                 <BarButton label="Larger balloon" onPress={() => nudgeBubbleSize(BUBBLE_SIZE_STEP)}><Text style={[styles.bubbleBtn, styles.bubbleSizeBtn]}>A+</Text></BarButton>
                 <BarButton label="Back to the page" onPress={leaveBubble}><Icon name="contract-outline" size={24} color="#fff" /></BarButton>
-                {focus >= 0 ? <BarButton label="Remove this balloon" onPress={removeBubble}><Text style={styles.bubbleBtn}>⌫</Text></BarButton> : null}
+                {focus >= 0 ? <BarButton label="Remove this balloon" onPress={removeBubble}><Icon name="trash-outline" size={22} color="#fff" /></BarButton> : null}
               </>
             ) : (
               <Text style={styles.bubbleCount}>{!here.done ? 'Finding balloons…' : here.list.length ? 'Tap a balloon' : 'Tap the page to zoom in'}</Text>
             )}
-            <BarButton label={drawing ? 'Cancel selecting' : 'Select a balloon by hand'} onPress={() => setDrawing((d) => !d)}><Text style={[styles.bubbleBtn, drawing && styles.iconActive]}>{drawing ? '✓' : '＋'}</Text></BarButton>
-            <BarButton label="Turn off bubble zoom" onPress={toggleBubbleMode}><Text style={styles.bubbleBtn}>✕</Text></BarButton>
+            <BarButton label={drawing ? 'Cancel selecting' : 'Select a balloon by hand'} onPress={() => setDrawing((d) => !d)}><Icon name={drawing ? 'checkmark' : 'add'} size={26} color={drawing ? color.accent : '#fff'} /></BarButton>
+            <BarButton label="Turn off bubble zoom" onPress={toggleBubbleMode}><Icon name="close" size={24} color="#fff" /></BarButton>
           </View>
         </View>
       ) : null}
@@ -976,15 +976,15 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
           <View style={styles.tipCard}>
             <Text style={styles.tipTitle}>Reading balloon by balloon</Text>
             {[
-              ['‹  ›', 'Previous / next balloon. Swiping, the arrow keys and the volume buttons do the same.'],
+              ['chevrons', 'Previous / next balloon. Swiping, the arrow keys and the volume buttons do the same.'],
               ['A−  A+', 'Make the balloon smaller or larger.'],
               ['page', 'Back to the whole page.'],
-              ['⌫', 'That wasn’t a balloon: remove it.'],
-              ['＋', 'Missed one? Draw a box around it.'],
-              ['✕', 'Turn balloon reading off.'],
+              ['trash', 'That wasn’t a balloon: remove it.'],
+              ['add', 'Missed one? Draw a box around it.'],
+              ['close', 'Turn balloon reading off.'],
               [rtl ? '← RTL' : 'LTR →', 'The reading direction. Change it in ⋯ → Reading mode.'],
             ].map(([sym, text]) => (
-              <View key={sym} style={styles.tipRow}>{sym === 'page' ? <View style={styles.tipIcon}><Icon name="contract-outline" size={18} color="#fff" /></View> : <Text style={styles.tipSym}>{sym}</Text>}<Text style={styles.tipText}>{text}</Text></View>
+              <View key={sym} style={styles.tipRow}>{TIP_ICON[sym] ? <View style={styles.tipIcon}><Icon name={TIP_ICON[sym]} size={18} color="#fff" /></View> : <Text style={styles.tipSym}>{sym}</Text>}<Text style={styles.tipText}>{text}</Text></View>
             ))}
             <BarButton label="Got it" onPress={dismissBubbleTip}><Text style={styles.tipOk}>Got it</Text></BarButton>
           </View>
@@ -997,7 +997,7 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
         <View style={[styles.gallery, { paddingTop: insets.top + space.sm }]}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>All pages</Text>
-            <Pressable onPress={() => setGalleryOpen(false)} hitSlop={10}><Text style={styles.icon}>✕</Text></Pressable>
+            <Pressable accessibilityLabel="Close" onPress={() => setGalleryOpen(false)} hitSlop={10}><Icon name="close" size={24} color={color.text} /></Pressable>
           </View>
           <FlatList
             data={allPages}
@@ -1017,9 +1017,9 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
           <View style={[styles.sheet, { paddingBottom: insets.bottom + space.lg }]}>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Bookmarks</Text>
-              <Pressable onPress={() => setBookmarksOpen(false)} hitSlop={10}><Text style={styles.icon}>✕</Text></Pressable>
+              <Pressable accessibilityLabel="Close" onPress={() => setBookmarksOpen(false)} hitSlop={10}><Icon name="close" size={24} color={color.text} /></Pressable>
             </View>
-            {bookmarks.size === 0 ? <Text style={styles.empty}>No bookmarks yet. Tap ☆ on a page to add one.</Text> : (
+            {bookmarks.size === 0 ? <Text style={styles.empty}>No bookmarks yet. Tap the bookmark at the top of a page to add one.</Text> : (
               <FlatList
                 data={[...bookmarks].sort((a, b) => a - b)}
                 keyExtractor={(p) => String(p)}
@@ -1112,6 +1112,9 @@ function Scrubber({ page, total, rtl, onSeek }: { page: number; total: number; r
     </View>
   );
 }
+
+/** The balloon tip's rows that show an icon rather than text. */
+const TIP_ICON: Record<string, IconName> = { page: 'contract-outline', trash: 'trash-outline', add: 'add', close: 'close', chevrons: 'swap-horizontal' };
 
 const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   bubbleBar: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },

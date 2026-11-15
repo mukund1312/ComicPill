@@ -32,7 +32,7 @@ import { confirm } from '../../ui/dialogs';
 import { canMoveFolders, pathTo, shutFolders } from '../../lib/reader/folderTree';
 import { freeSpaceFor, isCached, readyComics } from '../../lib/reader/cloudCache';
 import { KEEP_CHOICES, keepLimit, setKeepLimit } from '../../lib/reader/cloudBudget';
-import { Icon } from '../../ui/Icon';
+import { Icon, type IconName } from '../../ui/Icon';
 import { usePerRow } from '../../ui/gridColumns';
 import { PerRowSheet } from './PerRowSheet';
 import { HiddenShelf } from './HiddenShelf';
@@ -534,12 +534,12 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   const folderSub = (f: ReaderFolder) => { const total = f.locked ? f.count : folderTotals.get(f.id) ?? f.count; return [total > 0 || f.subfolders === 0 ? `${total} ${total === 1 ? 'title' : 'titles'}` : null, f.subfolders ? `${f.subfolders} ${f.subfolders === 1 ? 'folder' : 'folders'}` : null].filter(Boolean).join(' · '); };
 
   const renderItem = ({ item }: { item: Cell }) => {
-    if (item.kind === 'folder') return <Tile styles={styles} view={view} width={cellWidth} highlight={hoverTarget === item.folder.id} registerRef={(v) => { if (v) folderViews.current.set(item.folder.id, v); else folderViews.current.delete(item.folder.id); }} label={item.folder.name} sub={folderSub(item.folder)} covers={item.folder.locked && !isUnlocked('folder', item.folder.id) ? [] : folderCovers.get(item.folder.id) ?? []} glyph={item.folder.locked && !isUnlocked('folder', item.folder.id) ? '🔒' : '▤'} picked={pickedFolders.has(item.folder.id)} onPress={() => (selecting ? toggleFolder(item.folder) : requireUnlock('folder', item.folder.id, item.folder.name, item.folder.locked, () => setOpenFolder(item.folder.id)))} onLongPress={() => { if (!selecting) folderMenu(item.folder); }} />;
-    if (item.kind === 'collection') return <Tile styles={styles} view={view} width={cellWidth} label={item.collection.name} sub={`${item.collection.count} ${item.collection.count === 1 ? 'title' : 'titles'}`} covers={[]} glyph="❖" onPress={() => setOpenCollection(item.collection.id)} onLongPress={() => collectionMenu(item.collection)} />;
+    if (item.kind === 'folder') return <Tile styles={styles} view={view} width={cellWidth} highlight={hoverTarget === item.folder.id} registerRef={(v) => { if (v) folderViews.current.set(item.folder.id, v); else folderViews.current.delete(item.folder.id); }} label={item.folder.name} sub={folderSub(item.folder)} covers={item.folder.locked && !isUnlocked('folder', item.folder.id) ? [] : folderCovers.get(item.folder.id) ?? []} glyph={item.folder.locked && !isUnlocked('folder', item.folder.id) ? 'lock-closed' : 'folder'} picked={pickedFolders.has(item.folder.id)} onPress={() => (selecting ? toggleFolder(item.folder) : requireUnlock('folder', item.folder.id, item.folder.name, item.folder.locked, () => setOpenFolder(item.folder.id)))} onLongPress={() => { if (!selecting) folderMenu(item.folder); }} />;
+    if (item.kind === 'collection') return <Tile styles={styles} view={view} width={cellWidth} label={item.collection.name} sub={`${item.collection.count} ${item.collection.count === 1 ? 'title' : 'titles'}`} covers={[]} glyph="albums" onPress={() => setOpenCollection(item.collection.id)} onLongPress={() => collectionMenu(item.collection)} />;
     const comic = item.comic; const masked = coverHidden(comic);
     const cover = (
       <View style={[styles.cover, view === 'list' && styles.coverList]}>
-        {masked ? <Text style={styles.glyph}>🔒</Text> : <FileCover uri={comic.coverPath} title={comic.title} style={styles.coverImage} recyclingKey={comic.id} transition={120} />}
+        {masked ? <Icon name="lock-closed" size={30} color={c.textMuted} /> : <FileCover uri={comic.coverPath} title={comic.title} style={styles.coverImage} recyclingKey={comic.id} transition={120} />}
         {isFinished(comic) && !masked ? <Text style={styles.badge}>✓</Text> : null}
         {selected.has(comic.id) ? <View style={styles.picked}><Icon name="checkmark-circle" size={34} color="#fff" /></View> : null}
         {comic.sourceUri && !masked ? <View style={styles.cloudBadge}><Icon name={isCached(comic.id) ? 'cloud-done-outline' : 'cloud-outline'} size={14} color="#fff" /></View> : null}
@@ -656,11 +656,11 @@ function FileCover({ uri, title, style, recyclingKey, transition }: { uri: strin
   return <Image source={{ uri }} style={style} contentFit="cover" recyclingKey={recyclingKey} transition={transition} onError={() => setFailed(true)} />;
 }
 
-function Tile({ styles, view, width, label, sub, glyph, covers, highlight, registerRef, picked, onPress, onLongPress }: { styles: ReturnType<typeof makeStyles>; view: View_; width: number; label: string; sub: string; glyph: string; covers: string[]; highlight?: boolean; picked?: boolean; registerRef?: (v: View | null) => void; onPress: () => void; onLongPress: () => void }) {
+function Tile({ styles, view, width, label, sub, glyph, glyphColor, covers, highlight, registerRef, picked, onPress, onLongPress }: { styles: ReturnType<typeof makeStyles>; view: View_; width: number; label: string; sub: string; glyph: IconName; glyphColor?: string; covers: string[]; highlight?: boolean; picked?: boolean; registerRef?: (v: View | null) => void; onPress: () => void; onLongPress: () => void }) {
   // Up to three covers fanned out behind the first, like a stack of issues; an empty folder shows its glyph.
   const stack = (
     <View style={[styles.stack, view === 'list' && styles.stackList]}>
-      {covers.length === 0 ? <View style={[styles.cover, styles.tile, styles.stackFill]}><Text style={styles.glyph}>{glyph}</Text></View> : null}
+      {covers.length === 0 ? <View style={[styles.cover, styles.tile, styles.stackFill]}><Icon name={glyph} size={40} color={glyphColor ?? styles.glyph.color} /></View> : null}
       {covers.slice(1).reverse().map((uri, i) => (
         <View key={`${i}-${uri}`} style={[styles.stackBack, { transform: [{ translateX: (i === 0 && covers.length > 2 ? 1 : -1) * 9 }, { rotate: `${(i === 0 && covers.length > 2 ? 1 : -1) * 7}deg` }, { scale: 0.93 }], opacity: 0.9 }]}>
           <FileCover uri={uri} title="" style={styles.coverImage} recyclingKey={`${uri}-back`} />

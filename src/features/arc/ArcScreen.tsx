@@ -13,6 +13,7 @@ import type { ArcChapter, ArcFamily, ArcItem, ArcPlan, ArcProgressStatus } from 
 import { DEPTHS, useArc } from './useArc';
 import { TIER_LABEL, canReadNow, continuityLabel, itemStatusLine } from './format';
 import { GuidanceBlock, useGuidance } from './ArcRelevance';
+import { BackButton } from '../../ui/Icon';
 
 export default function ArcScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -36,7 +37,7 @@ export default function ArcScreen() {
         {arc.parent ? (
           <Text onPress={() => router.replace(`/arc/${arc.parent!.id}`)} accessibilityRole="button" style={[styles.back, { color: c.textSecondary, fontFamily: typography.bodyMedium }]}>‹ {arc.parent.title}</Text>
         ) : (
-          <Text onPress={() => router.back()} style={[styles.back, { color: c.textSecondary, fontFamily: typography.bodyMedium }]}>‹ Paths</Text>
+          <BackButton onPress={() => router.back()} />
         )}
         <Eyebrow>{arc.parent ? 'A side journey' : 'Your journey'}</Eyebrow>
         <Text style={[styles.title, { color: c.textPrimary, fontFamily: typography.display }]}>{plan.title}</Text>

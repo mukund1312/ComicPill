@@ -9,6 +9,7 @@ import { useMindData } from './useMindData';
 import { ratedCount } from '../../lib/mind/queries';
 import { useMindSettings } from '../../lib/mind/settings';
 import { AppShell } from '../../ui/AppShell';
+import { HeaderButton } from '../../ui/Icon';
 import { Pill } from '../../ui/primitives';
 import { radius, space, type } from '../../ui/tokens';
 
@@ -27,7 +28,7 @@ export default function MindScreen({ initialTab = 'digest' }: { initialTab?: Tab
   const needsQuiz = !settings.quizDone && ratedCount() < 10;
 
   return (
-    <AppShell active="library" back title="Mind Space" right={<Pressable accessibilityRole="button" accessibilityLabel="Mind Space settings" onPress={() => router.push('/mind/settings')}><Text style={styles.gear}>⚙</Text></Pressable>}>
+    <AppShell active="library" back title="Mind Space" right={<HeaderButton icon="settings-outline" label="Mind Space settings" onPress={() => router.push('/mind/settings')} />}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pills}>
           <Pill label="Digest" active={tab === 'digest'} onPress={() => setTab('digest')} />

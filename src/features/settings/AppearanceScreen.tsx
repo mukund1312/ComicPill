@@ -7,6 +7,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { feedback } from '../../lib/platform/feedback';
 import { radius, space, type } from '../../ui/tokens';
 import { ThemeEmblem } from '../../ui/ThemeEmblem';
+import { BackButton } from '../../ui/Icon';
 
 export default function AppearanceScreen() {
   const appearance = useAppearance(); const { colors } = appearance.theme;
@@ -29,7 +30,7 @@ export default function AppearanceScreen() {
     </View>
   );
   return <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}><ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={styles.content}>
-    <Text onPress={goBack} style={[styles.back, { color: colors.textSecondary, fontFamily: t.bodyMedium }]}>‹ Settings</Text>
+    <BackButton onPress={goBack} label="Settings" />
     <Text style={[styles.title, { color: colors.textPrimary, fontFamily: t.display }]}>Appearance</Text>
     <Text style={[styles.copy, { color: colors.textSecondary, fontFamily: t.body }]}>Tap a theme or a font to try it on the whole app, then Apply right under it to keep it.</Text>
     <Text style={[styles.label, { color: colors.textMuted, fontFamily: t.bodySemibold }]}>COLOR THEME</Text>
