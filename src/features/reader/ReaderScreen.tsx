@@ -915,10 +915,11 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
           </Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel="More" onPress={() => setMenuOpen(true)} hitSlop={10}><Text style={styles.icon}>⋯</Text></Pressable>
         </Animated.View>
-        <Animated.View entering={FadeInDown.duration(180)} exiting={FadeOutDown.duration(140)} style={[styles.bottom, { paddingBottom: insets.bottom + space.md }]}>
+        {/* A slim strip along the bottom edge, so the page being read stays visible above it. */}
+        <Animated.View entering={FadeInDown.duration(180)} exiting={FadeOutDown.duration(140)} style={[styles.bottom, { paddingBottom: insets.bottom + 2 }]}>
           <ThumbnailStrip key={rtl ? 'r' : 'l'} compact={landscape} source={source} pages={allPages} current={page} bookmarks={bookmarks} onSelect={(p) => goToPage(p, false)} />
-          <Scrubber page={page} total={total} rtl={rtl} onSeek={(p) => goToPage(p, false)} />
-          <View style={landscape ? styles.footerRow : undefined}>
+          <View style={styles.scrubRow}>
+            <View style={styles.scrubGrow}><Scrubber page={page} total={total} rtl={rtl} onSeek={(p) => goToPage(p, false)} /></View>
             <Text style={styles.counter}>{page + 1} / {total}</Text>
           </View>
         </Animated.View>
@@ -1097,14 +1098,17 @@ function Scrubber({ page, total, rtl, onSeek }: { page: number; total: number; r
   };
   const fraction = total > 1 ? page / (total - 1) : 1;
   return (
+    // The bar itself is thin, but the touch area around it is a comfortable 28px tall.
     <View
-      style={styles.track}
+      style={styles.scrubTouch}
       onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
       onStartShouldSetResponder={() => true}
       onResponderGrant={(e) => seek(e.nativeEvent.locationX)}
       onResponderMove={(e) => seek(e.nativeEvent.locationX)}
     >
-      <View style={[styles.fillBar, rtl ? { right: 0 } : { left: 0 }, { width: `${fraction * 100}%` }]} />
+      <View style={styles.track}>
+        <View style={[styles.fillBar, rtl ? { right: 0 } : { left: 0 }, { width: `${fraction * 100}%` }]} />
+      </View>
     </View>
   );
 }
@@ -1139,10 +1143,13 @@ const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   title: { flex: 1, color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle },
   icon: { color: color.text, fontSize: 24 },
   iconActive: { color: color.collectGold },
-  bottom: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: space.lg, paddingTop: space.md, gap: space.md, backgroundColor: '#000000cc' },
-  track: { height: 20, justifyContent: 'center', backgroundColor: color.border, borderRadius: radius.pill, overflow: 'hidden' },
+  bottom: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: space.lg, paddingTop: space.sm, gap: 2, backgroundColor: '#000000b8' },
+  track: { height: 4, justifyContent: 'center', backgroundColor: '#FFFFFF2E', borderRadius: radius.pill, overflow: 'hidden' },
+  scrubTouch: { height: 28, justifyContent: 'center' },
+  scrubRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  scrubGrow: { flex: 1 },
   fillBar: { position: 'absolute', top: 0, bottom: 0, backgroundColor: color.accent },
-  counter: { color: color.muted, fontFamily: font.bodyMedium, fontSize: type.caption, textAlign: 'center' },
+  counter: { color: color.muted, fontFamily: font.bodyMedium, fontSize: 12, minWidth: 54, textAlign: 'right' },
   footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   modes: { flexDirection: 'row', gap: space.sm, justifyContent: 'center' },
   mode: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: radius.pill, borderWidth: 1, borderColor: color.border },

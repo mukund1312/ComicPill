@@ -185,3 +185,8 @@ Test comic: any `.cbz` with several panels per page and lettered balloons (the c
 - [x] Fixed: Discover's featured card showed dark text on its dark photo wash under light themes; its text is now always light.
 - [x] Reader → ⋯ → Display, filters and page animation: fixed heading, content scrolls (also when the swipe starts on a slider), sliders still drag sideways, sheet never taller than the screen.
 - Deliberate exceptions (not themed): the comic page backdrop in the reader, the sepia filter, cover/placeholder art, the boot splash.
+
+## Reader page strip (15 Nov 2026)
+
+- [x] The bar under the page is now a slim strip: smaller thumbnails, a 4px progress bar with the page counter beside it, tighter spacing, sitting right against the bottom edge. The page being read stays visible above it (portrait and landscape).
+- [x] Tapping or dragging the thin bar still seeks (it has a 28px touch area; tap at the middle of the bar jumped 41 → 71 of 116).

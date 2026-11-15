@@ -11,7 +11,7 @@ type Props = { source: ComicSource; pages: number[]; current: number; bookmarks:
 
 export function ThumbnailStrip({ source, pages, current, bookmarks, onSelect, compact = false }: Props) {
   const { styles } = useThemed(makeStyles);
-  const THUMB_W = compact ? 36 : 52; const THUMB_H = compact ? 54 : 78;
+  const THUMB_W = compact ? 30 : 38; const THUMB_H = compact ? 45 : 57;
   const index = Math.max(0, pages.indexOf(current));
   return (
     <FlatList
@@ -52,6 +52,6 @@ const makeStyles = (color: Palette) => StyleSheet.create({
   thumb: { borderRadius: radius.sm / 2, overflow: 'hidden', backgroundColor: color.surface2, borderWidth: 2, borderColor: 'transparent' },
   active: { borderColor: color.accent },
   image: { width: '100%', height: '100%' },
-  number: { position: 'absolute', bottom: 0, left: 0, right: 0, textAlign: 'center', color: color.text, fontSize: 10, backgroundColor: '#000000aa' },
+  number: { position: 'absolute', bottom: 0, left: 0, right: 0, textAlign: 'center', color: color.text, fontSize: 9, lineHeight: 12, backgroundColor: '#000000aa' },
   mark: { position: 'absolute', top: 0, right: 4, width: 8, height: 14, backgroundColor: color.collectGold },
 });
