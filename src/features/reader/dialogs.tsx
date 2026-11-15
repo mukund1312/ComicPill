@@ -5,8 +5,9 @@ import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSheetDrag } from '../../ui/sheetDrag';
 import { feedback } from '../../lib/platform/feedback';
-import { font, radius, space, type } from '../../ui/tokens';
-import { useThemed, type Palette } from '../../ui/theme';
+import { radius, space, type } from '../../ui/tokens';
+
+import { useThemed, type Palette, type Fonts } from '../../ui/theme';
 
 export type SheetOption = { label: string; onPress: () => void; destructive?: boolean; checked?: boolean };
 
@@ -78,7 +79,7 @@ function PromptBody({ title, initial, placeholder, submitLabel, secure, onSubmit
   );
 }
 
-const makeStyles = (color: Palette) => StyleSheet.create({
+const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: '#000000aa', justifyContent: 'flex-end' },
   center: { justifyContent: 'center', padding: space.xl },
   sheet: { width: '100%', maxWidth: 560, alignSelf: 'center', backgroundColor: color.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, paddingTop: space.md, paddingHorizontal: space.lg },

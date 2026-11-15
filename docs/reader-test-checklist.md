@@ -177,3 +177,11 @@ Test comic: any `.cbz` with several panels per page and lettered balloons (the c
 - [x] The shelf redraws when the app comes back, so a re-locked cover is masked straight away.
 - [ ] Hidden-shelf setup question (panel, Settings, onboarding) and the per-item "Open with fingerprint" menu switch use the same code path; not each clicked through on the device.
 - Note: the comic page background in the reader stays dark on every theme (comics read best on dark; the reader's display settings change it).
+
+## All themes + Display sheet (15 Nov 2026, phone emulator)
+
+- [x] All 21 themes applied one by one and checked on Today, Library, Discover, Settings and Mind Space: backgrounds, cards, chips, buttons, tab bar, headings follow the theme (including the light ones: Krypton, Amazon, Doom, Symbiote, Reverse, Freeze, Harlequin).
+- [x] Fonts are themed too: every screen's stylesheet now takes the chosen typography (35 files).
+- [x] Fixed: Discover's featured card showed dark text on its dark photo wash under light themes; its text is now always light.
+- [x] Reader → ⋯ → Display, filters and page animation: fixed heading, content scrolls (also when the swipe starts on a slider), sliders still drag sideways, sheet never taller than the screen.
+- Deliberate exceptions (not themed): the comic page backdrop in the reader, the sepia filter, cover/placeholder art, the boot splash.

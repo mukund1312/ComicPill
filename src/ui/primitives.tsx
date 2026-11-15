@@ -5,8 +5,9 @@ import { useSheetDrag } from './sheetDrag';
 import { Pressable, StyleSheet, Text, TextInput, View, type ViewStyle } from 'react-native';
 import { PressableScale } from './PressableScale';
 import { Icon } from './Icon';
-import { font, radius, space, type } from './tokens';
-import { useThemed, type Palette } from './theme';
+import { radius, space, type } from './tokens';
+
+import { useThemed, type Palette, type Fonts } from './theme';
 import { useAppearance } from './theme';
 import { feedback } from '../lib/platform/feedback';
 
@@ -107,7 +108,7 @@ export function EmptyState({ title, copy, action, onAction }: { mark?: string; t
   );
 }
 
-const makeStyles = (color: Palette) => StyleSheet.create({
+const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   wordmark: { color: color.text, fontFamily: font.display, fontSize: 32, letterSpacing: -1.2 },
   wordmarkSmall: { fontSize: 24 },
   eyebrow: { color: color.muted, fontFamily: font.bodySemibold, fontSize: 11, letterSpacing: 1.4, textTransform: 'uppercase' },

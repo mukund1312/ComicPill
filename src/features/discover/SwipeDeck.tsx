@@ -5,8 +5,9 @@ import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSpring, wi
 import { scheduleOnRN } from 'react-native-worklets';
 import ArcRelevance from '../arc/ArcRelevance';
 import { ComicCover } from '../../ui/comic';
-import { font, radius } from '../../ui/tokens';
-import { useThemed, type Palette } from '../../ui/theme';
+import { radius } from '../../ui/tokens';
+
+import { useThemed, type Palette, type Fonts } from '../../ui/theme';
 import { isAccessible } from '../../lib/util/own';
 import type { buildDeck } from '../../lib/engines/recommend/deck';
 
@@ -91,7 +92,7 @@ function CardFace({ card }: { card: DeckCard }) {
   );
 }
 
-const makeStyles = (color: Palette) => StyleSheet.create({
+const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   deck: { minHeight: 270, justifyContent: 'center', alignItems: 'center', marginTop: 8 },
   cardWrap: { width: '92%' },
   behind: { position: 'absolute' },

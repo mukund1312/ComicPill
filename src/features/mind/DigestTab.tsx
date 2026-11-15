@@ -7,8 +7,9 @@ import type { Digest, DigestCard } from '../../lib/mind/engine/digest';
 import { getSeriesRow } from '../../lib/mind/queries';
 import { buildAndSaveDigest } from '../../lib/mind/digestDb';
 import { EmptyState } from '../../ui/primitives';
-import { font, space, type } from '../../ui/tokens';
-import { useThemed, type Palette } from '../../ui/theme';
+import { space, type } from '../../ui/tokens';
+
+import { useThemed, type Palette, type Fonts } from '../../ui/theme';
 import type { MindData } from './useMindData';
 
 export default function DigestTab({ data, refresh, goInbox }: { data: MindData; refresh: () => void; goInbox: () => void }) {
@@ -88,7 +89,7 @@ function DigestCardView({ card, compact, onNotQuite }: { card: DigestCard; compa
   );
 }
 
-const makeStyles = (color: Palette) => StyleSheet.create({
+const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   week: { color: color.muted, fontFamily: font.body, fontSize: type.caption },
   headline: { color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle, lineHeight: 24 },
   back: { color: color.accent, fontFamily: font.bodySemibold, fontSize: type.body },

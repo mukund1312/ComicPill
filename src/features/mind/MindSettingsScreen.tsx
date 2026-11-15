@@ -13,8 +13,9 @@ import { syncMindTask } from '../../lib/mind/task';
 import { requestPermission } from '../../lib/platform/permissions';
 import { SettingsPage } from '../../ui/SettingsPage';
 import { ActionRow, ChoiceSheet, InfoRow, LinkRow, SettingsSection, TextField, ToggleRow } from '../../ui/settingsUi';
-import { font, radius, space } from '../../ui/tokens';
-import { useThemed, type Palette } from '../../ui/theme';
+import { radius, space } from '../../ui/tokens';
+
+import { useThemed, type Palette, type Fonts } from '../../ui/theme';
 
 function Stepper({ label, value, min, max, step = 1, unit = '', onChange, last }: { label: string; value: number; min: number; max: number; step?: number; unit?: string; onChange: (v: number) => void; last?: boolean }) {
   const { styles } = useThemed(makeStyles);
@@ -35,6 +36,7 @@ const THRESHOLD_ROWS: Array<[keyof Thresholds, string, number, number]> = [
 ];
 
 export default function MindSettingsScreen() {
+  
   
   const s = useMindSettings();
   const [dayPicker, setDayPicker] = useState(false);
@@ -114,7 +116,7 @@ export default function MindSettingsScreen() {
   );
 }
 
-const makeStyles = (color: Palette) => StyleSheet.create({
+const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   stepRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 52, paddingHorizontal: space.md },
   stepBorder: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: color.border },
   stepLabel: { flex: 1, color: color.text, fontFamily: font.body, fontSize: 15 },

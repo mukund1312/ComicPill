@@ -1,12 +1,13 @@
-import { useState } from 'react';
-import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useCallback, useMemo, useState } from 'react';
+import { Modal, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Gesture, GestureDetector, GestureHandlerRootView, ScrollView } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSheetDrag } from '../../ui/sheetDrag';
 import type { GuidedMask, LandscapeLayout, PageAnimation, ReaderFilter } from '../../lib/reader/readerSettings';
-import { font, radius, space, type } from '../../ui/tokens';
-import { useThemed, type Palette } from '../../ui/theme';
+import { radius, space, type } from '../../ui/tokens';
+
+import { useThemed, type Palette, type Fonts } from '../../ui/theme';
 
 export type Display = { brightness: number; filter: ReaderFilter; pageAnimation: PageAnimation; trimBorders: boolean; guidedMask: GuidedMask; landscapeLayout: LandscapeLayout; bubbleSize: number; bubbleSfx: boolean; guidedMs: number; bridgeMs: number; doubleTapPanel: boolean };
 
@@ -28,13 +29,21 @@ function Chip({ label, active, disabled, onPress }: { label: string; active: boo
 function Slider({ value, min, max, onChange }: { value: number; min: number; max: number; onChange: (v: number) => void }) {
   const { styles } = useThemed(makeStyles);
   const [w, setW] = useState(1);
-  const set = (x: number) => onChange(Math.round((min + Math.min(1, Math.max(0, x / w)) * (max - min)) * 100) / 100);
-  const frac = (value - min) / (max - min);
+  const set = useCallback((x: number) => onChange(Math.round((min + Math.min(1, Math.max(0, x / w)) * (max - min)) * 100) / 100), [onChange, min, max, w]);
+  // Only a sideways drag moves the knob; a mostly-vertical swipe that starts on it scrolls the sheet instead.
+  const gesture = useMemo(() => Gesture.Exclusive(
+    Gesture.Pan().runOnJS(true).activeOffsetX([-6, 6]).failOffsetY([-10, 10]).onStart((e) => set(e.x)).onUpdate((e) => set(e.x)),
+    Gesture.Tap().runOnJS(true).maxDuration(400).onEnd((e) => set(e.x)),
+  ), [set]);
+  const frac = Math.min(1, Math.max(0, (value - min) / (max - min)));
   return (
-    <View style={styles.track} onLayout={(e) => setW(e.nativeEvent.layout.width)} onStartShouldSetResponder={() => true} onResponderGrant={(e) => set(e.nativeEvent.locationX)} onResponderMove={(e) => set(e.nativeEvent.locationX)}>
-      <View style={[styles.fill, { width: `${frac * 100}%` }]} />
-      <View style={[styles.knob, { left: `${frac * 100}%` }]} />
-    </View>
+    <GestureDetector gesture={gesture}>
+      <View style={styles.track} onLayout={(e) => setW(e.nativeEvent.layout.width)} collapsable={false}>
+        <View style={styles.rail} />
+        <View style={[styles.fill, { width: `${frac * 100}%` }]} />
+        <View style={[styles.knob, { left: `${frac * 100}%` }]} />
+      </View>
+    </GestureDetector>
   );
 }
 
@@ -48,15 +57,15 @@ export function ReaderDisplaySheet({ visible, value, onChange, onClose }: { visi
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent supportedOrientations={['portrait', 'landscape']}>
       <GestureHandlerRootView style={{ flex: 1 }}>
 <Pressable style={styles.backdrop} onPress={onClose}>
-<Animated.View style={[styles.sheet, { maxHeight, paddingBottom: insets.bottom + space.lg }, drag.style]}>
-<Pressable onPress={() => undefined} style={styles.body}>
+<Animated.View onStartShouldSetResponder={() => true} style={[styles.sheet, { height: maxHeight * 0.88, paddingBottom: insets.bottom }, drag.style]}>
         <GestureDetector gesture={drag.gesture}>
-          <View collapsable={false}>
+          <View collapsable={false} style={styles.header}>
             <View style={styles.handle} />
             <Text style={styles.heading}>Display</Text>
           </View>
         </GestureDetector>
-        <ScrollView style={styles.body} contentContainerStyle={styles.scrollBody} bounces={false} showsVerticalScrollIndicator>
+        {/* The settings scroll under the fixed heading; the sheet is tall enough to show a lot at once and is never taller than the screen. */}
+        <ScrollView style={styles.scroll} contentContainerStyle={[styles.scrollBody, { paddingBottom: space.xl }]} showsVerticalScrollIndicator nestedScrollEnabled keyboardShouldPersistTaps="handled">
 
           <Text style={styles.label}>Brightness · {Math.round(value.brightness * 100)}%</Text>
           <Slider value={value.brightness} min={0.2} max={1} onChange={(brightness) => onChange({ brightness })} />
@@ -101,7 +110,6 @@ export function ReaderDisplaySheet({ visible, value, onChange, onClose }: { visi
           <View style={styles.row}><Chip label={value.trimBorders ? 'Trimmed' : 'Keep margins'} active={value.trimBorders} onPress={() => onChange({ trimBorders: !value.trimBorders })} /></View>
           <Text style={styles.note}>Trimming cuts the blank margin off single pages so the art fills the screen. Full-bleed pages are left alone.</Text>
         </ScrollView>
-</Pressable>
         </Animated.View>
       </Pressable>
 </GestureHandlerRootView>
@@ -109,11 +117,12 @@ export function ReaderDisplaySheet({ visible, value, onChange, onClose }: { visi
   );
 }
 
-const makeStyles = (color: Palette) => StyleSheet.create({
+const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#00000066' },
-  sheet: { width: '100%', maxWidth: 560, alignSelf: 'center', backgroundColor: color.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: space.lg },
-  body: { flexShrink: 1 },
-  scrollBody: { gap: space.sm, paddingTop: space.sm },
+  sheet: { width: '100%', maxWidth: 560, alignSelf: 'center', backgroundColor: color.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, overflow: 'hidden' },
+  header: { backgroundColor: color.surface, paddingHorizontal: space.lg, paddingTop: space.lg, paddingBottom: space.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: color.border },
+  scroll: { flex: 1 },
+  scrollBody: { gap: space.sm, paddingTop: space.sm, paddingHorizontal: space.lg },
   handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: color.border, marginBottom: space.sm },
   heading: { color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle },
   label: { color: color.muted, fontFamily: font.bodyMedium, fontSize: type.caption, marginTop: space.md },
@@ -124,6 +133,7 @@ const makeStyles = (color: Palette) => StyleSheet.create({
   chipText: { color: color.muted, fontFamily: font.bodyMedium, fontSize: type.caption },
   chipTextOn: { color: color.text },
   track: { height: 36, justifyContent: 'center' },
+  rail: { position: 'absolute', left: 0, right: 0, height: 6, borderRadius: 3, backgroundColor: color.border },
   fill: { position: 'absolute', left: 0, height: 6, borderRadius: 3, backgroundColor: color.accent },
   knob: { position: 'absolute', width: 22, height: 22, borderRadius: 11, marginLeft: -11, backgroundColor: color.text },
 });

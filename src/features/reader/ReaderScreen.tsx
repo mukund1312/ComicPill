@@ -55,8 +55,9 @@ import {
   type ReaderComic, type ReaderMode,
 } from '../../lib/reader/readerLibrary';
 import { listPresets, loadReaderSettings, saveReaderSettings, type ReaderSettings } from '../../lib/reader/readerSettings';
-import { font, radius, space, type } from '../../ui/tokens';
-import { useThemed, type Palette } from '../../ui/theme';
+import { radius, space, type } from '../../ui/tokens';
+
+import { useThemed, type Palette, type Fonts } from '../../ui/theme';
 
 type Sizes = Array<PageSize | null>;
 
@@ -1108,7 +1109,7 @@ function Scrubber({ page, total, rtl, onSeek }: { page: number; total: number; r
   );
 }
 
-const makeStyles = (color: Palette) => StyleSheet.create({
+const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   bubbleBar: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   // Wraps to a second line rather than running off a narrow screen.
   bubblePill: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '94%', rowGap: space.xs, alignItems: 'center', gap: space.lg, paddingHorizontal: space.lg, paddingVertical: space.sm, borderRadius: radius.lg, backgroundColor: '#000000cc' },

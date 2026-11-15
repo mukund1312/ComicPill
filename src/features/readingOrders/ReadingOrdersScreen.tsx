@@ -3,8 +3,9 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { router, useFocusEffect } from 'expo-router';
 import { AppShell } from '../../ui/AppShell';
 import { Button, Input, Pill, Progress } from '../../ui/primitives';
-import { font, radius, space, type } from '../../ui/tokens';
-import { useThemed, type Palette } from '../../ui/theme';
+import { radius, space, type } from '../../ui/tokens';
+
+import { useThemed, type Palette, type Fonts } from '../../ui/theme';
 import { READING_ORDERS } from '../../lib/readingOrders/data';
 import { findOrders, summaryLine } from '../../lib/readingOrders/match';
 import { makePlaylistFrom, ownedWorks, viewOrder, type OrderView } from '../../lib/readingOrders/owned';
@@ -95,7 +96,7 @@ function Detail({ view, show, onShow }: { view: OrderView; show: Show; onShow: (
   );
 }
 
-const makeStyles = (color: Palette) => StyleSheet.create({
+const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   content: { padding: space.lg, paddingBottom: 105, gap: space.sm },
   intro: { color: color.text, fontFamily: font.display, fontSize: 24, lineHeight: 30, maxWidth: 520 },
   search: { marginVertical: space.sm },

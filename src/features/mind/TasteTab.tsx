@@ -7,8 +7,9 @@ import { listRatings } from '../../lib/mind/queries';
 import { useMindSettings } from '../../lib/mind/settings';
 import { makeScorer } from '../../lib/mind/taste';
 import { EmptyState } from '../../ui/primitives';
-import { font, space, type } from '../../ui/tokens';
-import { useThemed, type Palette } from '../../ui/theme';
+import { space, type } from '../../ui/tokens';
+
+import { useThemed, type Palette, type Fonts } from '../../ui/theme';
 import type { MindData } from './useMindData';
 
 function top(profile: ReturnType<typeof buildProfile>, signal: Signal, n = 5): Array<{ tag: string; value: number }> {
@@ -58,7 +59,7 @@ export default function TasteTab({ data }: { data: MindData }) {
   );
 }
 
-const makeStyles = (color: Palette) => StyleSheet.create({
+const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   big: { color: color.text, fontFamily: font.displayMedium, fontSize: 28 },
   body: { color: color.text, fontFamily: font.body, fontSize: type.body, lineHeight: 22 },
   faint: { color: color.muted, fontFamily: font.body, fontSize: 12, lineHeight: 17 },

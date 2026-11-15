@@ -5,8 +5,9 @@ import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSheetDrag } from '../../ui/sheetDrag';
 import { optionalNative } from '../../lib/reader/nativeArchive';
-import { font, radius, space, type } from '../../ui/tokens';
-import { useThemed, type Palette } from '../../ui/theme';
+import { radius, space, type } from '../../ui/tokens';
+
+import { useThemed, type Palette, type Fonts } from '../../ui/theme';
 
 export type PageText = { loading: boolean; text: string | null; unavailable?: boolean } | null;
 
@@ -53,7 +54,7 @@ export function PageTextSheet({ value, onClose }: { value: PageText; onClose: ()
   );
 }
 
-const makeStyles = (color: Palette) => StyleSheet.create({
+const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#00000066' },
   sheet: { width: '100%', maxWidth: 560, alignSelf: 'center', maxHeight: '75%', backgroundColor: color.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: space.lg, gap: space.md },
   handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: color.border },

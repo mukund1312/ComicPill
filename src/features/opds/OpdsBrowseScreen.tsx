@@ -11,8 +11,9 @@ import { linkOpdsLibrary } from '../../lib/reader/linkOpds';
 import { runJob, useJob } from '../../lib/reader/importJob';
 import { SettingsPage } from '../../ui/SettingsPage';
 import { Input } from '../../ui/primitives';
-import { font, radius, space, type } from '../../ui/tokens';
-import { useThemed, type Palette } from '../../ui/theme';
+import { radius, space, type } from '../../ui/tokens';
+
+import { useThemed, type Palette, type Fonts } from '../../ui/theme';
 
 export default function OpdsBrowseScreen() {
   const { color, styles } = useThemed(makeStyles);
@@ -120,7 +121,7 @@ export default function OpdsBrowseScreen() {
   );
 }
 
-const makeStyles = (color: Palette) => StyleSheet.create({
+const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   fill: { width: '100%', height: '100%' },
   searchBtn: { alignSelf: 'flex-start', marginTop: space.sm, paddingHorizontal: space.lg, minHeight: 40, justifyContent: 'center', borderRadius: radius.md, backgroundColor: color.accent },
   searchText: { color: color.text, fontFamily: font.bodySemibold, fontSize: type.caption },

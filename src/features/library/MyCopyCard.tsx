@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Eyebrow, Pill } from '../../ui/primitives';
-import { font, radius, space, type } from '../../ui/tokens';
-import { useThemed, type Palette } from '../../ui/theme';
+import { radius, space, type } from '../../ui/tokens';
+
+import { useThemed, type Palette, type Fonts } from '../../ui/theme';
 import { getMyCopy, saveMyCopy, type MyCopy } from '../../lib/db/queries/myCopy';
 import type { ReadStatus } from '../../lib/types/domain';
 import { feedback } from '../../lib/platform/feedback';
@@ -39,7 +40,7 @@ export function MyCopyCard({ workId }: { workId: string }) {
   );
 }
 
-const makeStyles = (color: Palette) => StyleSheet.create({
+const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   card: { backgroundColor: color.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: color.border, padding: space.lg, gap: space.md, marginBottom: space.lg },
   pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   stars: { flexDirection: 'row', alignItems: 'center', gap: 6 },

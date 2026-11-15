@@ -8,8 +8,9 @@ import ReadDecisionView from './ReadDecisionView';
 import { AppShell } from '../../ui/AppShell';
 import { ComicRow } from '../../ui/comic';
 import { Button, Eyebrow, Input, Pill, Progress, PurchaseBadge, SectionHeader, Sheet } from '../../ui/primitives';
-import { font, radius, space, type } from '../../ui/tokens';
-import { useThemed, type Palette } from '../../ui/theme';
+import { radius, space, type } from '../../ui/tokens';
+
+import { useThemed, type Palette, type Fonts } from '../../ui/theme';
 
 const money = (paise: number) => `₹${Math.round(paise / 100).toLocaleString('en-IN')}`;
 
@@ -52,7 +53,7 @@ function FormatCard({ edition }: { edition: FormatPrice }) { const { styles } = 
 function verdictCopy(label: ReturnType<typeof useCompare>['candidates'][number]['label']) { return { collect: 'Worth owning in print.', buy_on_sale: 'Worth considering at the right price.', digital_is_fine: 'Great digitally. Save the shelf space.', try_digital_first: 'Read it first. Then decide.', skip: 'Not a purchase priority right now.' }[label]; }
 function SingleTitle({ item }: { item: CompareCandidate & { label: ReturnType<typeof useCompare>['candidates'][number]['label']; waitForPricePaise: number | null } }) { const { styles } = useThemed(makeStyles); return <><Eyebrow>Compare formats</Eyebrow><Text numberOfLines={3} ellipsizeMode="tail" style={styles.heroTitle}>{item.title}</Text><View style={styles.formats}>{item.formatPrices.map((edition) => <FormatCard key={edition.format} edition={edition} />)}</View><View style={styles.verdict}><Eyebrow>ComicPill verdict</Eyebrow><PurchaseBadge label={item.label} /><Text style={styles.verdictTitle}>{verdictCopy(item.label)}</Text><Text style={styles.verdictCopy}>The best buy is the one that serves your reading life and your shelf.</Text>{item.waitForPricePaise != null ? <Text style={styles.waitFor}>Wait for a price at or below {money(item.waitForPricePaise)}</Text> : null}</View></>; }
 
-const makeStyles = (color: Palette) => StyleSheet.create({
+const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   modeTabs: { flexDirection: 'row', gap: 8, paddingHorizontal: space.lg, paddingTop: 4 }, content: { padding: space.lg, paddingBottom: 104 }, readIntro: { color: color.text, fontFamily: font.display, fontSize: 29, marginTop: 18 }, readCopy: { color: color.muted, fontFamily: font.body, fontSize: type.body, lineHeight: 22, marginTop: 7, marginBottom: 18 },
   slot: { backgroundColor: color.surface, borderColor: color.border, borderWidth: 1, borderRadius: radius.md, padding: space.md, marginBottom: 12 }, slotHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }, slotLabel: { color: color.text, fontFamily: font.bodySemibold, fontSize: type.caption, textTransform: 'uppercase', letterSpacing: 1 }, clearSlot: { color: color.accent, fontFamily: font.bodySemibold, fontSize: type.caption }, selected: { borderLeftColor: color.accent, borderLeftWidth: 3, paddingLeft: 10, marginBottom: 12 }, selectedTitle: { color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle }, selectedMeta: { color: color.muted, fontFamily: font.body, fontSize: type.caption, marginTop: 3 }, changeHint: { color: color.faint, fontFamily: font.body, fontSize: 11, marginTop: 5 },
   searchResults: { marginTop: 10 }, searchGroup: { color: color.faint, fontFamily: font.bodySemibold, fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', marginTop: 10, marginBottom: 3 }, searchResult: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomColor: color.border, borderBottomWidth: StyleSheet.hairlineWidth }, resultBody: { flex: 1, minWidth: 0 }, resultTitle: { color: color.text, fontFamily: font.bodySemibold, fontSize: type.body }, resultMeta: { color: color.muted, fontFamily: font.body, fontSize: 11, marginTop: 2 }, resultAdd: { color: color.accent, fontSize: 24, marginLeft: 10 }, noResults: { color: color.muted, fontFamily: font.body, fontSize: type.caption, marginTop: 10 },

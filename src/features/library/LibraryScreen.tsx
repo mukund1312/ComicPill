@@ -7,11 +7,11 @@ import { AppShell } from '../../ui/AppShell';
 import { ComicCover } from '../../ui/comic';
 import { EmptyState, Input, Pill, Sheet } from '../../ui/primitives';
 import { HeaderActions, HeaderButton } from '../../ui/Icon';
-import { useAppearance } from '../../ui/theme';
+import { useThemed, useAppearance, type Fonts, type Palette } from '../../ui/theme';
 import { useLayout } from '../../ui/layout';
 import { ActionSheet } from '../reader/dialogs';
-import { font, radius, space, type } from '../../ui/tokens';
-import { useThemed, type Palette } from '../../ui/theme';
+import { radius, space, type } from '../../ui/tokens';
+
 import { isAccessible, isFormatOwned } from '../../lib/util/own';
 import { useTravelMode } from '../../lib/state/travelMode';
 import { linkWithCovers, pickAndLinkComics, pickAndLinkFolder } from '../../lib/reader/importComics';
@@ -166,7 +166,7 @@ function LibraryCell({ item, selecting, picked, downloaded, readerId, onToggle, 
   );
 }
 
-const makeStyles = (color: Palette) => StyleSheet.create({
+const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   content: { padding: space.lg, paddingBottom: 105 }, header: { marginBottom: 2 }, actions: { flexDirection: 'row', gap: 18 }, action: { color: color.text, fontSize: 25 }, actionActive: { color: color.accent }, count: { fontFamily: font.body, fontSize: 13, marginTop: 2 }, subrow: { marginTop: 12, marginBottom: 6 }, playlistsLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: space.md, paddingHorizontal: space.md, minHeight: 48, borderWidth: 1, borderColor: color.border, borderRadius: radius.md, backgroundColor: color.surface2 }, playlistsLinkText: { color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle }, playlistsArrow: { color: color.accent, fontSize: 26 }, pills: { gap: 8, paddingVertical: space.lg },
   // The fixed title/status zone makes every three-column grid row start at
   // the same baseline, even when one comic has a much longer title.

@@ -15,8 +15,9 @@ import { getSeriesRow, loadGraph, markRelationWrong, rate, ratingOf, relationsDe
 import { recordSpend, useMindSettings } from '../../lib/mind/settings';
 import { makeScorer, verdictFor, volumesOf } from '../../lib/mind/taste';
 import { SettingsPage } from '../../ui/SettingsPage';
-import { font, radius, space, type } from '../../ui/tokens';
-import { useThemed, type Palette } from '../../ui/theme';
+import { radius, space, type } from '../../ui/tokens';
+
+import { useThemed, type Palette, type Fonts } from '../../ui/theme';
 
 const STATUS_LABEL: Record<ReadStatus, string> = { planned: 'Planned', reading: 'Reading', finished: 'Finished', dropped: 'Dropped' };
 
@@ -143,7 +144,7 @@ export default function SeriesScreen() {
   );
 }
 
-const makeStyles = (color: Palette) => StyleSheet.create({
+const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   hero: { flexDirection: 'row', gap: space.md, marginTop: space.md },
   row: { flexDirection: 'row', gap: space.sm, flexWrap: 'wrap', alignItems: 'center' },
   body: { color: color.text, fontFamily: font.body, fontSize: type.body, lineHeight: 22 },

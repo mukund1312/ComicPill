@@ -12,8 +12,9 @@ import { useMindSettings } from '../../lib/mind/settings';
 import { sqliteStore } from '../../lib/mind/sqliteStore';
 import { syncMind } from '../../lib/mind/sync';
 import { EmptyState } from '../../ui/primitives';
-import { font, radius, space, type } from '../../ui/tokens';
-import { useThemed, type Palette } from '../../ui/theme';
+import { radius, space, type } from '../../ui/tokens';
+
+import { useThemed, type Palette, type Fonts } from '../../ui/theme';
 import type { MindData } from './useMindData';
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -142,7 +143,7 @@ export default function InboxTab({ data, refresh }: { data: MindData; refresh: (
   );
 }
 
-const makeStyles = (color: Palette) => StyleSheet.create({
+const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   actions: { flexDirection: 'row', gap: space.sm, alignItems: 'center', flexWrap: 'wrap' },
   reviewTitle: { color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle, lineHeight: 24 },
   small: { color: color.muted, fontFamily: font.body, fontSize: 12, lineHeight: 17 },

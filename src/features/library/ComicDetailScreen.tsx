@@ -13,8 +13,9 @@ import { useComicFund } from '../wallet/useComicFund';
 import type { ComicDetail, DetailEdition } from '../../lib/db/queries/detail';
 import { ComicCover, coverSourceFor } from '../../ui/comic';
 import { Button, Eyebrow, Input, Pill, Progress, PurchaseBadge, SectionHeader, Sheet } from '../../ui/primitives';
-import { font, radius, space, type } from '../../ui/tokens';
-import { useThemed, type Palette } from '../../ui/theme';
+import { radius, space, type } from '../../ui/tokens';
+
+import { useThemed, type Palette, type Fonts } from '../../ui/theme';
 import { isAccessible } from '../../lib/util/own';
 import ArcRelevance from '../arc/ArcRelevance';
 import MeetCharacters from '../arc/MeetCharacters';
@@ -243,7 +244,7 @@ function Pressable_({ onPress, label, align, full }: { onPress: () => void; labe
   return <Pressable onPress={onPress} style={[styles.navItem, full && { width: '100%' }]}><Text numberOfLines={1} style={[styles.navText, align === 'right' && { textAlign: 'right' }]}>{label}</Text></Pressable>;
 }
 
-const makeStyles = (color: Palette) => StyleSheet.create({
+const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   page: { flex: 1, backgroundColor: color.bg },
   content: { paddingHorizontal: space.lg, paddingTop: 0, paddingBottom: 60 },
   seriesHeader: { marginHorizontal: -space.lg, paddingTop: 54, paddingBottom: 18, paddingHorizontal: space.lg, overflow: 'hidden' },

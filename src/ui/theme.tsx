@@ -122,10 +122,14 @@ export function paletteOf(c: ThemeColors): Palette {
   };
 }
 
-/** A screen's stylesheet, rebuilt when the theme changes: `const { color, styles } = useThemed(makeStyles)`. */
-export function useThemed<S>(make: (color: Palette) => S): { color: Palette; styles: S } {
-  const { theme } = useAppearance();
+/** The font names a stylesheet needs (the chosen typography preset). */
+export type Fonts = Pick<TypographyPreset, 'display' | 'displayMedium' | 'body' | 'bodyMedium' | 'bodySemibold'>;
+
+/** A screen's stylesheet, rebuilt when the theme or the font changes: `const { color, font, styles } = useThemed(makeStyles)`. */
+export function useThemed<S>(make: (color: Palette, font: Fonts) => S): { color: Palette; font: Fonts; styles: S } {
+  const { theme, typography } = useAppearance();
   const color = useMemo(() => paletteOf(theme.colors), [theme.colors]);
-  const styles = useMemo(() => make(color), [make, color]);
-  return { color, styles };
+  const font = typography;
+  const styles = useMemo(() => make(color, font), [make, color, font]);
+  return { color, font, styles };
 }

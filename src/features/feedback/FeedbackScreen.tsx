@@ -6,8 +6,9 @@ import { router } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { useFeedback } from './useFeedback';
 import { Button, EmptyState, Pill } from '../../ui/primitives';
-import { font, radius, space, type } from '../../ui/tokens';
-import { useThemed, type Palette } from '../../ui/theme';
+import { radius, space, type } from '../../ui/tokens';
+
+import { useThemed, type Palette, type Fonts } from '../../ui/theme';
 import type { FeedbackCategory } from '../../lib/types/domain';
 import { SUPPORT_EMAIL, mailtoLink } from '../../lib/support';
 import { feedback as haptics } from '../../lib/platform/feedback';
@@ -120,7 +121,7 @@ export default function FeedbackScreen() {
   );
 }
 
-const makeStyles = (color: Palette) => StyleSheet.create({
+const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   page: { flex: 1, backgroundColor: color.bg },
   content: { padding: space.lg, paddingTop: space.lg, paddingBottom: 60 },
   back: { color: color.muted, fontFamily: font.bodyMedium, fontSize: type.body, marginBottom: 18 },

@@ -1,8 +1,9 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { PressableScale } from './PressableScale';
 import { Image } from 'expo-image';
-import { font, radius, space, type } from './tokens';
-import { useThemed, type Palette } from './theme';
+import { radius, space, type } from './tokens';
+
+import { useThemed, type Palette, type Fonts } from './theme';
 import { PurchaseBadge } from './primitives';
 import { COVER_ASSETS } from './coverAssets';
 import { customCoverFor, fileCoverFor } from './fileCovers';
@@ -58,7 +59,7 @@ export function ComicRow({ title, workId, meta, status, label, onPress, recyclin
   return <Pressable onPress={onPress} style={({ pressed }) => [styles.row, { borderBottomColor: c.border }, pressed && { opacity: 0.8 }]}><ComicCover title={title} workId={workId} size="list" recyclingKey={recyclingKey ?? title} /><View style={styles.rowBody}><Text numberOfLines={2} ellipsizeMode="tail" style={[styles.rowTitle, { color: c.textPrimary, fontFamily: typography.displayMedium }]}>{title}</Text>{meta ? <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.rowMeta, { color: c.textSecondary, fontFamily: typography.body }]}>{meta}</Text> : null}{label ? <PurchaseBadge label={label} /> : status ? <Text numberOfLines={1} style={[styles.rowStatus, { color: c.textMuted, fontFamily: typography.bodyMedium }]}>{status}</Text> : null}</View><Text style={[styles.chevron, { color: c.textSecondary }]}>›</Text></Pressable>;
 }
 
-const makeStyles = (color: Palette) => StyleSheet.create({
+const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   cover: { overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, padding: 9, justifyContent: 'flex-end', shadowColor: '#000', shadowOpacity: 0.45, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 7 },
   moon: { position: 'absolute', right: -10, top: 18, width: 64, height: 64, borderRadius: 32, backgroundColor: '#f1ede6', opacity: 0.88 },
   coverTitle: { color: color.text, fontFamily: font.display, fontSize: 15, lineHeight: 17, textShadowColor: '#000', textShadowRadius: 4 }, coverRule: { width: 20, height: 2, backgroundColor: color.accent, marginTop: 7 },

@@ -7,8 +7,9 @@ import { getLock, lockUsesBiometrics } from '../../lib/reader/readerLibrary';
 import { Button } from '../../ui/primitives';
 import { biometricName, biometricsOn, confirmWithBiometrics } from '../../lib/platform/biometrics';
 import { feedback } from '../../lib/platform/feedback';
-import { font, radius, space, type } from '../../ui/tokens';
-import { useThemed, type Palette } from '../../ui/theme';
+import { radius, space, type } from '../../ui/tokens';
+
+import { useThemed, type Palette, type Fonts } from '../../ui/theme';
 
 /** In the way of a locked comic (or one in a locked folder), however the reader got here — shelf, link or Mind Space. */
 export function UnlockGate({ kind, id, name, onUnlocked }: { kind: 'comic' | 'folder'; id: string; name: string; onUnlocked: () => void }) {
@@ -43,7 +44,7 @@ export function UnlockGate({ kind, id, name, onUnlocked }: { kind: 'comic' | 'fo
   );
 }
 
-const makeStyles = (color: Palette) => StyleSheet.create({
+const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   root: { flex: 1, backgroundColor: color.bg, alignItems: 'center', justifyContent: 'center', padding: space.xl, gap: space.md },
   lock: { fontSize: 44 },
   title: { color: color.text, fontFamily: font.displayMedium, fontSize: type.title },

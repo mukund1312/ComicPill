@@ -3,8 +3,9 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { formatBytes } from '../../lib/reader/bytes';
 import { BUDGET_CHOICES_GB, KEEP_CHOICES, cloudBudgetBytes, cloudBudgetGb, keepLimit, setCloudBudgetGb, setKeepLimit } from '../../lib/reader/cloudBudget';
 import type { ReadyComic, RoomPlan } from '../../lib/reader/makeRoom';
-import { font, radius, space, type } from '../../ui/tokens';
-import { useThemed, type Palette } from '../../ui/theme';
+import { radius, space, type } from '../../ui/tokens';
+
+import { useThemed, type Palette, type Fonts } from '../../ui/theme';
 
 const ago = (ms: number): string => {
   const days = Math.floor((Date.now() - ms) / 86400000);
@@ -77,7 +78,7 @@ export function MakeRoomSheet({ title, need, plan: firstPlan, ready, onConfirm, 
   );
 }
 
-const makeStyles = (color: Palette) => StyleSheet.create({
+const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: '#000000AA', justifyContent: 'flex-end', alignItems: 'center' },
   sheet: { width: '100%', maxWidth: 560, maxHeight: '88%', backgroundColor: color.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: space.lg, gap: space.md },
   title: { color: color.text, fontFamily: font.bodySemibold, fontSize: type.body + 3 },

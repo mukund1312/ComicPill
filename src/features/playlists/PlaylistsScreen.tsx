@@ -9,8 +9,9 @@ import type { SearchWorkResult } from '../../lib/db/queries/search';
 import { AppShell } from '../../ui/AppShell';
 import { ComicCover, ComicRow } from '../../ui/comic';
 import { Button, EmptyState, Eyebrow, Input, Pill, Progress, SectionHeader, Sheet } from '../../ui/primitives';
-import { font, radius, space, type } from '../../ui/tokens';
-import { useThemed, type Palette } from '../../ui/theme';
+import { radius, space, type } from '../../ui/tokens';
+
+import { useThemed, type Palette, type Fonts } from '../../ui/theme';
 
 const moods = [
   ['dark', 'Dark'], ['mysterious', 'Mysterious'], ['epic', 'Epic'],
@@ -188,7 +189,7 @@ function SheetOverlay({ title, children, onClose }: PropsWithChildren<{ title: s
   return <View style={styles.overlay}><Sheet title={title} onClose={onClose}>{children}</Sheet></View>;
 }
 
-const makeStyles = (color: Palette) => StyleSheet.create({
+const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   content: { padding: space.lg, paddingBottom: 105 },
   intro: { color: color.text, fontFamily: font.display, fontSize: 27, lineHeight: 34, maxWidth: 324 },
   journeySuggestions: { gap: space.sm, marginTop: space.md }, journeySuggestion: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space.md, borderRadius: radius.md, borderWidth: 1, borderColor: color.accentDeep, backgroundColor: color.surface2 }, journeySuggestionText: { color: color.text, fontFamily: font.bodySemibold, fontSize: type.caption }, journeySuggestionArrow: { color: color.accent, fontSize: 24 },

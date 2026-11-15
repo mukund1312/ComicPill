@@ -1,6 +1,6 @@
 import { SwipeDeck } from './SwipeDeck';
 import { HeaderActions, HeaderButton } from '../../ui/Icon';
-import { useAppearance } from '../../ui/theme';
+import { useThemed, useAppearance, type Fonts, type Palette } from '../../ui/theme';
 import { useLayout } from '../../ui/layout';
 import { useMemo, useState } from 'react';
 import { Image } from 'expo-image';
@@ -16,8 +16,8 @@ import { useDiscover } from './useDiscover';
 import { AppShell } from '../../ui/AppShell';
 import { ComicCover, coverSourceFor } from '../../ui/comic';
 import { Button, EmptyState, Input, Pill, Sheet } from '../../ui/primitives';
-import { font, radius, space, type } from '../../ui/tokens';
-import { useThemed, type Palette } from '../../ui/theme';
+import { radius, space, type } from '../../ui/tokens';
+
 import { isAccessible } from '../../lib/util/own';
 import { PerRowSheet } from '../reader/PerRowSheet';
 import { useGridColumns } from '../../ui/gridColumns';
@@ -57,11 +57,12 @@ function Featured({ discover }: { discover: ReturnType<typeof useDiscover> }) {
           return (
             <PressableScale key={pick.work.id} to={0.98} style={[styles.featured, { width: pageW, backgroundColor: c.surface }]} onPress={() => router.push(`/comic/${pick.work.id}`)}>
               {backdrop ? <Image source={backdrop} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={42} /> : null}
+              {/* This card always sits on a dark wash over blurred cover art, so its text stays light on every theme. */}
               <LinearGradient pointerEvents="none" colors={['#0A0A0D55', '#0A0A0DEE']} style={StyleSheet.absoluteFill} />
               <View style={{ alignItems: 'center' }}><CoverStack width={layout.isTablet ? 176 : 118} items={[{ title: pick.work.title, workId: pick.work.id }, ...fan.map((f) => ({ title: f.work.title, workId: f.work.id }))]} /></View>
-              <Text style={[styles.featuredGenre, { color: c.textSecondary, fontFamily: typography.bodySemibold }]}>{genre}</Text>
-              <Text numberOfLines={2} style={[styles.featuredTitle, { color: c.textPrimary, fontFamily: typography.display }]}>{pick.work.title}</Text>
-              <Text style={[styles.featuredSub, { color: c.textSecondary, fontFamily: typography.body }]}>{fan.length + 1} picks for you</Text>
+              <Text style={[styles.featuredGenre, { color: '#D5D5DB', fontFamily: typography.bodySemibold }]}>{genre}</Text>
+              <Text numberOfLines={2} style={[styles.featuredTitle, { color: '#F5F5F7', fontFamily: typography.display }]}>{pick.work.title}</Text>
+              <Text style={[styles.featuredSub, { color: '#D5D5DB', fontFamily: typography.body }]}>{fan.length + 1} picks for you</Text>
             </PressableScale>
           );
         })}
@@ -133,7 +134,7 @@ function CatalogCell({ item }: { item: ReturnType<typeof useDiscover>['catalog']
   );
 }
 
-const makeStyles = (color: Palette) => StyleSheet.create({
+const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   featured: { borderRadius: 28, overflow: 'hidden', paddingTop: 26, paddingBottom: 22, paddingHorizontal: 16, alignItems: 'center' },
   featuredGenre: { fontSize: 10.5, letterSpacing: 1.6, marginTop: 6 },
   featuredTitle: { fontSize: 26, lineHeight: 30, letterSpacing: -0.5, textAlign: 'center', marginTop: 8 },

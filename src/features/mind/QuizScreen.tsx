@@ -7,8 +7,9 @@ import { answerQuiz, QUIZ_TARGET, quizDeck } from '../../lib/mind/quiz';
 import { updateMindSettings } from '../../lib/mind/settings';
 import { SettingsPage } from '../../ui/SettingsPage';
 import { ComicCover } from '../../ui/comic';
-import { font, radius, space, type } from '../../ui/tokens';
-import { useThemed, type Palette } from '../../ui/theme';
+import { radius, space, type } from '../../ui/tokens';
+
+import { useThemed, type Palette, type Fonts } from '../../ui/theme';
 import { SmallButton } from './ui';
 
 export default function QuizScreen() {
@@ -48,7 +49,7 @@ export default function QuizScreen() {
   );
 }
 
-const makeStyles = (color: Palette) => StyleSheet.create({
+const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   card: { alignItems: 'center', gap: space.md, marginTop: space.lg, backgroundColor: color.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: color.border, padding: space.lg },
   title: { color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle, textAlign: 'center' },
   sub: { color: color.muted, fontFamily: font.body, fontSize: type.caption, textAlign: 'center' },

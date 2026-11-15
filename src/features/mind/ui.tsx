@@ -5,8 +5,9 @@ import type { Confidence } from '../../lib/mind/engine/tasteScorer';
 import { OUTCOME_LABEL, type Outcome } from '../../lib/mind/engine/verdictRules';
 import type { ShotStatus } from '../../lib/mind/model';
 import { COVER_ASSETS } from '../../ui/coverAssets';
-import { font, radius, space, type } from '../../ui/tokens';
-import { useThemed, type Palette } from '../../ui/theme';
+import { radius, space, type } from '../../ui/tokens';
+
+import { useThemed, type Palette, type Fonts } from '../../ui/theme';
 
 const scoreColor = (s: number, color: Palette) => (s >= 80 ? color.positive : s >= 60 ? color.warning : color.accent);
 
@@ -94,7 +95,7 @@ export const relativeTime = (ms: number, now = Date.now()): string => {
   const days = Math.round(h / 24); return days === 1 ? 'yesterday' : `${days} days ago`;
 };
 
-const makeStyles = (color: Palette) => StyleSheet.create({
+const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   fill: { width: '100%', height: '100%' },
   badge: { minWidth: 64, paddingHorizontal: space.sm, paddingVertical: 6, borderRadius: radius.md, borderWidth: 2, alignItems: 'center' },
   badgeSm: { minWidth: 36, paddingVertical: 2, paddingHorizontal: 6 },

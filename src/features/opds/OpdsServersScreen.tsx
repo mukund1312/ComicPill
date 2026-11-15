@@ -6,8 +6,9 @@ import { loadFeed } from '../../lib/opds/client';
 import { SettingsPage } from '../../ui/SettingsPage';
 import { ActionRow, LinkRow, SettingsSection, TextField } from '../../ui/settingsUi';
 import { Button } from '../../ui/primitives';
-import { font, space } from '../../ui/tokens';
-import { useThemed, type Palette } from '../../ui/theme';
+import { space } from '../../ui/tokens';
+
+import { useThemed, type Palette, type Fonts } from '../../ui/theme';
 
 export default function OpdsServersScreen() {
   const { styles } = useThemed(makeStyles);
@@ -58,7 +59,7 @@ export default function OpdsServersScreen() {
   );
 }
 
-const makeStyles = (color: Palette) => StyleSheet.create({
+const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   form: { gap: space.md, marginTop: space.md },
   heading: { color: color.text, fontFamily: font.displayMedium, fontSize: 20 },
   note: { color: color.muted, fontFamily: font.body, fontSize: 12, lineHeight: 17 },

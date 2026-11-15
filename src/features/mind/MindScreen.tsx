@@ -10,8 +10,9 @@ import { ratedCount } from '../../lib/mind/queries';
 import { useMindSettings } from '../../lib/mind/settings';
 import { AppShell } from '../../ui/AppShell';
 import { Pill } from '../../ui/primitives';
-import { font, radius, space, type } from '../../ui/tokens';
-import { useThemed, type Palette } from '../../ui/theme';
+import { radius, space, type } from '../../ui/tokens';
+
+import { useThemed, type Palette, type Fonts } from '../../ui/theme';
 
 type Tab = 'digest' | 'inbox' | 'library' | 'taste';
 
@@ -49,7 +50,7 @@ export default function MindScreen({ initialTab = 'digest' }: { initialTab?: Tab
   );
 }
 
-const makeStyles = (color: Palette) => StyleSheet.create({
+const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   content: { padding: space.lg, paddingBottom: 120, gap: space.md },
   pills: { gap: 8 },
   gear: { color: color.text, fontSize: 24 },

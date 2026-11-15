@@ -10,8 +10,9 @@ import type { ReadStatus } from '../../lib/mind/engine/types';
 import { makeScorer } from '../../lib/mind/taste';
 import { useMindSettings } from '../../lib/mind/settings';
 import { EmptyState, Pill } from '../../ui/primitives';
-import { font, space } from '../../ui/tokens';
-import { useThemed, type Palette } from '../../ui/theme';
+import { space } from '../../ui/tokens';
+
+import { useThemed, type Palette, type Fonts } from '../../ui/theme';
 import type { MindData } from './useMindData';
 
 type StatusFilter = 'all' | ReadStatus;
@@ -79,7 +80,7 @@ export default function LibraryTab({ data, refresh }: { data: MindData; refresh:
   );
 }
 
-const makeStyles = (color: Palette) => StyleSheet.create({
+const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   addRow: { flexDirection: 'row', gap: space.sm, alignItems: 'center' },
   pills: { gap: 8 },
   score: { position: 'absolute', bottom: 4, right: 4, backgroundColor: '#000000cc', borderRadius: 8 },
