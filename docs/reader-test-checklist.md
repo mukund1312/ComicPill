@@ -190,3 +190,7 @@ Test comic: any `.cbz` with several panels per page and lettered balloons (the c
 
 - [x] The bar under the page is now a slim strip: smaller thumbnails, a 4px progress bar with the page counter beside it, tighter spacing, sitting right against the bottom edge. The page being read stays visible above it (portrait and landscape).
 - [x] Tapping or dragging the thin bar still seeks (it has a 28px touch area; tap at the middle of the bar jumped 41 → 71 of 116).
+
+## Opening animation (15 Nov 2026)
+
+- [x] The "ComicPill" wordmark is a pre-rendered transparent PNG (assets/comicpill-wordmark.png, Inter ExtraBold, red "Pill"), not live text. Sequence: icon centred like the native splash → slides aside as the wordmark unrolls → light sweep over the lettering → logo pushes in while dissolving into Today. Checked frame by frame on the emulator.
