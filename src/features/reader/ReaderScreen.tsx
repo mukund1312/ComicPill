@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as Sharing from 'expo-sharing';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { FadeIn, FadeInDown, FadeInUp, FadeOut, FadeOutDown, FadeOutUp, useAnimatedScrollHandler, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, FadeInUp, FadeOut, FadeOutDown, FadeOutUp, useAnimatedRef, useAnimatedScrollHandler, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 import { StatusBar } from 'expo-status-bar';
 import { useKeepAwake } from 'expo-keep-awake';
 import * as ScreenOrientation from 'expo-screen-orientation';
@@ -19,6 +19,7 @@ import { ReaderDisplaySheet, supportsViewFilters, type Display } from './ReaderD
 import { Thumb, ThumbnailStrip } from './ThumbnailStrip';
 import { TransitionPage, useStackedCells } from './PageTransition';
 import { PageCurlLayer } from './pageCurl/PageCurlLayer';
+import { useCurlDrag, type PagerGate } from './pageCurl/curlDrag';
 import { BookFlipLayer } from './BookFlipLayer';
 import { UnlockGate } from './UnlockGate';
 import { ZoomableView, type ZoomHandle } from './ZoomableView';
@@ -256,6 +257,9 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
   // Live position (updates every scroll); `anchor` is its last saved mirror, safe to read in render.
   const position = useRef<Position>({ page: startPage, frac: comic.progressOffset });
   const listRef = useRef<FlatList<number[]>>(null);
+  // The same list as a Reanimated ref, so the page curl's drag can move it from the UI thread.
+  const listAnim = useAnimatedRef<never>();
+  const setListRef = useCallback((r: FlatList<number[]> | null) => { listRef.current = r; listAnim(r as never); }, [listAnim]);
   const changeDisplay = (patch: Partial<Display>) => { setDisplay((d) => ({ ...d, ...patch })); saveReaderSettings(patch); };
 
   const rtl = mode === 'rtl'; const webtoon = mode === 'webtoon';
@@ -279,6 +283,8 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
   const turnKind = bookActive ? 'slide' : display.pageAnimation;
   // The 3-D curl needs whole single pages sitting on the page-sized frame, left to right.
   const curlActive = display.pageAnimation === 'curl' && !webtoon && !rtl && !guidedActive && fit === 'contain';
+  // With the curl on, pages are turned by this gesture rather than the list's own scrolling, so the curl knows where the page was held.
+  const curlDrag = useCurlDrag(listAnim, scrollX, width, units.length - 1, unitIndexOf(units, page), curlActive);
   const stackedCells = useStackedCells(units.length, turnKind === 'flip');
   const data = useMemo(() => (rtl ? [...units].reverse() : units), [units, rtl]);
   const visualIndex = useCallback((p: number) => { const i = unitIndexOf(units, p); return rtl ? units.length - 1 - i : i; }, [units, rtl]);
@@ -864,10 +870,12 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
   return (
     <View style={[styles.root, { backgroundColor: bg }]}>
       <StatusBar hidden={!overlay} />
+      <GestureDetector gesture={curlDrag.gesture}>
       <View style={[styles.fill, displayFilter(display.filter)]}>
       <Animated.FlatList
         key={listKey}
-        ref={listRef as never}
+        ref={setListRef as never}
+        scrollEnabled={webtoon || !curlActive}
         CellRendererComponent={webtoon ? undefined : stackedCells as never}
         data={data}
         keyExtractor={(u) => String(u[0])}
@@ -896,14 +904,15 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
           ? <WebtoonPage source={source} page={item[0]} width={width} height={strip.known ? strip.heights[item[0]] : undefined} bg={bg} onTap={() => setOverlay((o) => !o)} />
           : (
             <TransitionPage index={index} width={width} scrollX={scrollX} kind={turnKind}>
-              <PagedUnit register={registerZoom} source={source} unit={item} sizes={sizeList} width={width} height={height} rtl={rtl} fit={fit} bg={bg} crop={display.trimBorders && item.length === 1 ? trimBoxes[item[0]] ?? null : null} onTap={onTap} onDoubleTap={display.doubleTapPanel && guidedAvailable() && !webtoon && !bubbleActive ? onDoubleTap : undefined} onPullDown={() => router.back()} />
+              <PagedUnit register={registerZoom} source={source} unit={item} sizes={sizeList} width={width} height={height} rtl={rtl} fit={fit} bg={bg} crop={display.trimBorders && item.length === 1 ? trimBoxes[item[0]] ?? null : null} pagerGate={curlActive ? curlDrag.gate : undefined} onTap={onTap} onDoubleTap={display.doubleTapPanel && guidedAvailable() && !webtoon && !bubbleActive ? onDoubleTap : undefined} onPullDown={() => router.back()} />
             </TransitionPage>
           )}
       />
       {guidedActive && mask.view && mask.panel ? <PanelMaskLayer style={display.guidedMask} panel={mask.panel === FULL_PAGE ? null : mask.panel} camera={mask.view.camera} content={mask.view.content} view={mask.view.view} background={bg} amount={maskAmount} /> : null}
       {bookActive ? <BookFlipLayer data={data} current={visualIndex(page)} scrollX={scrollX} width={width} height={height} bg={bg} render={(u) => <PagedUnit passive register={registerZoom} source={source} unit={u} sizes={sizeList} width={width} height={height} rtl={rtl} fit={fit} bg={bg} crop={null} onTap={onTap} />} /> : null}
-      {curlActive ? <PageCurlLayer source={source} units={units} current={unitIndexOf(units, page)} sizes={sizeList} scrollX={scrollX} width={width} height={height} bg={bg} /> : null}
+      {curlActive ? <PageCurlLayer source={source} units={units} current={unitIndexOf(units, page)} sizes={sizeList} scrollX={scrollX} width={width} height={height} bg={bg} grab={curlDrag.grab} /> : null}
       </View>
+      </GestureDetector>
       {display.filter === 'sepia' ? <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#C99A5B', mixBlendMode: 'multiply' }]} /> : null}
       {display.brightness < 1 ? <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#000', opacity: 1 - display.brightness }]} /> : null}
       {overlay ? <>
@@ -1053,7 +1062,7 @@ function PageImage({ source, page, width, height, crop }: { source: ComicSource;
 }
 
 /** One screen of paged reading: a single page, or two side by side (landscape). Zoom applies to the whole unit. */
-function PagedUnit({ register, source, unit, sizes, width, height, rtl, fit, bg, crop, onTap, onDoubleTap, onPullDown, passive }: { register: (page: number, handle: ZoomHandle | null) => void; source: ComicSource; unit: number[]; sizes: Sizes; width: number; height: number; rtl: boolean; fit: Fit; bg: string; crop: Panel | null; onTap: (x: number, y: number) => void; onDoubleTap?: (x: number, y: number) => void; onPullDown?: () => void; passive?: boolean }) {
+function PagedUnit({ register, source, unit, sizes, width, height, rtl, fit, bg, crop, onTap, onDoubleTap, onPullDown, passive, pagerGate }: { register: (page: number, handle: ZoomHandle | null) => void; source: ComicSource; unit: number[]; sizes: Sizes; width: number; height: number; rtl: boolean; fit: Fit; bg: string; crop: Panel | null; onTap: (x: number, y: number) => void; onDoubleTap?: (x: number, y: number) => void; onPullDown?: () => void; passive?: boolean; pagerGate?: PagerGate }) {
   const known = unit.every((p) => sizes[p]);
   const ratios = unit.map((p) => (sizes[p] ? sizes[p]!.width / sizes[p]!.height : DEFAULT_RATIO));
   const sumRatio = ratios.reduce((a, b) => a + b, 0);
@@ -1064,7 +1073,7 @@ function PagedUnit({ register, source, unit, sizes, width, height, rtl, fit, bg,
   const widths = known ? ratios.map((r) => r * fitH) : unit.map(() => width / unit.length);
   const contentW = widths.reduce((a, b) => a + b, 0);
   return (
-    <ZoomableView ref={passive ? undefined : (h) => register(unit[0], h)} passive={passive} width={width} height={height} contentWidth={contentW} contentHeight={fitH} background={bg} onTap={onTap} onDoubleTap={onDoubleTap} onPullDown={onPullDown}>
+    <ZoomableView ref={passive ? undefined : (h) => register(unit[0], h)} passive={passive} width={width} height={height} contentWidth={contentW} contentHeight={fitH} background={bg} pagerGate={pagerGate} onTap={onTap} onDoubleTap={onDoubleTap} onPullDown={onPullDown}>
       <View style={{ flexDirection: rtl ? 'row-reverse' : 'row', width: contentW, height: fitH }}>
         {unit.map((p, i) => <PageImage key={p} source={source} page={p} width={widths[i]} height={fitH} crop={crop} />)}
       </View>

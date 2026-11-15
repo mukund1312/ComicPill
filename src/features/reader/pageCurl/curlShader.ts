@@ -94,27 +94,11 @@ function compile(src: string) {
 
 export const curlEffect = compile(SKSL);
 
-/** Where the cylinder is, and how fat, at turn progress `t` (0 = flat, 1 = gone off the left edge). */
 /** The paper colour for the back of the sheet: warm cream on a light reader, a dim warm grey on a dark one, so it never glares. */
 export function paperFor(_bg: [number, number, number]): [number, number, number] {
   'worklet';
   // Real comic paper is white whatever the reader's background: the bright back of the sheet is what sells the turn.
   return [0.94, 0.925, 0.89];
-}
-
-/**
- * The fold's angle, roll radius and position at turn progress `t` (0 = flat, 1 = gone). The page is lifted by its lower corner, so the fold
- * starts tilted (about 17°) and straightens as it goes over; the roll is fattest mid-turn, like a real sheet held loosely.
- */
-export function curlGeometry(t: number, width: number, height: number) {
-  'worklet';
-  const phi = 0.3 * Math.pow(1 - t, 1.3);
-  const R = width * (0.09 + 0.11 * Math.sin(Math.PI * t));
-  // Measured at right angles to the fold, from the left edge's middle: the page reaches from sMin (top left) to sMax (bottom right corner).
-  const sMax = width * Math.cos(phi) + (height / 2) * Math.sin(phi);
-  const sMin = -(height / 2) * Math.sin(phi);
-  const a = sMax - t * (sMax - sMin + 2 * R);
-  return { a, R, phi };
 }
 
 /**
@@ -201,15 +185,4 @@ half4 main(float2 xy) {
 
 export const spreadCurlEffect = compile(SPREAD_SKSL);
 
-/** The roll for a spread: it starts at the outer edge `E`, ends at the spine `S` (thin again), and is fattest half-way. */
-export function spreadGeometry(t: number, S: number, E: number, pageH: number) {
-  'worklet';
-  const P = E - S;
-  const phi = 0.24 * Math.pow(1 - t, 1.3);
-  const R = P * (0.02 + 0.16 * Math.sin(Math.PI * t));
-  // Measured at right angles to the fold from the spine: the right page reaches out to its lower outer corner at sMax.
-  const sMax = P * Math.cos(phi) + (pageH / 2) * Math.sin(phi);
-  // At t = 1 the turned page lies mirrored about the spine (and the fold is upright): 2a + πR = 0.
-  const a = sMax - t * sMax - t * ((Math.PI * R) / 2);
-  return { a, R, phi };
-}
+export { curlGeometry, foldAngle, spreadGeometry, type Grab } from './curlMath';

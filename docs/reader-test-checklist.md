@@ -207,3 +207,22 @@ Test comic: any `.cbz` with several panels per page and lettered balloons (the c
 - [x] One back control: Appearance, Help & feedback and the journey screens use the round back button; duplicate text links removed from Playlist and Piggy Bank detail.
 - [x] Library opens with "On your shelf" (large covers, See all), then Libraries and Add comics; Playlists/Compare/Mind Space/Wallet/Paths moved into a folded "More".
 - Not done: store screenshots (need comic art you may show: public-domain or your own), real-phone test, Play Console forms.
+
+## Page curl follows the finger (16 Nov 2026)
+
+Root cause of the old behaviour: the curl's only input was the pager's scroll offset, and the fold angle was hard-coded to tilt from the lower right
+corner, so every turn looked the same wherever the page was held. Now, with Page curl on, the pager's own scrolling is off and a UI-thread drag
+(pageCurl/curlDrag.ts) moves it, recording the grab point, the finger's vertical travel and its speed. The geometry (pageCurl/curlMath.ts,
+unit-tested) folds the sheet along the perpendicular bisector of the touched point and the finger, so the touched point stays under the finger.
+
+Checked on the emulator (portrait, 1080×2400), holding the finger mid-turn:
+- [x] Top-right grab dragged down-left: top corner peels first, diagonal fold, corner tip under the finger.
+- [x] Middle of the right edge dragged left: the edge rolls round evenly, around the finger.
+- [x] Bottom-right grab dragged up-left: bottom corner peels first.
+- [x] Fast flick (180px in 70ms) turns the page; slow short drag falls back; long slow drag completes; drag half-way and back returns.
+- [x] Fast flick right goes to the previous page; slow short drag right stays.
+- [x] Taps on the side zones still turn pages (both ways); a swipe no longer also counts as a tap (no menu popping up).
+- [x] Right after opening a comic at a saved page, the first drag starts from that page (it used to be able to jump to page 1).
+- [x] Landscape spread: the right page lifts from the corner that was grabbed (top or bottom).
+- Not checked on a real phone yet; zoomed-in page → push against its side → page turns relies on the zoom view handing over (logic in place, not exercised on the emulator).
+- Not physical simulation: the paper is a cylinder-roll model driven by the finger, not a cloth/mass-spring sheet. Landscape spreads lean towards the held corner but keep the spine-anchored roll (the held point is not glued to the finger there).

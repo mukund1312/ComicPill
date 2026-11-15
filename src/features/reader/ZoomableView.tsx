@@ -1,10 +1,11 @@
 import { forwardRef, useImperativeHandle, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withDecay, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
+import Animated, { Easing, runOnJS, useAnimatedReaction, useAnimatedStyle, useSharedValue, withDecay, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
 import { useThemed, type Palette } from '../../ui/theme';
 import type { Panel } from '../../lib/reader/guided/panels';
 import { cameraFor } from '../../lib/reader/guided/camera';
+import type { PagerGate } from './pageCurl/curlDrag';
 
 export type ZoomHandle = {
   /** Animate to fill the view with a panel (normalised to the content); null returns to the full page. */
@@ -32,6 +33,8 @@ type Props = {
   onDoubleTap?: (x: number, y: number) => void;
   /** Drag the page down (while it is not zoomed) and let go: leave the comic. */
   onPullDown?: () => void;
+  /** Shared with a page-turning drag around the pager (the page curl's): zoomed in, a sideways drag pans the page until it reaches its side. */
+  pagerGate?: PagerGate;
   background?: string;
   /** Draw only: no gestures and no pan or zoom. Used for the copies of a page that the page-turn effects animate. */
   passive?: boolean;
@@ -43,6 +46,7 @@ const DOUBLE_TAP_SCALE = 2.5;
 const EDGE_SLACK = 2;
 /** Finger travel before pan decides between moving the picture and handing off to the pager. */
 const DECIDE_AFTER = 8;
+const TAP_SLOP = 20;
 /** How far (or how fast) a downward pull has to go to leave the comic. */
 const PULL_EXIT_DISTANCE = 140;
 const PULL_EXIT_VELOCITY = 900;
@@ -56,7 +60,7 @@ const ONE_FINGER_PER_DOUBLING = 140;
  * Pinch (about the fingers), double-tap (about the tap), and pan with momentum. At 1× — or when
  * pushed against an edge — pan steps aside so the pager can swipe to the next page.
  */
-export const ZoomableView = forwardRef<ZoomHandle, Props>(function ZoomableView({ width, height, contentWidth = width, contentHeight = height, onTap, onDoubleTap, onPullDown, background = '#0A0A0D', passive = false, children }, ref) {
+export const ZoomableView = forwardRef<ZoomHandle, Props>(function ZoomableView({ width, height, contentWidth = width, contentHeight = height, onTap, onDoubleTap, onPullDown, pagerGate, background = '#0A0A0D', passive = false, children }, ref) {
   const { styles } = useThemed(makeStyles);
   // A fit-width page can be taller than the screen: it scrolls vertically even at 1×.
   const tallPage = contentHeight > height + 1;
@@ -110,6 +114,7 @@ export const ZoomableView = forwardRef<ZoomHandle, Props>(function ZoomableView(
     .onTouchesDown((e) => {
       const x = e.allTouches[0]?.x ?? 0; const y = e.allTouches[0]?.y ?? 0;
       startTouchX.value = x; startTouchY.value = y;
+      if (pagerGate) pagerGate.handoff.value = false;
       // Double-tap, then keep the finger down and drag: Maps-style zoom you can do with a thumb.
       oneFinger.value = e.numberOfTouches === 1 && Date.now() - lastUpAt.value < ONE_FINGER_WINDOW_MS && Math.abs(x - lastUpX.value) < ONE_FINGER_RADIUS && Math.abs(y - lastUpY.value) < ONE_FINGER_RADIUS;
     })
@@ -135,7 +140,7 @@ export const ZoomableView = forwardRef<ZoomHandle, Props>(function ZoomableView(
         if (Math.abs(dx) >= Math.abs(dy)) {
           const limit = maxX(scale.value);
           // Pushing past a horizontal edge hands the swipe to the pager (next/previous page).
-          if ((dx > 0 && tx.value >= limit - EDGE_SLACK) || (dx < 0 && tx.value <= -limit + EDGE_SLACK)) { manager.fail(); return; }
+          if ((dx > 0 && tx.value >= limit - EDGE_SLACK) || (dx < 0 && tx.value <= -limit + EDGE_SLACK)) { if (pagerGate) pagerGate.handoff.value = true; manager.fail(); return; }
         }
       }
       manager.activate();
@@ -164,7 +169,8 @@ export const ZoomableView = forwardRef<ZoomHandle, Props>(function ZoomableView(
     })
     .onFinalize(() => { panning.value = false; oneFinger.value = false; pulling.value = false; });
 
-  const doubleTap = Gesture.Tap().numberOfTaps(2).maxDuration(250).onEnd((e) => {
+  // A finger that travels is a swipe, not a tap (the pager used to cancel those itself; the page curl's drag does not).
+  const doubleTap = Gesture.Tap().numberOfTaps(2).maxDuration(250).maxDistance(TAP_SLOP).onEnd((e) => {
     if (onDoubleTap) { runOnJS(onDoubleTap)(e.x, e.y); return; }
     if (scale.value > 1.01) { scale.value = withTiming(1); tx.value = withTiming(0); ty.value = withTiming(0); return; }
     const cx = e.x - width / 2; const cy = e.y - height / 2;
@@ -172,7 +178,12 @@ export const ZoomableView = forwardRef<ZoomHandle, Props>(function ZoomableView(
     tx.value = withTiming(clamp(-(DOUBLE_TAP_SCALE - 1) * cx, maxX(DOUBLE_TAP_SCALE)));
     ty.value = withTiming(clamp(-(DOUBLE_TAP_SCALE - 1) * cy, maxY(DOUBLE_TAP_SCALE)));
   });
-  const singleTap = Gesture.Tap().runOnJS(true).maxDuration(250).onEnd((e) => onTap(e.x, e.y));
+  const singleTap = Gesture.Tap().runOnJS(true).maxDuration(250).maxDistance(TAP_SLOP).onEnd((e) => onTap(e.x, e.y));
+
+  // Tell the page-turn drag when this page is zoomed in (only a page being looked at changes its zoom).
+  useAnimatedReaction(() => scale.value > 1.01, (z, prev) => {
+    if (pagerGate && !passive && prev !== null && z !== prev) pagerGate.zoomed.value = z;
+  }, [pagerGate, passive]);
 
   const style = useAnimatedStyle(() => ({
     transform: [{ translateX: tx.value }, { translateY: ty.value }, { scale: scale.value }],
