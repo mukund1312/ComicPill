@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { motion } from '../../ui/motion';
 import { Alert, AppState, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -651,7 +652,7 @@ function HiddenShelfIf({ on, children, ...rest }: { on: boolean; children: React
 function FileCover({ uri, title, style, recyclingKey, transition }: { uri: string | null | undefined; title: string; style: object; recyclingKey: string; transition?: number }) {
   const [failed, setFailed] = useState(false);
   if (!uri || failed) {
-    return <View style={[style, { backgroundColor: '#2A2F3A', alignItems: 'center', justifyContent: 'center', padding: 10 }]}><Text numberOfLines={5} style={{ color: '#E8E8EC', fontSize: 13, fontWeight: '700', textAlign: 'center' }}>{title}</Text></View>;
+    return <View style={[style, { backgroundColor: '#2A2F3A', alignItems: 'center', justifyContent: 'center', padding: 10 }]}><Text numberOfLines={5} style={{ color: '#E8E8EC', fontSize: 14, fontWeight: '700', textAlign: 'center' }}>{title}</Text></View>;
   }
   return <Image source={{ uri }} style={style} contentFit="cover" recyclingKey={recyclingKey} transition={transition} onError={() => setFailed(true)} />;
 }
@@ -673,7 +674,7 @@ function Tile({ styles, view, width, label, sub, glyph, glyphColor, covers, high
   // The wrapper is what the drag looks for under the finger; the ring shows it will accept the drop.
   const ring = highlight ? <View pointerEvents="none" style={styles.dropRing} /> : null;
   // The folder swells as the pile comes over it, then settles back when it leaves.
-  const swell = useAnimatedStyle(() => ({ transform: [{ scale: withSpring(highlight ? 1.08 : 1, { damping: 14, stiffness: 240 }) }] }), [highlight]);
+  const swell = useAnimatedStyle(() => ({ transform: [{ scale: withSpring(highlight ? 1.08 : 1, motion.snap) }] }), [highlight]);
   if (view === 'list') {
     return <View ref={registerRef} collapsable={false}><Animated.View style={swell}><PressableScale to={0.985} style={styles.listRow} onPress={onPress} onLongPress={onLongPress}>{stack}<View style={styles.listBody}><Text numberOfLines={2} style={styles.title}>{label}</Text><Text style={styles.sub}>{sub}</Text></View></PressableScale>{ring}</Animated.View></View>;
   }
@@ -707,10 +708,10 @@ function makeStyles(c: ThemeColors, t: TypographyPreset) {
     stickyHead: { paddingHorizontal: space.lg, paddingTop: space.sm, marginBottom: space.sm },
     pills: { gap: 8 },
     subrow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    count: { color: c.textSecondary, fontFamily: t.body, fontSize: 13 },
-    sort: { color: c.textSecondary, fontFamily: t.bodySemibold, fontSize: 13 },
+    count: { color: c.textSecondary, fontFamily: t.body, fontSize: 14 },
+    sort: { color: c.textSecondary, fontFamily: t.bodySemibold, fontSize: 14 },
     back: { color: c.primary, fontFamily: t.bodySemibold, fontSize: 16 },
-    add: { color: c.primary, fontSize: 28 },
+    add: { color: c.primary, fontSize: 30 },
     headerActions: { flexDirection: 'row', alignItems: 'center', gap: space.lg },
     searchIcon: { color: c.primary, fontSize: 26 },
     cell: { gap: 6, marginBottom: space.xl, alignSelf: 'center' },
@@ -722,9 +723,9 @@ function makeStyles(c: ThemeColors, t: TypographyPreset) {
     coverList: { width: 58, aspectRatio: undefined, height: 86 },
     coverImage: { width: '100%', height: '100%' },
     tile: { alignItems: 'center', justifyContent: 'center' },
-    glyph: { color: c.primary, fontSize: 36 },
+    glyph: { color: c.primary, fontSize: 34 },
     cloudBadge: { position: 'absolute', left: 6, top: 6, width: 24, height: 24, borderRadius: 12, backgroundColor: '#000000AA', alignItems: 'center', justifyContent: 'center' },
-    badge: { position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: 10, backgroundColor: c.success, color: c.primaryForeground, textAlign: 'center', fontSize: 13, lineHeight: 20, overflow: 'hidden' },
+    badge: { position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: 10, backgroundColor: c.success, color: c.primaryForeground, textAlign: 'center', fontSize: 14, lineHeight: 20, overflow: 'hidden' },
     title: { color: c.textPrimary, fontFamily: t.displayMedium, fontSize: 14, lineHeight: 18, marginTop: 4 },
     sub: { color: c.textMuted, fontFamily: t.body, fontSize: 12 },
     listRow: { flexDirection: 'row', gap: space.md, alignItems: 'center', paddingVertical: space.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border },
@@ -743,8 +744,8 @@ function makeStyles(c: ThemeColors, t: TypographyPreset) {
     bar: { position: 'absolute', left: space.lg, right: space.lg, bottom: 24, flexDirection: 'row', alignItems: 'center', gap: space.lg, padding: space.md, paddingHorizontal: space.lg, borderRadius: 18, backgroundColor: c.surfaceRaised, borderWidth: 1, borderColor: c.border, shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 12 },
     barBody: { flex: 1, gap: 4 },
     barText: { color: c.textPrimary, fontFamily: t.bodySemibold, fontSize: 14 },
-    barBtn: { color: c.primary, fontFamily: t.bodySemibold, fontSize: 15 },
-    barDanger: { color: c.destructive, fontFamily: t.bodySemibold, fontSize: 15 },
+    barBtn: { color: c.primary, fontFamily: t.bodySemibold, fontSize: 16 },
+    barDanger: { color: c.destructive, fontFamily: t.bodySemibold, fontSize: 16 },
     barOff: { opacity: 0.35 },
     toast: { position: 'absolute', alignSelf: 'center', bottom: 110, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 16, backgroundColor: c.surfaceRaised, borderWidth: 1, borderColor: c.border },
     toastText: { color: c.textPrimary, fontFamily: t.bodySemibold, fontSize: 14 },

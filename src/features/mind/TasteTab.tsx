@@ -60,7 +60,7 @@ export default function TasteTab({ data }: { data: MindData }) {
 }
 
 const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
-  big: { color: color.text, fontFamily: font.displayMedium, fontSize: 28 },
+  big: { color: color.text, fontFamily: font.displayMedium, fontSize: 30 },
   body: { color: color.text, fontFamily: font.body, fontSize: type.body, lineHeight: 22 },
   faint: { color: color.muted, fontFamily: font.body, fontSize: 12, lineHeight: 17 },
   row: { flexDirection: 'row', gap: space.sm },

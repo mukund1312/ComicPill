@@ -92,7 +92,7 @@ export function EditMatchSheet({ item, number, onClose, onChoose, onCover, onExc
         </View>
         <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
           <View style={styles.row}>
-            {item.cropUri ? <Image source={{ uri: item.cropUri }} style={[styles.spine, { backgroundColor: c.surfaceRaised }]} contentFit="cover" /> : null}
+            {item.cropUri ? <Image transition={180} source={{ uri: item.cropUri }} style={[styles.spine, { backgroundColor: c.surfaceRaised }]} contentFit="cover" /> : null}
             <View style={styles.flex}>
               <Text style={[styles.label, { color: c.textMuted, fontFamily: typography.bodyMedium }]}>What the scan read</Text>
               <Text style={[styles.read, { color: c.textPrimary, fontFamily: typography.body }]}>{item.extractedText.join(' · ') || 'Nothing readable on this spine.'}</Text>
@@ -141,7 +141,7 @@ export function EditMatchSheet({ item, number, onClose, onChoose, onCover, onExc
               ) : null}
               {online.results.map((r) => (
                 <Pressable key={`${r.source}-${r.id}`} accessibilityRole="button" disabled={picking !== null} onPress={() => { void chooseOnline(r); }} style={[styles.result, { borderColor: c.border, backgroundColor: c.surface, opacity: picking && picking !== r.id ? 0.5 : 1 }]}>
-                  {r.coverUrl ? <Image source={{ uri: r.coverUrl }} style={styles.cover} contentFit="cover" accessibilityLabel={`Cover of ${r.title}`} /> : <View style={[styles.cover, { backgroundColor: c.surfaceRaised }]} />}
+                  {r.coverUrl ? <Image transition={180} source={{ uri: r.coverUrl }} style={styles.cover} contentFit="cover" accessibilityLabel={`Cover of ${r.title}`} /> : <View style={[styles.cover, { backgroundColor: c.surfaceRaised }]} />}
                   <View style={styles.flex}>
                     <Text numberOfLines={2} style={[styles.read, { color: c.textPrimary, fontFamily: typography.displayMedium }]}>{r.title}</Text>
                     <Text numberOfLines={1} style={[styles.label, { color: c.textMuted, fontFamily: typography.body }]}>{[r.authors.slice(0, 2).join(', '), r.year, r.publisher].filter(Boolean).join(' · ')}</Text>
@@ -172,7 +172,7 @@ export function EditMatchSheet({ item, number, onClose, onChoose, onCover, onExc
 
           <Text style={[styles.section, { color: c.textPrimary, fontFamily: typography.displayMedium }]}>Cover</Text>
           <View style={styles.row}>
-            {item.customCoverUri ? <Image source={{ uri: item.customCoverUri }} style={styles.cover} contentFit="cover" /> : <ComicCover title={item.selected ? (item.selected.kind === 'catalog' ? item.selected.title : item.selected.comic.title) : item.read.title || 'Unknown'} workId={selectedWorkId} size="list" recyclingKey={`edit-cover-${item.scanId}`} />}
+            {item.customCoverUri ? <Image transition={180} source={{ uri: item.customCoverUri }} style={styles.cover} contentFit="cover" /> : <ComicCover title={item.selected ? (item.selected.kind === 'catalog' ? item.selected.title : item.selected.comic.title) : item.read.title || 'Unknown'} workId={selectedWorkId} size="list" recyclingKey={`edit-cover-${item.scanId}`} />}
             <View style={[styles.flex, { gap: space.sm }]}>
               <Text style={[styles.label, { color: c.textMuted, fontFamily: typography.body }]}>
                 {item.customCoverUri ? 'Your own cover. It only changes how this comic looks in your library.' : selectedWorkId ? 'The catalog cover. You can use your own instead if your edition looks different.' : 'No cover yet. Add your own, or leave the placeholder.'}
@@ -206,8 +206,8 @@ const styles = StyleSheet.create({
   field: { gap: 4 },
   label: { fontSize: 12, lineHeight: 17 },
   read: { fontSize: 14, lineHeight: 20 },
-  section: { fontSize: 17, marginTop: space.md },
-  input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
+  section: { fontSize: 18, marginTop: space.md },
+  input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16 },
   err: { fontSize: 12 },
   result: { flexDirection: 'row', alignItems: 'center', gap: space.md, borderWidth: 1, borderRadius: 14, padding: space.md },
   pick: { fontSize: 14 },

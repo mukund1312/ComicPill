@@ -68,6 +68,6 @@ export default function OpenFileScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, paddingHorizontal: space.lg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  title: { fontSize: 24, textAlign: 'center' },
-  copy: { fontSize: 15, textAlign: 'center', lineHeight: 22 },
+  title: { fontSize: 26, textAlign: 'center' },
+  copy: { fontSize: 16, textAlign: 'center', lineHeight: 22 },
 });

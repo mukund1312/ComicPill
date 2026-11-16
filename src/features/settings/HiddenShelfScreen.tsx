@@ -109,5 +109,5 @@ const styles = StyleSheet.create({
   form: { padding: space.lg, gap: space.md },
   how: { padding: space.lg, gap: space.sm },
   howText: { fontSize: 14, lineHeight: 21 },
-  error: { fontSize: 13 },
+  error: { fontSize: 14 },
 });

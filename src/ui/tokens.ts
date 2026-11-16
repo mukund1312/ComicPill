@@ -25,8 +25,9 @@ export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32, xxxl: 48 }
 
 export const radius = { sm: 10, md: 16, lg: 24, pill: 999 } as const;
 
-// Type scale: Hero/Display 34 · Section title 24 · Card title 18 · Body 16 · Caption 13
-export const type = { display: 34, title: 24, subtitle: 18, body: 16, caption: 13 } as const;
+// Type scale. Every text size in the app is one of these nine steps (artwork lettering and tiny badges excepted):
+// 34 large title · 30 · 26 title · 22 section · 18 card title · 16 body · 14 secondary · 12 caption · 11 label
+export const type = { display: 34, title: 26, section: 22, subtitle: 18, body: 16, callout: 14, caption: 12, label: 11 } as const;
 
 // One clean sans family (Inter, close to iOS's SF Pro): heavy weights for titles, regular/medium/semibold for interface text.
 export const font = {

@@ -54,7 +54,7 @@ function HeroArt({ source, title, scrollY, width, onPress }: { source: ReturnTyp
     <Animated.View style={[styles.art, styles.artGlow, frame]}>
       {[30, 27, 24, 21, 18, 15, 12, 9, 6, 3].map((grow, i) => <View key={grow} pointerEvents="none" style={{ position: 'absolute', left: -grow, right: -grow, top: -grow + 14, bottom: -grow - 14, borderRadius: 20 + grow, backgroundColor: '#000', opacity: 0.045 + i * 0.004 }} />)}
       <Pressable accessibilityRole="button" accessibilityLabel={title} onPress={onPress} style={[StyleSheet.absoluteFill, styles.artCard]}>
-        {source ? <Image source={source} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
+        {source ? <Image transition={180} source={source} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
       </Pressable>
     </Animated.View>
   );
@@ -108,15 +108,15 @@ function CollageBackdrop({ workId, scrollY }: { workId: string | undefined; scro
     const z = 1.7 + ((i * 7) % 5) * 0.15; const ox = ((i * 37) % 70) / 100; const oy = ((i * 53) % 80) / 100;
     return (
       <View key={`${tiles[i]}-${i}`} style={{ position: 'absolute', left: left + GUTTER / 2, top: rowTop + GUTTER / 2, width: tw - GUTTER, height: th - GUTTER, overflow: 'hidden', borderRadius: 2 }}>
-        {src ? <Image source={src} blurRadius={3} contentFit="cover" style={{ position: 'absolute', width: tw * z, height: tw * z * 1.5, left: -(tw * z - tw) * ox, top: -(tw * z * 1.5 - th) * oy }} /> : null}
+        {src ? <Image transition={300} source={src} blurRadius={3} contentFit="cover" style={{ position: 'absolute', width: tw * z, height: tw * z * 1.5, left: -(tw * z - tw) * ox, top: -(tw * z * 1.5 - th) * oy }} /> : null}
       </View>
     );
   }));
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]} onLayout={(e) => setSize(e.nativeEvent.layout)}>
-      {coverSourceFor(workId) ? <Animated.View style={[StyleSheet.absoluteFill, wash]}><Image source={coverSourceFor(workId)} blurRadius={40} contentFit="cover" style={StyleSheet.absoluteFill} /></Animated.View> : null}
+      {coverSourceFor(workId) ? <Animated.View style={[StyleSheet.absoluteFill, wash]}><Image transition={300} source={coverSourceFor(workId)} blurRadius={40} contentFit="cover" style={StyleSheet.absoluteFill} /></Animated.View> : null}
       <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: '#9A9A9E' }, fade]}>
-        {coverSourceFor(workId) ? <Image source={coverSourceFor(workId)} blurRadius={40} contentFit="cover" style={{ position: 'absolute', width, height }} /> : null}
+        {coverSourceFor(workId) ? <Image transition={300} source={coverSourceFor(workId)} blurRadius={40} contentFit="cover" style={{ position: 'absolute', width, height }} /> : null}
         {panels}
         {/* lifts any near-black crop to a warm tone, so no panel reads as a hole */}
         <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#7A6458', mixBlendMode: 'screen' }]} />
@@ -131,7 +131,7 @@ function CollageBackdrop({ workId, scrollY }: { workId: string | undefined; scro
 function StripCard({ label, title, workId, onPress, progress, uri }: { label?: string; title: string; workId?: string; onPress: () => void; progress?: number; uri?: string | null }) {
   const { theme, typography } = useAppearance(); const c = theme.colors;
   return <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.stripCard, pressed && { opacity: 0.85 }]}>
-    {uri ? <View style={[styles.stripCover, { backgroundColor: c.surfaceRaised }]}><Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" recyclingKey={uri} /></View> : <ComicCover title={title} workId={workId} size="grid" />}
+    {uri ? <View style={[styles.stripCover, { backgroundColor: c.surfaceRaised }]}><Image transition={180} source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" recyclingKey={uri} /></View> : <ComicCover title={title} workId={workId} size="grid" />}
     {label ? <Text style={[styles.stripLabel, { color: c.primary, fontFamily: typography.bodySemibold }]}>{label.toUpperCase()}</Text> : null}
     <Text numberOfLines={2} style={[styles.stripTitle, { color: c.textPrimary, fontFamily: typography.displayMedium }]}>{title}</Text>
     {progress !== undefined ? <Progress value={progress} /> : null}
@@ -222,11 +222,11 @@ const styles = StyleSheet.create({
   fan: { height: 214, width: '100%', alignItems: 'center', justifyContent: 'center', marginBottom: space.lg },
   fanCover: { position: 'absolute' },
   eyebrow: { fontSize: 10, letterSpacing: 1.6, textAlign: 'center' },
-  heroTitle: { fontSize: 28, lineHeight: 33, textAlign: 'center', marginTop: 8 },
-  reason: { fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: 8, maxWidth: 300 },
+  heroTitle: { fontSize: 30, lineHeight: 33, textAlign: 'center', marginTop: 8 },
+  reason: { fontSize: 14, lineHeight: 19, textAlign: 'center', marginTop: 8, maxWidth: 300 },
   cta: { alignSelf: 'stretch', marginTop: space.lg },
   why: { paddingTop: 14, paddingBottom: 2 },
-  whyText: { fontSize: 13 },
+  whyText: { fontSize: 14 },
   sectionLabel: { fontSize: 10, letterSpacing: 1.6, marginTop: 26, marginBottom: 2 },
   pills: { gap: 8, paddingVertical: 10 },
   section: { fontSize: 22, marginTop: 22, marginBottom: 12 },
@@ -236,19 +236,19 @@ const styles = StyleSheet.create({
   pathsCard: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, marginTop: 28 },
   pathsIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   pathsTitle: { fontSize: 16 },
-  pathsSub: { fontSize: 13, marginTop: 2 },
+  pathsSub: { fontSize: 14, marginTop: 2 },
   stripCard: { width: 110, gap: 6 },
   stripCover: { width: 96, height: 144, borderRadius: radius.sm, overflow: 'hidden', borderWidth: 1, borderColor: '#ffffff20' },
   stripLabel: { fontSize: 9, letterSpacing: 1.2, marginTop: 2 },
   stripTitle: { fontSize: 12, lineHeight: 15 },
   overlay: { ...StyleSheet.absoluteFill, zIndex: 10, justifyContent: 'flex-end', backgroundColor: '#000000aa' },
-  sheetLead: { fontSize: 15, marginBottom: 12 },
+  sheetLead: { fontSize: 16, marginBottom: 12 },
   reasonRow: { flexDirection: 'row', gap: 10, paddingVertical: 10 },
-  reasonDot: { fontSize: 17 },
-  reasonText: { flex: 1, fontSize: 15, lineHeight: 22 },
+  reasonDot: { fontSize: 18 },
+  reasonText: { flex: 1, fontSize: 16, lineHeight: 22 },
   notTitle: { fontSize: 30 },
-  notCopy: { fontSize: 15, lineHeight: 23, marginVertical: 14 },
+  notCopy: { fontSize: 16, lineHeight: 23, marginVertical: 14 },
   noPick: { padding: 24, borderRadius: radius.lg, borderWidth: 1, gap: 10 },
-  noPickTitle: { fontSize: 24 },
-  noPickCopy: { fontSize: 15, lineHeight: 22 },
+  noPickTitle: { fontSize: 26 },
+  noPickCopy: { fontSize: 16, lineHeight: 22 },
 });

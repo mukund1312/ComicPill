@@ -41,6 +41,6 @@ const styles = StyleSheet.create({
   back: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center', marginBottom: 4 },
   backCircle: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 34, letterSpacing: -1, marginTop: 6 },
-  subtitle: { fontSize: 15, marginTop: 6, lineHeight: 22 },
+  subtitle: { fontSize: 16, marginTop: 6, lineHeight: 22 },
   footer: { padding: space.lg, borderTopWidth: StyleSheet.hairlineWidth },
 });

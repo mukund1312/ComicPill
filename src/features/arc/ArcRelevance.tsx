@@ -80,9 +80,9 @@ const EMPTY_PLAN = {
 const styles = StyleSheet.create({
   card: { borderWidth: 1, borderRadius: 14, padding: space.md, gap: 6 },
   title: { fontSize: 16 },
-  body: { fontSize: 13, lineHeight: 19 },
-  link: { fontSize: 13, marginTop: 2 },
+  body: { fontSize: 14, lineHeight: 19 },
+  link: { fontSize: 14, marginTop: 2 },
   guidance: { borderWidth: 1, borderRadius: 10, padding: space.sm, gap: 3, marginTop: 4 },
   eyebrow: { fontSize: 10, letterSpacing: 1.4 },
-  guidanceLabel: { fontSize: 13 },
+  guidanceLabel: { fontSize: 14 },
 });

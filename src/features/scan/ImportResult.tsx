@@ -57,10 +57,10 @@ export function ImportResult({ items, onRetry, onFinish, retrying, finishLabel =
 
 const styles = StyleSheet.create({
   gap: { gap: space.md, marginTop: space.md },
-  h: { fontSize: 24 },
+  h: { fontSize: 26 },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md },
-  name: { fontSize: 15, flexShrink: 1 },
-  note: { fontSize: 13, lineHeight: 19 },
+  name: { fontSize: 16, flexShrink: 1 },
+  note: { fontSize: 14, lineHeight: 19 },
   card: { borderWidth: 1, borderRadius: 16, padding: space.md, gap: space.sm },
   keepRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   flex: { flex: 1, minWidth: 0, gap: 2 },

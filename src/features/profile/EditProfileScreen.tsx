@@ -126,6 +126,6 @@ const styles = StyleSheet.create({
   stepper: { width: 56, paddingHorizontal: 0 },
   goalValue: { alignItems: 'center' },
   goalNumber: { fontSize: 40 },
-  goalLabel: { fontSize: 13 },
+  goalLabel: { fontSize: 14 },
   error: { fontSize: 12, paddingHorizontal: space.md, paddingBottom: space.md },
 });

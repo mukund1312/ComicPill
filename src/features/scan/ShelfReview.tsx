@@ -97,11 +97,11 @@ export function ShelfReview({ scan, items, onItems, alreadyOwned, onImport, onAd
               <View style={[styles.num, { backgroundColor: c.surfaceRaised }]}><Text style={[styles.numText, { color: c.textPrimary }]}>{index + 1}</Text></View>
               {/* Tap the spine to see it large, with its place on the shelf, and decide there. */}
               <Pressable accessibilityRole="button" accessibilityLabel={`Enlarge book ${index + 1}`} hitSlop={6} onPress={() => setPeekIndex(index)}>
-                {item.cropUri ? <Image source={{ uri: item.cropUri }} style={[styles.spine, { backgroundColor: c.surfaceRaised }]} contentFit="cover" /> : <View style={[styles.spine, { backgroundColor: c.surfaceRaised }]} />}
+                {item.cropUri ? <Image transition={180} source={{ uri: item.cropUri }} style={[styles.spine, { backgroundColor: c.surfaceRaised }]} contentFit="cover" /> : <View style={[styles.spine, { backgroundColor: c.surfaceRaised }]} />}
                 <View pointerEvents="none" style={[styles.zoomBadge, { backgroundColor: '#000000AA' }]}><Text style={styles.zoomText}>⤢</Text></View>
               </Pressable>
               <Text style={[styles.arrow, { color: c.textMuted }]}>→</Text>
-              {item.customCoverUri ? <Image source={{ uri: item.customCoverUri }} style={styles.cover} contentFit="cover" /> : <ComicCover title={title} workId={workId} size="list" recyclingKey={`scan-${item.scanId}`} />}
+              {item.customCoverUri ? <Image transition={180} source={{ uri: item.customCoverUri }} style={styles.cover} contentFit="cover" /> : <ComicCover title={title} workId={workId} size="list" recyclingKey={`scan-${item.scanId}`} />}
               <View style={styles.flex}>
                 <Text numberOfLines={3} style={[styles.title, { color: c.textPrimary, fontFamily: typography.displayMedium }]}>{title}</Text>
                 <Text style={[styles.note, { color: status.tone, fontFamily: typography.bodyMedium }]}>{status.text}</Text>
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
   gap: { gap: space.md, marginTop: space.md },
   photoBar: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: space.sm },
   adding: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingTop: space.sm },
-  summary: { fontSize: 17 },
+  summary: { fontSize: 18 },
   label: { fontSize: 12 },
   note: { fontSize: 12, lineHeight: 17 },
   link: { fontSize: 14 },
@@ -179,6 +179,6 @@ const styles = StyleSheet.create({
   cover: { width: 58, height: 86, borderRadius: 9 },
   arrow: { fontSize: 18 },
   flex: { flex: 1, minWidth: 0, gap: 3 },
-  title: { fontSize: 15, lineHeight: 20 },
+  title: { fontSize: 16, lineHeight: 20 },
   actions: { flexDirection: 'row', gap: space.xl, paddingTop: 2 },
 });

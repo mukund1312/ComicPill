@@ -101,7 +101,7 @@ export default function OpdsBrowseScreen() {
           const hasFile = item.acquisitions.length > 0;
           return (
             <Pressable accessibilityRole="button" disabled={!item.nav} onPress={() => item.nav && router.push({ pathname: '/reader/opds/browse', params: { server: server.id, url: item.nav } })} style={styles.row}>
-              <View style={styles.thumb}>{item.thumb ? <Image source={{ uri: item.thumb, headers }} style={styles.fill} contentFit="cover" /> : <Text style={styles.glyph}>{item.nav ? '▤' : '▥'}</Text>}</View>
+              <View style={styles.thumb}>{item.thumb ? <Image transition={180} source={{ uri: item.thumb, headers }} style={styles.fill} contentFit="cover" /> : <Text style={styles.glyph}>{item.nav ? '▤' : '▥'}</Text>}</View>
               <View style={styles.main}>
                 <Text numberOfLines={2} style={styles.title}>{item.title}</Text>
                 {item.authors.length ? <Text numberOfLines={1} style={styles.sub}>{item.authors.join(', ')}</Text> : null}

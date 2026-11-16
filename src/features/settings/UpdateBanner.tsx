@@ -29,7 +29,7 @@ export default function UpdateBanner() {
 const styles = StyleSheet.create({
   card: { borderWidth: 1, borderRadius: 16, padding: space.md, gap: 8, marginBottom: space.md },
   title: { fontSize: 16 },
-  body: { fontSize: 13, lineHeight: 19 },
+  body: { fontSize: 14, lineHeight: 19 },
   row: { flexDirection: 'row', gap: space.sm, alignItems: 'center' },
   flex: { flex: 1 },
 });

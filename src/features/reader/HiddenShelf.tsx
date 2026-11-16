@@ -246,7 +246,7 @@ export function HiddenShelf({ enabled, onOpenComic, onShelfChanged, children }: 
         ) : comics.map((comic) => (
           <Pressable key={comic.id} accessibilityRole="button" accessibilityLabel={comic.title} style={{ width: cell }} onPress={() => { feedback.tap(); onOpenComic(comic); }} onLongPress={() => comicMenu(comic)}>
             <View style={styles.cover}>
-              {comic.coverPath ? <Image source={{ uri: comic.coverPath }} style={styles.fillAbs} contentFit="cover" recyclingKey={`hidden-${comic.id}`} /> : <Text numberOfLines={4} style={styles.coverText}>{comic.title}</Text>}
+              {comic.coverPath ? <Image transition={180} source={{ uri: comic.coverPath }} style={styles.fillAbs} contentFit="cover" recyclingKey={`hidden-${comic.id}`} /> : <Text numberOfLines={4} style={styles.coverText}>{comic.title}</Text>}
             </View>
             <Text numberOfLines={2} style={styles.title}>{comic.title}</Text>
           </Pressable>
@@ -287,11 +287,11 @@ function makeStyles(c: ThemeColors, t: TypographyPreset) {
     edge: { position: 'absolute', left: 6, top: '45%', width: 4, height: 44, borderRadius: 2, backgroundColor: c.border },
     halfBody: { paddingHorizontal: space.lg, paddingTop: space.xl * 1.5, gap: space.md, alignItems: 'stretch' },
     halfTitle: { color: c.textPrimary, fontFamily: t.displayMedium, fontSize: 18 },
-    halfText: { color: c.textSecondary, fontFamily: t.body, fontSize: 13, lineHeight: 19 },
+    halfText: { color: c.textSecondary, fontFamily: t.body, fontSize: 14, lineHeight: 19 },
     note: { color: c.textMuted, fontFamily: t.body, fontSize: 12, lineHeight: 17 },
     input: { minHeight: 48, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: c.surfaceRaised, color: c.textPrimary, paddingHorizontal: space.md, fontFamily: t.body, fontSize: 16 },
-    wrong: { color: c.destructive, fontFamily: t.bodySemibold, fontSize: 13 },
-    link: { color: c.textSecondary, fontFamily: t.bodySemibold, fontSize: 13, textAlign: 'center', paddingVertical: space.xs },
+    wrong: { color: c.destructive, fontFamily: t.bodySemibold, fontSize: 14 },
+    link: { color: c.textSecondary, fontFamily: t.bodySemibold, fontSize: 14, textAlign: 'center', paddingVertical: space.xs },
     setup: { padding: space.lg, paddingTop: space.xl * 1.5, gap: space.md },
     openHead: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, paddingTop: space.lg, paddingBottom: space.md },
     openTitle: { color: c.textPrimary, fontFamily: t.display, fontSize: 26 },

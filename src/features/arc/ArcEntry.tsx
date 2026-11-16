@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
   wrap: { gap: space.md, marginBottom: space.lg },
   card: { borderWidth: 1, borderRadius: 18, padding: space.lg, gap: space.sm },
   title: { fontSize: 22 },
-  body: { fontSize: 13, lineHeight: 19 },
+  body: { fontSize: 14, lineHeight: 19 },
   journey: { borderWidth: 1, borderRadius: 14, padding: space.md, gap: 4 },
   journeyTitle: { fontSize: 16 },
   holeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md },

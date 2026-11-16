@@ -1,4 +1,5 @@
 import { useEffect, type PropsWithChildren, type ReactNode } from 'react';
+import { motion } from './motion';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router, usePathname } from 'expo-router';
 import Animated, { Easing, FadeIn, interpolate, useAnimatedStyle, useSharedValue, withSpring, type SharedValue } from 'react-native-reanimated';
@@ -39,8 +40,8 @@ function TabBar({ active }: { active: Tab }) {
   const bump = useSharedValue(0);
   useEffect(() => {
     if (index < 0) return; // a page that belongs to no tab leaves the highlight where it was, hidden
-    x.value = withSpring(index * tabWidth, { damping: 20, stiffness: 240, mass: 0.7 });
-    bump.value = 0; bump.value = withSpring(1, { damping: 9, stiffness: 220 });
+    x.value = withSpring(index * tabWidth, motion.snap);
+    bump.value = 0; bump.value = withSpring(1, motion.press);
     lastTabIndex = index;
   }, [index, tabWidth, x, bump]);
   const highlight = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
@@ -48,15 +49,15 @@ function TabBar({ active }: { active: Tab }) {
   return (
     <View pointerEvents="box-none" style={[styles.barWrap, { paddingBottom: Math.max(bottom, 10) + 4, alignItems: 'center' }]}>
       <View style={[styles.bar, { width: width - BAR_MARGIN * 2 }, { backgroundColor: `${c.surface}F7`, borderColor: c.border, shadowColor: c.shadow }]}>
-        {index >= 0 ? <Animated.View pointerEvents="none" style={[styles.highlight, { width: tabWidth, backgroundColor: c.primaryMuted }, highlight]} /> : null}
+        {index >= 0 ? <Animated.View pointerEvents="none" style={[styles.highlight, { width: tabWidth, backgroundColor: c.surfaceRaised }, highlight]} /> : null}
         {tabs.map((tab) => {
           const on = tab.id === active;
           return (
             <Pressable key={tab.id} accessibilityRole="button" accessibilityLabel={tab.label} accessibilityState={{ selected: on }}
               // Tapping the tab you are in, from a page inside it (Playlists inside Library, say), goes back to that tab's home.
               onPress={() => { if (!on) { feedback.select(); router.replace(tab.href as never); } else if (path !== tab.href) { feedback.select(); router.navigate(tab.href as never); } }} style={[styles.tab, { width: tabWidth }]}>
-              <Animated.View style={on ? iconStyle : undefined}><Icon name={on ? tab.iconActive : tab.icon} size={22} color={on ? c.primary : c.textMuted} /></Animated.View>
-              <Text numberOfLines={1} maxFontSizeMultiplier={1.15} adjustsFontSizeToFit minimumFontScale={0.8} style={[styles.tabLabel, { color: on ? c.primary : c.textMuted, fontFamily: on ? typography.bodySemibold : typography.bodyMedium }]}>{tab.label}</Text>
+              <Animated.View style={on ? iconStyle : undefined}><Icon name={on ? tab.iconActive : tab.icon} size={22} color={on ? c.textPrimary : c.textMuted} /></Animated.View>
+              <Text numberOfLines={1} maxFontSizeMultiplier={1.15} adjustsFontSizeToFit minimumFontScale={0.8} style={[styles.tabLabel, { color: on ? c.textPrimary : c.textMuted, fontFamily: on ? typography.bodySemibold : typography.bodyMedium }]}>{tab.label}</Text>
             </Pressable>
           );
         })}
@@ -93,9 +94,9 @@ function Sidebar({ active, side }: { active: Tab; side: 'left' | 'right' }) {
     const on = r.label === 'Import from Files' || r.label === 'Connect a Server' || r.label === 'Scan a Comic' ? false : path === r.href;
     return (
       <Pressable key={r.label} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => { feedback.select(); router.replace(r.href as never); }}
-        style={[styles.sideRow, on && { backgroundColor: c.primaryMuted }, !last && !on && { borderBottomColor: c.border, borderBottomWidth: StyleSheet.hairlineWidth }]}>
-        <Icon name={r.icon} size={22} color={on ? c.primary : c.textSecondary} />
-        <Text numberOfLines={1} style={[styles.sideLabel, { color: on ? c.primary : c.textPrimary, fontFamily: on ? typography.bodySemibold : typography.bodyMedium }]}>{r.label}</Text>
+        style={[styles.sideRow, on && { backgroundColor: c.surfaceRaised }, !last && !on && { borderBottomColor: c.border, borderBottomWidth: StyleSheet.hairlineWidth }]}>
+        <Icon name={r.icon} size={22} color={on ? c.textPrimary : c.textSecondary} />
+        <Text numberOfLines={1} style={[styles.sideLabel, { color: c.textPrimary, fontFamily: on ? typography.bodySemibold : typography.bodyMedium }]}>{r.label}</Text>
       </Pressable>
     );
   };
@@ -178,7 +179,7 @@ const styles = StyleSheet.create({
   sideTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4 },
   sideBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   sideTitle: { fontSize: 34, letterSpacing: -1, marginTop: 14, paddingHorizontal: 6 },
-  sideHead: { fontSize: 20, letterSpacing: -0.3, marginBottom: 8, paddingHorizontal: 6 },
+  sideHead: { fontSize: 22, letterSpacing: -0.3, marginBottom: 8, paddingHorizontal: 6 },
   sideCard: { borderRadius: 18, overflow: 'hidden' },
   sideRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 14, minHeight: 50 },
   sideLabel: { fontSize: 16, flex: 1 },
@@ -186,5 +187,5 @@ const styles = StyleSheet.create({
   bar: { height: BAR_HEIGHT, borderRadius: BAR_HEIGHT / 2, borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', paddingHorizontal: BAR_PAD, shadowOpacity: 0.55, shadowRadius: 22, shadowOffset: { width: 0, height: 10 }, elevation: 16 },
   highlight: { position: 'absolute', left: BAR_PAD, top: 6, bottom: 6, borderRadius: (BAR_HEIGHT - 12) / 2 },
   tab: { height: BAR_HEIGHT - 12, alignItems: 'center', justifyContent: 'center', gap: 3 },
-  tabLabel: { fontSize: 10.5, letterSpacing: 0.1 },
+  tabLabel: { fontSize: 11, letterSpacing: 0.1 },
 });

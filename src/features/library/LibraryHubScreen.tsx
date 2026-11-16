@@ -53,11 +53,11 @@ export default function LibraryHubScreen() {
     Alert.alert(title, message, [{ text: 'Cancel', style: 'cancel' }, { text: 'A whole folder', onPress: folder }, { text: 'Files', onPress: files }]);
   };
   const imports: Row[] = [
-    { icon: deviceIcon(), label: `Copy to this ${deviceName()}`, sub: 'Reads offline. Uses space here. Pick files or a whole folder.', tint: '#3B82F6',
+    { icon: deviceIcon(), label: `Copy to this ${deviceName()}`, sub: 'Reads offline. Uses space here. Pick files or a whole folder.',
       onPress: () => filesOrFolder(`Copy to this ${deviceName()}`, 'ComicPill keeps its own copy, so it reads without a connection.',
         () => void runImport('Importing', 'Imported', (p) => pickAndImportComics(p)),
         () => void runImport('Importing folder', 'Imported', (p) => pickAndImportFolder(p))) },
-    { icon: 'cloud-outline', label: 'Link from the cloud', sub: 'Drive, iCloud, Dropbox. Files stay there and download when you open them.', tint: '#3B82F6',
+    { icon: 'cloud-outline', label: 'Link from the cloud', sub: 'Drive, iCloud, Dropbox. Files stay there and download when you open them.',
       onPress: () => filesOrFolder('Link from the cloud', 'Nothing is copied now. Each comic downloads the first time you open it, and your cloud app keeps the original.',
         () => void runImport('Linking', 'Linked', (p) => linkWithCovers(() => pickAndLinkComics(p), p)),
         () => void runImport('Linking folder', 'Linked', (p) => linkWithCovers(() => pickAndLinkFolder(p), p))) },
@@ -69,7 +69,7 @@ export default function LibraryHubScreen() {
     <Animated.View entering={FadeInDown.delay(delay).duration(380)}>
       <Pressable accessibilityRole="button" onPress={() => setOpen((o) => ({ ...o, [key]: !o[key] }))} style={styles.groupHead} hitSlop={6}>
         <Text style={[styles.groupTitle, { color: c.textPrimary, fontFamily: typography.display }]}>{title}</Text>
-        <Icon name={open[key] ? 'chevron-down' : 'chevron-forward'} size={18} color={c.primary} />
+        <Icon name={open[key] ? 'chevron-down' : 'chevron-forward'} size={18} color={c.textMuted} />
       </Pressable>
       {open[key] ? (
         <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.border }]}>
@@ -95,7 +95,7 @@ export default function LibraryHubScreen() {
           <Animated.View entering={FadeInDown.duration(380)}>
             <View style={styles.shelfHead}>
               <Text style={[styles.groupTitle, { color: c.textPrimary, fontFamily: typography.display }]}>On your shelf</Text>
-              <Pressable accessibilityRole="button" onPress={() => router.push('/reader/phone')} hitSlop={8}><Text style={[styles.seeAll, { color: c.primary, fontFamily: typography.bodySemibold }]}>See all</Text></Pressable>
+              <Pressable accessibilityRole="button" onPress={() => router.push('/reader/phone')} hitSlop={8}><Text style={[styles.seeAll, { color: c.textSecondary, fontFamily: typography.bodySemibold }]}>See all</Text></Pressable>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shelf}>
               {recent.map((comic) => (
@@ -121,12 +121,12 @@ const styles = StyleSheet.create({
   shelf: { gap: 14, paddingRight: space.lg },
   shelfItem: { width: 122 },
   shelfCover: { width: 122, height: 183, borderRadius: 14, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 10, shadowOffset: { width: 0, height: 6 }, elevation: 6 },
-  shelfTitle: { fontSize: 13, marginTop: 8 },
+  shelfTitle: { fontSize: 14, marginTop: 8 },
   groupHead: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 22, marginBottom: 10, alignSelf: 'flex-start' },
   groupTitle: { fontSize: 22, letterSpacing: -0.4 },
   card: { borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 16, minHeight: 62, paddingVertical: 10 },
   rowIcon: { width: 28, alignItems: 'center' },
   rowLabel: { fontSize: 16 },
-  rowSub: { fontSize: 12.5, marginTop: 2 },
+  rowSub: { fontSize: 12, marginTop: 2 },
 });

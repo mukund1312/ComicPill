@@ -50,7 +50,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, paddingHorizontal: space.lg },
   reel: { marginHorizontal: -space.lg, marginTop: 6 },
   body: { flex: 1, justifyContent: 'flex-end', gap: 10, marginTop: -40, paddingBottom: 18, width: '100%', maxWidth: 560, alignSelf: 'center' },
-  title: { fontSize: 32, lineHeight: 37, letterSpacing: -0.8, textAlign: 'center' },
-  copy: { fontSize: 15.5, lineHeight: 23, textAlign: 'center' },
+  title: { fontSize: 30, lineHeight: 37, letterSpacing: -0.8, textAlign: 'center' },
+  copy: { fontSize: 16, lineHeight: 23, textAlign: 'center' },
   footer: { gap: 4, width: '100%', maxWidth: 560, alignSelf: 'center' },
 });

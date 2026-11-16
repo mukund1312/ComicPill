@@ -56,9 +56,9 @@ export default function ReadingNowScreen() {
         {hero ? (
           <Animated.View entering={FadeInDown.duration(380)}>
             <PressableScale to={0.98} style={[styles.hero, { backgroundColor: c.surface, borderColor: c.border }]} onPress={() => open(hero)} onLongPress={() => comicMenu(hero)}>
-              {!masked(hero) && hero.coverPath ? <Image source={{ uri: hero.coverPath }} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={36} /> : null}
+              {!masked(hero) && hero.coverPath ? <Image transition={300} source={{ uri: hero.coverPath }} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={36} /> : null}
               <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: c.background, opacity: 0.7 }]} />
-              <View style={[styles.heroCover, { borderColor: c.border }]}>{!masked(hero) && hero.coverPath ? <Image source={{ uri: hero.coverPath }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}</View>
+              <View style={[styles.heroCover, { borderColor: c.border }]}>{!masked(hero) && hero.coverPath ? <Image transition={180} source={{ uri: hero.coverPath }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}</View>
               <View style={styles.heroBody}>
                 <Text style={[styles.eyebrow, { color: c.textSecondary, fontFamily: typography.bodySemibold }]}>CONTINUE READING</Text>
                 <Text numberOfLines={3} maxFontSizeMultiplier={1.25} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.heroTitle, { color: c.textPrimary, fontFamily: typography.display }]}>{masked(hero) ? 'Locked comic' : hero.title}</Text>
@@ -86,7 +86,7 @@ function Section({ title, comics, masked, onOpen, onMenu, showProgress = false }
         {comics.map((comic) => (
           <PressableScale key={comic.id} style={styles.card} onPress={() => onOpen(comic)} onLongPress={() => onMenu(comic)}>
             <View style={[styles.cover, { backgroundColor: c.surfaceRaised, borderColor: c.border }]}>
-              {!masked(comic) && comic.coverPath ? <Image source={{ uri: comic.coverPath }} style={StyleSheet.absoluteFill} contentFit="cover" recyclingKey={comic.id} /> : null}
+              {!masked(comic) && comic.coverPath ? <Image transition={180} source={{ uri: comic.coverPath }} style={StyleSheet.absoluteFill} contentFit="cover" recyclingKey={comic.id} /> : null}
             </View>
             <Text numberOfLines={2} style={[styles.cardTitle, { color: c.textPrimary, fontFamily: typography.displayMedium }]}>{masked(comic) ? 'Locked comic' : comic.title}</Text>
             {showProgress ? <Progress value={progressFraction(comic)} /> : null}
@@ -100,17 +100,17 @@ function Section({ title, comics, masked, onOpen, onMenu, showProgress = false }
 const styles = StyleSheet.create({
   content: { paddingHorizontal: space.lg, paddingBottom: 130 },
   empty: { alignItems: 'center', paddingTop: 40 },
-  emptyTitle: { fontSize: 24, letterSpacing: -0.4, marginTop: 8 },
-  emptyCopy: { fontSize: 15, lineHeight: 22, textAlign: 'center', marginTop: 8, maxWidth: 300 },
+  emptyTitle: { fontSize: 26, letterSpacing: -0.4, marginTop: 8 },
+  emptyCopy: { fontSize: 16, lineHeight: 22, textAlign: 'center', marginTop: 8, maxWidth: 300 },
   hero: { flexDirection: 'row', gap: 16, borderRadius: 28, borderWidth: 1, overflow: 'hidden', padding: 16, marginTop: 8 },
   heroCover: { width: 112, height: 168, borderRadius: 14, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth },
   heroBody: { flex: 1, justifyContent: 'center' },
   eyebrow: { fontSize: 10, letterSpacing: 1.6 },
   heroTitle: { fontSize: 22, lineHeight: 26, marginTop: 6 },
-  sub: { fontSize: 13, marginTop: 6 },
+  sub: { fontSize: 14, marginTop: 6 },
   section: { fontSize: 22, letterSpacing: -0.4, marginTop: 28, marginBottom: 12 },
   strip: { gap: 14 },
   card: { width: 128, gap: 8 },
   cover: { width: 128, height: 192, borderRadius: 14, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth },
-  cardTitle: { fontSize: 13, lineHeight: 17 },
+  cardTitle: { fontSize: 14, lineHeight: 17 },
 });

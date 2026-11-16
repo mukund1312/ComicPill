@@ -1066,7 +1066,7 @@ function PageImage({ source, page, width, height, crop }: { source: ComicSource;
   // Trimmed margins: enlarge the picture about its centre so the art box fills the frame, then slide it back to centre.
   const zoom = crop ? Math.min(1.6, 1 / Math.max(crop.w, crop.h)) : 1;
   const shift = crop ? [{ translateX: (0.5 - (crop.x + crop.w / 2)) * zoom * width }, { translateY: (0.5 - (crop.y + crop.h / 2)) * zoom * height }, { scale: zoom }] : undefined;
-  return <View style={{ width, height, overflow: 'hidden' }}>{uri ? <Image source={{ uri }} style={[styles.fill, shift && { transform: shift }]} contentFit="contain" recyclingKey={uri} /> : null}</View>;
+  return <View style={{ width, height, overflow: 'hidden' }}>{uri ? <Image transition={120} source={{ uri }} style={[styles.fill, shift && { transform: shift }]} contentFit="contain" recyclingKey={uri} /> : null}</View>;
 }
 
 /** One screen of paged reading: a single page, or two side by side (landscape). Zoom applies to the whole unit. */
@@ -1137,20 +1137,20 @@ const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   bubbleBar: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   // Wraps to a second line rather than running off a narrow screen.
   bubblePill: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '94%', rowGap: space.xs, alignItems: 'center', gap: space.lg, paddingHorizontal: space.lg, paddingVertical: space.sm, borderRadius: radius.lg, backgroundColor: '#000000cc' },
-  bubbleBtn: { color: '#fff', fontSize: 24, lineHeight: 28 },
+  bubbleBtn: { color: '#fff', fontSize: 26, lineHeight: 28 },
   barButton: { paddingHorizontal: 6, paddingVertical: 4 },
-  bubbleSizeBtn: { fontSize: 20, fontFamily: font.bodySemibold },
+  bubbleSizeBtn: { fontSize: 22, fontFamily: font.bodySemibold },
   bubbleCount: { color: '#fff', fontSize: 14 },
   countBox: { alignItems: 'center' },
   bubbleDir: { color: '#ffffffaa', fontSize: 11, marginTop: 1 },
   tipWrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   tipCard: { width: '92%', maxWidth: 440, backgroundColor: '#111216f2', borderRadius: radius.lg, borderWidth: 1, borderColor: '#ffffff22', padding: space.lg, gap: space.sm },
-  tipTitle: { color: '#fff', fontFamily: font.displayMedium, fontSize: 17, marginBottom: 2 },
+  tipTitle: { color: '#fff', fontFamily: font.displayMedium, fontSize: 18, marginBottom: 2 },
   tipRow: { flexDirection: 'row', gap: space.md, alignItems: 'flex-start' },
   tipIcon: { width: 58 },
-  tipSym: { color: '#fff', fontFamily: font.bodySemibold, fontSize: 15, width: 58 },
-  tipText: { color: '#ffffffcc', fontFamily: font.body, fontSize: 13.5, lineHeight: 19, flex: 1 },
-  tipOk: { color: '#fff', fontFamily: font.bodySemibold, fontSize: 15, alignSelf: 'flex-end', paddingVertical: 6, paddingHorizontal: 4 },
+  tipSym: { color: '#fff', fontFamily: font.bodySemibold, fontSize: 16, width: 58 },
+  tipText: { color: '#ffffffcc', fontFamily: font.body, fontSize: 14, lineHeight: 19, flex: 1 },
+  tipOk: { color: '#fff', fontFamily: font.bodySemibold, fontSize: 16, alignSelf: 'flex-end', paddingVertical: 6, paddingHorizontal: 4 },
   root: { flex: 1, backgroundColor: color.bg },
   fill: { width: '100%', height: '100%' },
   center: { flex: 1, backgroundColor: color.bg, alignItems: 'center', justifyContent: 'center', padding: space.xl, gap: space.lg },
@@ -1161,7 +1161,7 @@ const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   top: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, paddingBottom: space.md, backgroundColor: '#000000cc' },
   back: { color: color.text, fontSize: 34, lineHeight: 36 },
   title: { flex: 1, color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle },
-  icon: { color: color.text, fontSize: 24 },
+  icon: { color: color.text, fontSize: 26 },
   iconActive: { color: color.collectGold },
   bottom: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: space.lg, paddingTop: space.sm, gap: 2, backgroundColor: '#000000b8' },
   track: { height: 4, justifyContent: 'center', backgroundColor: '#FFFFFF2E', borderRadius: radius.pill, overflow: 'hidden' },

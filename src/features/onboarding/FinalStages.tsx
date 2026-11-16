@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
   num: { fontSize: 34 },
   label: { fontSize: 12 },
   pick: { borderWidth: 1, borderRadius: 20, padding: space.lg, gap: space.md, alignItems: 'flex-start' },
-  pickTitle: { fontSize: 24, lineHeight: 30 },
+  pickTitle: { fontSize: 26, lineHeight: 30 },
   body: { fontSize: 14, lineHeight: 21 },
   reasons: { gap: 4 },
 });

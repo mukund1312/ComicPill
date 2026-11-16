@@ -39,8 +39,8 @@ export function Pill({ label, active = false, onPress }: { label: string; active
   const { theme, typography } = useAppearance(); const c = theme.colors;
   return (
     <PressableScale accessibilityRole="button" accessibilityState={{ selected: active }} to={0.94} hitSlop={{ top: 4, bottom: 4, left: 2, right: 2 }} onPress={() => { feedback.select(); onPress?.(); }}
-      style={[styles.pill, { backgroundColor: active ? c.primary : c.surfaceRaised }]}>
-      <Text style={[styles.pillText, { color: active ? c.primaryForeground : c.textSecondary, fontFamily: typography.bodySemibold }]}>{label}</Text>
+      style={[styles.pill, { backgroundColor: active ? c.textPrimary : c.surfaceRaised }]}>
+      <Text style={[styles.pillText, { color: active ? c.background : c.textSecondary, fontFamily: typography.bodySemibold }]}>{label}</Text>
     </PressableScale>
   );
 }
@@ -61,7 +61,7 @@ export function SectionHeader({ title, action, onAction }: { title: string; acti
   return (
     <View style={styles.sectionHeader}>
       <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary, fontFamily: typography.displayMedium }]}>{title}</Text>
-      {action ? <PressableScale to={0.94} onPress={onAction} hitSlop={8}><Text style={[styles.sectionAction, { color: theme.colors.primary, fontFamily: typography.bodySemibold }]}>{action} ›</Text></PressableScale> : null}
+      {action ? <PressableScale to={0.94} onPress={onAction} hitSlop={8}><Text style={[styles.sectionAction, { color: theme.colors.textSecondary, fontFamily: typography.bodySemibold }]}>{action} ›</Text></PressableScale> : null}
     </View>
   );
 }
@@ -100,7 +100,7 @@ export function EmptyState({ title, copy, action, onAction }: { mark?: string; t
   const { theme, typography } = useAppearance(); const c = theme.colors;
   return (
     <View style={styles.empty}>
-      <View style={[styles.emptyIcon, { backgroundColor: c.primaryMuted }]}><Icon name="sparkles-outline" size={28} color={c.primary} /></View>
+      <View style={[styles.emptyIcon, { backgroundColor: c.surfaceRaised }]}><Icon name="sparkles-outline" size={28} color={c.textSecondary} /></View>
       <Text style={[styles.emptyTitle, { color: c.textPrimary, fontFamily: typography.display }]}>{title}</Text>
       <Text style={[styles.emptyCopy, { color: c.textSecondary, fontFamily: typography.body }]}>{copy}</Text>
       {action ? <View style={{ marginTop: space.lg, alignSelf: 'stretch' }}><Button onPress={onAction}>{action}</Button></View> : null}
@@ -109,15 +109,15 @@ export function EmptyState({ title, copy, action, onAction }: { mark?: string; t
 }
 
 const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
-  wordmark: { color: color.text, fontFamily: font.display, fontSize: 32, letterSpacing: -1.2 },
-  wordmarkSmall: { fontSize: 24 },
+  wordmark: { color: color.text, fontFamily: font.display, fontSize: 30, letterSpacing: -1.2 },
+  wordmarkSmall: { fontSize: 26 },
   eyebrow: { color: color.muted, fontFamily: font.bodySemibold, fontSize: 11, letterSpacing: 1.4, textTransform: 'uppercase' },
   button: { minHeight: 54, borderRadius: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: space.lg },
   buttonGhost: { minHeight: 44 },
   buttonText: { fontSize: 16, letterSpacing: -0.1 },
   disabled: { opacity: 0.4 },
   pill: { paddingHorizontal: 16, height: 38, borderRadius: radius.pill, justifyContent: 'center' },
-  pillText: { fontSize: 13.5 },
+  pillText: { fontSize: 14 },
   badge: { alignSelf: 'flex-start', borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: color.surface2, borderWidth: 1 },
   sectionHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: space.xxl, marginBottom: space.md },
   sectionTitle: { fontSize: 22, letterSpacing: -0.4 },
@@ -130,6 +130,6 @@ const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   input: { minHeight: 54, borderRadius: 16, paddingHorizontal: 16, fontSize: 16, borderWidth: StyleSheet.hairlineWidth },
   empty: { paddingVertical: 56, paddingHorizontal: 28, alignItems: 'center' },
   emptyIcon: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', marginBottom: 18 },
-  emptyTitle: { fontSize: 24, letterSpacing: -0.4, textAlign: 'center' },
-  emptyCopy: { fontSize: 15, textAlign: 'center', lineHeight: 22, marginTop: 8 },
+  emptyTitle: { fontSize: 26, letterSpacing: -0.4, textAlign: 'center' },
+  emptyCopy: { fontSize: 16, textAlign: 'center', lineHeight: 22, marginTop: 8 },
 });

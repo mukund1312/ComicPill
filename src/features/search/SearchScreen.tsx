@@ -45,7 +45,7 @@ export default function SearchScreen() {
             <Text style={[styles.section, { color: c.textPrimary, fontFamily: typography.display }]}>{onMyDevice()}</Text>
             {files.map((comic) => (
               <PressableScale key={comic.id} to={0.985} style={[styles.row, { borderBottomColor: c.border }]} onPress={() => router.push(`/reader/${comic.id}`)}>
-                <View style={[styles.thumb, { backgroundColor: c.surfaceRaised }]}>{comic.coverPath ? <Image source={{ uri: comic.coverPath }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}</View>
+                <View style={[styles.thumb, { backgroundColor: c.surfaceRaised }]}>{comic.coverPath ? <Image transition={180} source={{ uri: comic.coverPath }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}</View>
                 <View style={{ flex: 1 }}><Text numberOfLines={2} style={[styles.title, { color: c.textPrimary, fontFamily: typography.displayMedium }]}>{comic.title}</Text><Text style={[styles.sub, { color: c.textMuted, fontFamily: typography.body }]}>{comic.pageCount} pages</Text></View>
                 <Icon name="chevron-forward" size={18} color={c.textMuted} />
               </PressableScale>
@@ -74,10 +74,10 @@ const styles = StyleSheet.create({
   input: { flex: 1, fontSize: 16, paddingVertical: 0 },
   content: { paddingHorizontal: space.lg, paddingBottom: 130 },
   hint: { alignItems: 'center', gap: 12, marginTop: 70 },
-  hintText: { fontSize: 15, textAlign: 'center', lineHeight: 22, maxWidth: 280 },
+  hintText: { fontSize: 16, textAlign: 'center', lineHeight: 22, maxWidth: 280 },
   section: { fontSize: 22, letterSpacing: -0.4, marginTop: 24, marginBottom: 6 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
   thumb: { width: 58, height: 86, borderRadius: 9, overflow: 'hidden' },
-  title: { fontSize: 15, lineHeight: 19 },
-  sub: { fontSize: 12.5, marginTop: 3 },
+  title: { fontSize: 16, lineHeight: 19 },
+  sub: { fontSize: 12, marginTop: 3 },
 });

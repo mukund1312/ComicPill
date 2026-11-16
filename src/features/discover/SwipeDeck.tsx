@@ -1,4 +1,5 @@
 import { Icon } from '../../ui/Icon';
+import { motion } from '../../ui/motion';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
@@ -36,7 +37,7 @@ export function SwipeDeck({ card, next, onPass, onSave, onRate }: { card: DeckCa
       } else if (e.translationX < -width * SWIPE_DISTANCE || e.velocityX < -SWIPE_VELOCITY) {
         x.value = withTiming(-away, { duration: 220 }, (done) => { if (done) scheduleOnRN(onPass); });
       } else {
-        x.value = withSpring(0, { damping: 16, stiffness: 190 }); y.value = withSpring(0, { damping: 16, stiffness: 190 });
+        x.value = withSpring(0, motion.commit); y.value = withSpring(0, motion.commit);
       }
     });
 
@@ -99,14 +100,14 @@ const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   ghost: { position: 'absolute', width: '82%', height: 230, borderRadius: radius.lg, backgroundColor: color.surface2, transform: [{ rotate: '4deg' }] },
   card: { width: '100%', backgroundColor: color.surface, borderColor: color.border, borderWidth: 1, borderRadius: radius.lg, padding: 16, flexDirection: 'row', gap: 14, shadowColor: '#000', shadowOpacity: 0.6, shadowRadius: 18, elevation: 9 },
   info: { flex: 1, minWidth: 0, justifyContent: 'center' },
-  title: { color: color.text, fontFamily: font.display, fontSize: 25, lineHeight: 29 },
+  title: { color: color.text, fontFamily: font.display, fontSize: 26, lineHeight: 29 },
   meta: { color: color.accent, fontFamily: font.bodyMedium, fontSize: 12, marginTop: 7, textTransform: 'capitalize' },
   owned: { color: color.faint, fontFamily: font.bodyMedium, fontSize: 11, marginTop: 4 },
   copy: { color: color.muted, fontFamily: font.body, fontSize: 12, lineHeight: 18, marginTop: 12 },
   stamp: { position: 'absolute', top: 22, borderWidth: 3, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 2 },
   stampSave: { left: 18, borderColor: color.positive, transform: [{ rotate: '-12deg' }] },
   stampPass: { right: 18, borderColor: color.accent, transform: [{ rotate: '12deg' }] },
-  stampText: { fontFamily: font.display, fontSize: 24, letterSpacing: 1.5 },
+  stampText: { fontFamily: font.display, fontSize: 26, letterSpacing: 1.5 },
   controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 28, marginTop: 10 },
   pass: { alignItems: 'center', gap: 4 },
   passIcon: { width: 58, height: 58, borderRadius: 29, borderWidth: 1, borderColor: color.border, alignItems: 'center', justifyContent: 'center' },

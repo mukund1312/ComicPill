@@ -40,7 +40,7 @@ export const Thumb = memo(function Thumb({ source, page, active, marked, onSelec
   }, [source, page]);
   return (
     <Pressable onPress={() => onSelect(page)} style={[styles.thumb, { width: w, height: h }, active && styles.active]}>
-      {uri ? <Image source={{ uri }} style={styles.image} contentFit="cover" recyclingKey={String(page)} /> : null}
+      {uri ? <Image transition={180} source={{ uri }} style={styles.image} contentFit="cover" recyclingKey={String(page)} /> : null}
       <Text style={styles.number}>{page + 1}</Text>
       {marked ? <View style={styles.mark} /> : null}
     </Pressable>

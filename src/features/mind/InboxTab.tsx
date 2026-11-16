@@ -96,7 +96,7 @@ export default function InboxTab({ data, refresh }: { data: MindData; refresh: (
           <View style={styles.grid}>
             {awaiting.map((s) => (
               <Pressable key={s.id} onPress={() => setPicked((cur) => { const next = new Set(cur ?? awaiting.map((a) => a.id)); if (next.has(s.id)) next.delete(s.id); else next.add(s.id); return next; })} style={[styles.thumb, selected(s.id) && styles.thumbOn]}>
-                <Image source={{ uri: s.uri }} style={styles.thumbImg} contentFit="cover" recyclingKey={s.id} />
+                <Image transition={180} source={{ uri: s.uri }} style={styles.thumbImg} contentFit="cover" recyclingKey={s.id} />
                 <Text style={styles.tick}>{selected(s.id) ? '✓' : ''}</Text>
               </Pressable>
             ))}
@@ -123,7 +123,7 @@ export default function InboxTab({ data, refresh }: { data: MindData; refresh: (
       {shown.map((s) => (
         <Pressable key={s.id} onPress={() => resolve(s)}>
           <View style={styles.item}>
-            <Image source={{ uri: s.uri }} style={styles.itemImg} contentFit="cover" recyclingKey={s.id} />
+            <Image transition={180} source={{ uri: s.uri }} style={styles.itemImg} contentFit="cover" recyclingKey={s.id} />
             <View style={styles.itemBody}>
               <StatusChip status={s.status} />
               <Text numberOfLines={2} style={styles.itemTitle}>{s.summary ?? (s.status === 'queued' ? 'Waiting to send' : s.gateReason ?? 'Screenshot')}</Text>

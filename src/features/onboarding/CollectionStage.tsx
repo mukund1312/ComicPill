@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
   body: { fontSize: 14, lineHeight: 21 },
   note: { fontSize: 12, lineHeight: 17 },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md, borderWidth: 1, borderRadius: 14, padding: space.md },
-  rowTitle: { fontSize: 15 },
+  rowTitle: { fontSize: 16 },
   tick: { fontSize: 22, width: 26, textAlign: 'center' },
   list: { marginTop: space.xl, gap: space.md },
   listHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

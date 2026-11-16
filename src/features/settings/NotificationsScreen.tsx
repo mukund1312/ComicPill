@@ -109,6 +109,6 @@ const styles = StyleSheet.create({
   time: { padding: space.md, gap: space.md },
   stepRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md },
   step: { minWidth: 76, paddingHorizontal: 8 },
-  timeText: { fontSize: 32 },
+  timeText: { fontSize: 30 },
   presets: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
 });

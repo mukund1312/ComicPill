@@ -102,7 +102,7 @@ export function PreferenceDiscoveryGrid({ choices, picks, onToggle, search, empt
                   <Text numberOfLines={1} style={[styles.resultName, { color: c.textPrimary, fontFamily: typography.bodyMedium }]}>{r.label}</Text>
                   {r.sub ? <Text numberOfLines={1} style={[styles.hint, { color: c.textMuted, fontFamily: typography.body }]}>{r.sub}</Text> : null}
                 </View>
-                <Text style={{ color: on ? c.primary : c.textMuted, fontSize: 20 }}>{on ? '✓' : '＋'}</Text>
+                <Text style={{ color: on ? c.primary : c.textMuted, fontSize: 22 }}>{on ? '✓' : '＋'}</Text>
               </Pressable>
             );
           })}
@@ -138,8 +138,8 @@ const styles = StyleSheet.create({
   clear: { fontSize: 16, paddingLeft: 8 },
   results: { gap: 8 },
   resultRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, borderWidth: 1, borderRadius: 14, padding: space.sm },
-  resultName: { fontSize: 15 },
-  hint: { fontSize: 13, lineHeight: 18 },
+  resultName: { fontSize: 16 },
+  hint: { fontSize: 14, lineHeight: 18 },
   section: { gap: 8 },
   sectionTitle: { fontSize: 11, letterSpacing: 1.4 },
   row: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 6, justifyContent: 'center' },

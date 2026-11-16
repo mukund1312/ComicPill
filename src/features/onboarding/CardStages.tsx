@@ -108,5 +108,5 @@ const styles = StyleSheet.create({
   cardBlurb: { fontSize: 12, lineHeight: 16, paddingHorizontal: 8 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   chip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 16, minHeight: 44, justifyContent: 'center' },
-  chipText: { fontSize: 15 },
+  chipText: { fontSize: 16 },
 });

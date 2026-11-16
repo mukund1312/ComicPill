@@ -186,7 +186,7 @@ function SeriesHeader({ item, detail, label }: { item: LibraryItem; detail: Comi
   const tagline = (detail.publisher ?? item.bucket.replaceAll('_', ' ')).toUpperCase();
   return (
     <View style={styles.seriesHeader}>
-      {backdrop ? <Image source={backdrop} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={50} /> : null}
+      {backdrop ? <Image transition={300} source={backdrop} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={50} /> : null}
       <LinearGradient pointerEvents="none" colors={['#0A0A0D88', '#0A0A0D']} locations={[0, 0.95]} style={StyleSheet.absoluteFill} />
       <View style={styles.headerButtons}><HeaderButton icon="chevron-back" label="Back" onPress={() => router.back()} /></View>
       <View style={{ alignItems: 'center', marginTop: 52 }}><CoverStack items={stack} width={158} /></View>
@@ -252,13 +252,13 @@ const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   seriesTitle: { color: color.text, fontFamily: font.display, fontSize: 30, lineHeight: 35, letterSpacing: -0.6, textAlign: 'center', marginTop: 8 },
   aboutHead: { color: color.text, fontFamily: font.display, fontSize: 22, letterSpacing: -0.4, marginTop: 28, marginBottom: 4 },
   seriesRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: color.border },
-  seriesNum: { width: 22, textAlign: 'center', color: color.faint, fontFamily: font.display, fontSize: 20 },
-  seriesRowTitle: { color: color.text, fontFamily: font.displayMedium, fontSize: 15, lineHeight: 19 },
-  seriesRowSub: { color: color.muted, fontFamily: font.body, fontSize: 12.5, marginTop: 3 },
+  seriesNum: { width: 22, textAlign: 'center', color: color.faint, fontFamily: font.display, fontSize: 22 },
+  seriesRowTitle: { color: color.text, fontFamily: font.displayMedium, fontSize: 16, lineHeight: 19 },
+  seriesRowSub: { color: color.muted, fontFamily: font.body, fontSize: 12, marginTop: 3 },
   back: { color: color.muted, fontFamily: font.bodyMedium, fontSize: type.body, marginBottom: 16 },
   hero: { flexDirection: 'row', gap: 18 },
   heroInfo: { flex: 1, minWidth: 0, justifyContent: 'center', gap: 9 },
-  title: { color: color.text, fontFamily: font.display, fontSize: 29, lineHeight: 34 },
+  title: { color: color.text, fontFamily: font.display, fontSize: 30, lineHeight: 34 },
   meta: { color: color.muted, fontFamily: font.body, fontSize: type.caption, lineHeight: 18 },
   journeyRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginTop: 18 },
   navItem: { flex: 1, backgroundColor: color.surface2, borderRadius: radius.sm, paddingVertical: 8, paddingHorizontal: 12 },

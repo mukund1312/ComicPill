@@ -1,6 +1,7 @@
 // Drag a bottom sheet down to dismiss it. One behaviour for every sheet in the app, so they all feel the same:
 // the sheet follows the finger, then either slides away (dragged far enough, or flicked) or springs back.
 import { Gesture } from 'react-native-gesture-handler';
+import { motion } from './motion';
 import { scheduleOnRN } from 'react-native-worklets';
 import { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 
@@ -21,7 +22,7 @@ export function useSheetDrag(onClose?: () => void) {
       if (e.translationY > DISMISS_DISTANCE || e.velocityY > DISMISS_VELOCITY) {
         y.value = withTiming(OFFSCREEN, { duration: 180 }, (finished) => { if (finished) scheduleOnRN(close); });
       } else {
-        y.value = withSpring(0, { damping: 22, stiffness: 260 });
+        y.value = withSpring(0, motion.sheet);
       }
     });
   const style = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));

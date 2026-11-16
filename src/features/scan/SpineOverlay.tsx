@@ -36,7 +36,7 @@ export function SpineOverlay({ uri, width, height, items, selectedId, onSelect, 
 
   return (
     <View style={[styles.frame, { aspectRatio: width / height, borderColor: drawing ? c.primary : c.border }]} onLayout={(e) => { size.current = { w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height }; }}>
-      <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" accessibilityLabel="Your shelf photo" />
+      <Image transition={180} source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" accessibilityLabel="Your shelf photo" />
       {items.map((item, i) => {
         const color = tone(item, c); const selected = selectedId === item.scanId;
         // A leaning book is outlined along its own slant, around the spine itself rather than the loose rectangle that holds it.

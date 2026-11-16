@@ -18,9 +18,9 @@ export function HeaderButton({ icon, label, onPress, active = false, disabled = 
   return (
     <PressableScale accessibilityRole="button" accessibilityLabel={label} disabled={disabled} hitSlop={8} to={0.9}
       onPress={() => { feedback.tap(); onPress(); }}
-      style={[styles.headerButton, showLabel && styles.headerPill, { backgroundColor: active ? c.primaryMuted : c.surfaceRaised }]}>
-      <Ionicons name={icon} size={showLabel ? 16 : 19} color={active ? c.primary : c.textPrimary} />
-      {showLabel ? <Text numberOfLines={1} maxFontSizeMultiplier={1.2} style={[styles.headerLabel, { color: active ? c.primary : c.textPrimary, fontFamily: typography.bodySemibold }]}>{label}</Text> : null}
+      style={[styles.headerButton, showLabel && styles.headerPill, { backgroundColor: active ? `${c.textPrimary}26` : c.surfaceRaised }]}>
+      <Ionicons name={icon} size={showLabel ? 16 : 19} color={c.textPrimary} />
+      {showLabel ? <Text numberOfLines={1} maxFontSizeMultiplier={1.2} style={[styles.headerLabel, { color: c.textPrimary, fontFamily: typography.bodySemibold }]}>{label}</Text> : null}
     </PressableScale>
   );
 }
@@ -33,7 +33,7 @@ export function HeaderActions({ children }: { children: React.ReactNode }) {
 const styles = StyleSheet.create({
   headerButton: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   headerPill: { width: undefined, flexDirection: 'row', gap: 5, paddingHorizontal: 12 },
-  headerLabel: { fontSize: 13 },
+  headerLabel: { fontSize: 14 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   backWrap: { alignSelf: 'flex-start', marginBottom: 14 },
 });

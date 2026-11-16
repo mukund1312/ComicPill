@@ -43,7 +43,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.md, borderBottomWidth: StyleSheet.hairlineWidth },
   text: { flex: 1, minWidth: 0, gap: 3 },
   title: { fontSize: 16 },
-  meta: { fontSize: 13 },
+  meta: { fontSize: 14 },
   empty: { paddingVertical: 64, alignItems: 'center', gap: 8 },
   emptyTitle: { fontSize: 22 },
   emptyCopy: { fontSize: 14, textAlign: 'center' },

@@ -129,7 +129,7 @@ export default function SeriesScreen() {
         {sources.length ? (
           <>
             <SectionTitle>Found in</SectionTitle>
-            <View style={styles.row}>{sources.slice(0, 6).map((s) => <Image key={s.uri} source={{ uri: s.uri }} style={styles.shot} contentFit="cover" />)}</View>
+            <View style={styles.row}>{sources.slice(0, 6).map((s) => <Image transition={180} key={s.uri} source={{ uri: s.uri }} style={styles.shot} contentFit="cover" />)}</View>
           </>
         ) : null}
         <View style={{ height: space.xl }} />

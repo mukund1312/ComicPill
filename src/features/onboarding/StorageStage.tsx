@@ -32,5 +32,5 @@ export function StorageStage({ onNext }: { onNext: () => void }) {
 
 const styles = StyleSheet.create({
   pills: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginTop: space.md },
-  note: { fontSize: 13, lineHeight: 19, marginTop: space.lg },
+  note: { fontSize: 14, lineHeight: 19, marginTop: space.lg },
 });

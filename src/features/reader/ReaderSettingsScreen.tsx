@@ -92,6 +92,6 @@ export default function ReaderSettingsScreen() {
 
 const styles = StyleSheet.create({
   form: { gap: space.md, marginBottom: space.xl },
-  label: { fontSize: 13, opacity: 0.7 },
+  label: { fontSize: 14, opacity: 0.7 },
   pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
 });

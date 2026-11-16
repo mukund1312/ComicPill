@@ -358,7 +358,7 @@ function Results({ stage, selected, onToggle, onFormat, onAdd, onAgain }: {
 const styles = StyleSheet.create({
   reviewBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space.lg, paddingVertical: space.md },
   reviewLink: { fontSize: 16 },
-  reviewTitle: { fontSize: 20 },
+  reviewTitle: { fontSize: 22 },
   reviewBody: { flex: 1, paddingHorizontal: space.lg },
   gap: { gap: space.md, marginTop: space.lg },
   center: { alignItems: 'center', gap: space.md, paddingVertical: 64 },
@@ -369,6 +369,6 @@ const styles = StyleSheet.create({
   pills: { flexDirection: 'row', gap: 8 },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md, borderWidth: 1, borderRadius: 14, padding: space.md },
   flex: { flex: 1, minWidth: 0, gap: 2 },
-  rowTitle: { fontSize: 15 },
+  rowTitle: { fontSize: 16 },
   check: { fontSize: 22, width: 24, textAlign: 'center' },
 });

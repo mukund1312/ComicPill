@@ -151,8 +151,8 @@ const styles = StyleSheet.create({
   ring: { position: 'absolute', width: CORE, height: CORE, borderRadius: CORE / 2, borderWidth: 2 },
   core: { position: 'absolute', width: CORE, height: CORE, borderRadius: CORE / 2, borderWidth: 2 },
   msg: { alignItems: 'center', gap: space.md, alignSelf: 'stretch', paddingHorizontal: space.lg },
-  title: { fontSize: 24, textAlign: 'center' },
-  copy: { fontSize: 15, textAlign: 'center', minHeight: 22 },
+  title: { fontSize: 26, textAlign: 'center' },
+  copy: { fontSize: 16, textAlign: 'center', minHeight: 22 },
   track: { height: 4, borderRadius: 2, alignSelf: 'stretch', overflow: 'hidden', marginTop: space.sm },
   fill: { height: 4, borderRadius: 2 },
 });

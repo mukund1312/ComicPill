@@ -42,5 +42,5 @@ const styles = StyleSheet.create({
   body: { flex: 1, gap: 4 },
   text: { flex: 1, fontSize: 14 },
   sub: { fontSize: 12 },
-  action: { fontSize: 15 },
+  action: { fontSize: 16 },
 });

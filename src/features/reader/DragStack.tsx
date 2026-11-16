@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { motion } from '../../ui/motion';
 import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import Animated, { useAnimatedStyle, useDerivedValue, useSharedValue, withSpring, type SharedValue } from 'react-native-reanimated';
@@ -34,7 +35,7 @@ function Layer({ k, uri, title, x, y, appear, count }: LayerProps) {
   });
   return (
     <Animated.View pointerEvents="none" style={[styles.card, { backgroundColor: c.surfaceRaised, borderColor: c.border }, style]}>
-      {uri ? <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" /> : <View style={[StyleSheet.absoluteFill, styles.blank]}><Text numberOfLines={4} style={styles.blankText}>{title}</Text></View>}
+      {uri ? <Image transition={180} source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" /> : <View style={[StyleSheet.absoluteFill, styles.blank]}><Text numberOfLines={4} style={styles.blankText}>{title}</Text></View>}
       {k === 0 && count > 1 ? <View style={[styles.badge, { backgroundColor: c.primary }]}><Text style={[styles.badgeText, { color: c.primaryForeground, fontFamily: typography.bodySemibold }]}>{count}</Text></View> : null}
     </Animated.View>
   );
@@ -43,7 +44,7 @@ function Layer({ k, uri, title, x, y, appear, count }: LayerProps) {
 /** The selected comics gathered into one pile under the finger while you drag them. `x`/`y` are the top-left of the pile. */
 export function DragStack({ covers, count, x, y }: { covers: { uri: string | null; title: string }[]; count: number; x: SharedValue<number>; y: SharedValue<number> }) {
   const appear = useSharedValue(0);
-  useEffect(() => { appear.set(withSpring(1, { damping: 13, stiffness: 190 })); }, [appear]);
+  useEffect(() => { appear.set(withSpring(1, motion.snap)); }, [appear]);
   const shown = covers.slice(0, FAN.length);
   return <>{shown.map((cover, k) => ({ cover, k })).reverse().map(({ cover, k }) => <Layer key={k} k={k} uri={cover.uri} title={cover.title} x={x} y={y} appear={appear} count={count} />)}</>;
 }

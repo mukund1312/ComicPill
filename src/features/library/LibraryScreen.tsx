@@ -167,18 +167,18 @@ function LibraryCell({ item, selecting, picked, downloaded, readerId, onToggle, 
 }
 
 const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
-  content: { padding: space.lg, paddingBottom: 105 }, header: { marginBottom: 2 }, actions: { flexDirection: 'row', gap: 18 }, action: { color: color.text, fontSize: 25 }, actionActive: { color: color.accent }, count: { fontFamily: font.body, fontSize: 13, marginTop: 2 }, subrow: { marginTop: 12, marginBottom: 6 }, playlistsLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: space.md, paddingHorizontal: space.md, minHeight: 48, borderWidth: 1, borderColor: color.border, borderRadius: radius.md, backgroundColor: color.surface2 }, playlistsLinkText: { color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle }, playlistsArrow: { color: color.accent, fontSize: 26 }, pills: { gap: 8, paddingVertical: space.lg },
+  content: { padding: space.lg, paddingBottom: 105 }, header: { marginBottom: 2 }, actions: { flexDirection: 'row', gap: 18 }, action: { color: color.text, fontSize: 26 }, actionActive: { color: color.accent }, count: { fontFamily: font.body, fontSize: 14, marginTop: 2 }, subrow: { marginTop: 12, marginBottom: 6 }, playlistsLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: space.md, paddingHorizontal: space.md, minHeight: 48, borderWidth: 1, borderColor: color.border, borderRadius: radius.md, backgroundColor: color.surface2 }, playlistsLinkText: { color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle }, playlistsArrow: { color: color.accent, fontSize: 26 }, pills: { gap: 8, paddingVertical: space.lg },
   // The fixed title/status zone makes every three-column grid row start at
   // the same baseline, even when one comic has a much longer title.
   // FlashList assigns the three columns itself. Giving this child another
   // one-third width created a nested three-column calculation, so the first
   // cover overflowed off-screen and every title sat under the wrong column.
-  subActions: { flexDirection: 'row', gap: 18 }, subLink: { fontFamily: font.bodySemibold, fontSize: 13 },
+  subActions: { flexDirection: 'row', gap: 18 }, subLink: { fontFamily: font.bodySemibold, fontSize: 14 },
   cloud: { position: 'absolute', left: 6, top: 6, width: 24, height: 24, borderRadius: 12, backgroundColor: '#1F9D55', alignItems: 'center', justifyContent: 'center' },
   pickedMark: { ...StyleSheet.absoluteFill, borderRadius: 14, backgroundColor: '#00000066', alignItems: 'center', justifyContent: 'center' },
   bar: { position: 'absolute', left: space.lg, right: space.lg, bottom: 104, flexDirection: 'row', alignItems: 'center', gap: space.lg, paddingHorizontal: space.lg, minHeight: 56, borderRadius: 18, borderWidth: StyleSheet.hairlineWidth },
   barText: { flex: 1, fontFamily: font.bodyMedium, fontSize: 14 }, barBtn: { fontFamily: font.bodySemibold, fontSize: 14 }, barOff: { opacity: 0.35 },
-  toast: { position: 'absolute', alignSelf: 'center', bottom: 170, backgroundColor: '#000000DD', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 14 }, toastText: { color: '#fff', fontFamily: font.bodyMedium, fontSize: 13 },
+  toast: { position: 'absolute', alignSelf: 'center', bottom: 170, backgroundColor: '#000000DD', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 14 }, toastText: { color: '#fff', fontFamily: font.bodyMedium, fontSize: 14 },
   gridItem: { width: '100%', paddingHorizontal: 7, paddingBottom: 22 },
   gridTitle: { fontSize: 14, lineHeight: 18, marginTop: 10 },
   gridStatus: { fontSize: 12, marginTop: 3 },

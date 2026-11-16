@@ -147,5 +147,5 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: space.sm },
   flex: { flex: 1 },
   link: { fontSize: 14 },
-  status: { fontSize: 13, lineHeight: 19, paddingHorizontal: space.md, paddingBottom: space.md },
+  status: { fontSize: 14, lineHeight: 19, paddingHorizontal: space.md, paddingBottom: space.md },
 });

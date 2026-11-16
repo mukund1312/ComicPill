@@ -60,7 +60,7 @@ export function SpinePeek({ items, index, photo, alreadyOwned, onIndex, onClose,
             </View>
             <View style={[styles.spine, { width: colW, height: colH, backgroundColor: c.surfaceRaised }]}>
               {item.cropUri
-                ? <Image source={{ uri: item.cropUri }} style={{ position: 'absolute', width: colH, height: colW, transform: [{ rotate: '-90deg' }] }} contentFit="contain" accessibilityLabel={`Spine of book ${index + 1}`} />
+                ? <Image transition={180} source={{ uri: item.cropUri }} style={{ position: 'absolute', width: colH, height: colW, transform: [{ rotate: '-90deg' }] }} contentFit="contain" accessibilityLabel={`Spine of book ${index + 1}`} />
                 : <Text style={{ color: c.textMuted, fontSize: 12 }}>No picture of this spine.</Text>}
             </View>
           </View>

@@ -139,8 +139,8 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { padding: space.xl, paddingTop: space.xl, gap: space.md, width: '100%', alignSelf: 'center' },
   title: { fontSize: 34, lineHeight: 40, marginTop: space.lg },
-  sub: { fontSize: 15, lineHeight: 22 },
+  sub: { fontSize: 16, lineHeight: 22 },
   form: { gap: space.md, marginTop: space.lg },
-  error: { fontSize: 13 },
+  error: { fontSize: 14 },
   fine: { fontSize: 12, lineHeight: 17, textAlign: 'center' },
 });

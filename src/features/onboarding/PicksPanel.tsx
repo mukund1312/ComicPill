@@ -42,5 +42,5 @@ const styles = StyleSheet.create({
   empty: { fontSize: 14, lineHeight: 20, padding: 8 },
   list: { gap: 8 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 8, paddingRight: 14 },
-  name: { flex: 1, fontSize: 15 },
+  name: { flex: 1, fontSize: 16 },
 });

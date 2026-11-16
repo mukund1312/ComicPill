@@ -120,13 +120,13 @@ export function ChoiceSheet<T extends string>({ visible, title, message, choices
               accessibilityRole="button"
               accessibilityState={{ selected: on }}
               onPress={() => { feedback.select(); onSelect(choice.id); }}
-              style={({ pressed }) => [styles.choice, { borderColor: on ? c.primary : c.border, backgroundColor: pressed ? c.surfaceRaised : 'transparent' }]}
+              style={({ pressed }) => [styles.choice, { borderColor: on ? c.textPrimary : c.border, backgroundColor: pressed ? c.surfaceRaised : 'transparent' }]}
             >
               <View style={styles.rowText}>
                 <Text style={[styles.label, { color: c.textPrimary, fontFamily: typography.bodyMedium }]}>{choice.label}</Text>
                 {choice.detail ? <Text style={[styles.detail, { color: c.textSecondary, fontFamily: typography.body }]}>{choice.detail}</Text> : null}
               </View>
-              {on ? <Text style={[styles.check, { color: c.primary }]}>✓</Text> : null}
+              {on ? <Text style={[styles.check, { color: c.textPrimary }]}>✓</Text> : null}
             </Pressable>
           );
         })}
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
   row: { minHeight: 54, paddingHorizontal: space.md, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md },
   rowText: { flex: 1, minWidth: 0, gap: 2 },
   label: { fontSize: 16 },
-  detail: { fontSize: 13, lineHeight: 18 },
+  detail: { fontSize: 14, lineHeight: 18 },
   rightRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
   value: { fontSize: 14, flexShrink: 1, textAlign: 'right' },
   chevron: { fontSize: 22 },
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
   handle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 6 },
   sheetTitle: { fontSize: 22, marginBottom: 2 },
   choice: { borderWidth: 1, borderRadius: 12, padding: space.md, flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: 54 },
-  check: { fontSize: 20 },
+  check: { fontSize: 22 },
   cancel: { minHeight: 48, alignItems: 'center', justifyContent: 'center' },
   field: { gap: 6 },
   fieldHead: { flexDirection: 'row', justifyContent: 'space-between' },

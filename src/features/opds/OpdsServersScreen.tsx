@@ -61,6 +61,6 @@ export default function OpdsServersScreen() {
 
 const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   form: { gap: space.md, marginTop: space.md },
-  heading: { color: color.text, fontFamily: font.displayMedium, fontSize: 20 },
+  heading: { color: color.text, fontFamily: font.displayMedium, fontSize: 22 },
   note: { color: color.muted, fontFamily: font.body, fontSize: 12, lineHeight: 17 },
 });

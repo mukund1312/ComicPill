@@ -89,7 +89,7 @@ const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   row: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: color.border },
   rowText: { color: color.text, fontFamily: font.bodyMedium, fontSize: type.body },
   destructive: { color: color.danger },
-  check: { color: color.accent, fontSize: 20 },
+  check: { color: color.accent, fontSize: 22 },
   dialog: { backgroundColor: color.surface, borderRadius: radius.lg, padding: space.lg, gap: space.md },
   input: { minHeight: 48, borderRadius: radius.md, borderWidth: 1, borderColor: color.border, backgroundColor: color.surface2, color: color.text, paddingHorizontal: space.md, fontFamily: font.body, fontSize: type.body },
   buttons: { flexDirection: 'row', justifyContent: 'flex-end', gap: space.sm },

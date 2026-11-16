@@ -119,9 +119,9 @@ export default function MindSettingsScreen() {
 const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   stepRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 52, paddingHorizontal: space.md },
   stepBorder: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: color.border },
-  stepLabel: { flex: 1, color: color.text, fontFamily: font.body, fontSize: 15 },
+  stepLabel: { flex: 1, color: color.text, fontFamily: font.body, fontSize: 16 },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   stepBtn: { width: 34, height: 34, borderRadius: radius.pill, borderWidth: 1, borderColor: color.border, alignItems: 'center', justifyContent: 'center' },
-  stepGlyph: { color: color.text, fontSize: 20, lineHeight: 22 },
-  stepValue: { minWidth: 52, textAlign: 'center', color: color.text, fontFamily: font.bodyMedium, fontSize: 15 },
+  stepGlyph: { color: color.text, fontSize: 22, lineHeight: 22 },
+  stepValue: { minWidth: 52, textAlign: 'center', color: color.text, fontFamily: font.bodyMedium, fontSize: 16 },
 });

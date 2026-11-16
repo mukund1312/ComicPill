@@ -98,7 +98,7 @@ function Detail({ view, show, onShow }: { view: OrderView; show: Show; onShow: (
 
 const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   content: { padding: space.lg, paddingBottom: 105, gap: space.sm },
-  intro: { color: color.text, fontFamily: font.display, fontSize: 24, lineHeight: 30, maxWidth: 520 },
+  intro: { color: color.text, fontFamily: font.display, fontSize: 26, lineHeight: 30, maxWidth: 520 },
   search: { marginVertical: space.sm },
   card: { padding: space.lg, borderRadius: radius.md, borderWidth: 1, borderColor: color.border, backgroundColor: color.surface2, gap: 4 },
   meta: { color: color.accent, fontFamily: font.bodyMedium, fontSize: 12 },

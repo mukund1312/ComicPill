@@ -167,7 +167,7 @@ function Picker({ items, collectionId, onClose, onAdded }: { items: LibraryItem[
 const styles = StyleSheet.create({
   content: { padding: space.lg, paddingBottom: 110 },
   crumbs: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, paddingBottom: space.sm },
-  back: { fontSize: 16 }, here: { flex: 1, fontSize: 20 },
+  back: { fontSize: 16 }, here: { flex: 1, fontSize: 22 },
   cell: { paddingHorizontal: 7, paddingBottom: 20 },
   folder: { width: '100%', aspectRatio: 2 / 3, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
   glyph: { fontSize: 44 },

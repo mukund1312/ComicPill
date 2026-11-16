@@ -89,21 +89,21 @@ const styles = StyleSheet.create({
   top: { paddingHorizontal: space.lg, paddingTop: 8 },
   sheetWrap: { position: 'absolute', left: 0, right: 0, bottom: 0, top: 400 },
   sheet: { paddingHorizontal: space.lg, paddingBottom: 40 },
-  title: { fontSize: 28, letterSpacing: -0.6, textAlign: 'center' },
-  copy: { fontSize: 14.5, lineHeight: 21, textAlign: 'center', marginTop: 8, marginBottom: 18 },
+  title: { fontSize: 30, letterSpacing: -0.6, textAlign: 'center' },
+  copy: { fontSize: 14, lineHeight: 21, textAlign: 'center', marginTop: 8, marginBottom: 18 },
   card: { borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, minHeight: 56 },
   label: { fontSize: 16 },
   value: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  valueText: { fontSize: 15 },
-  foot: { fontSize: 12.5, lineHeight: 18, textAlign: 'center', marginTop: 14 },
+  valueText: { fontSize: 16 },
+  foot: { fontSize: 12, lineHeight: 18, textAlign: 'center', marginTop: 14 },
 });
 
 function Field({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   const { theme, typography } = useAppearance(); const c = theme.colors;
   return (
     <View>
-      <Text style={{ color: c.textSecondary, fontFamily: typography.bodyMedium, fontSize: 12.5, marginBottom: 6 }}>{label}</Text>
+      <Text style={{ color: c.textSecondary, fontFamily: typography.bodyMedium, fontSize: 12, marginBottom: 6 }}>{label}</Text>
       <TextInput accessibilityLabel={label} value={value} onChangeText={onChange} secureTextEntry autoCapitalize="none" autoCorrect={false}
         style={{ height: 50, borderRadius: 14, paddingHorizontal: 14, fontSize: 16, backgroundColor: c.surfaceRaised, color: c.textPrimary, fontFamily: typography.body }} />
     </View>

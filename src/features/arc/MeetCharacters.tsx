@@ -88,7 +88,7 @@ function CharacterRow({ m, open, onToggle, saved, onSave }: { m: MeetCharacter; 
 
 const styles = StyleSheet.create({
   card: { borderWidth: 1, borderRadius: 14, padding: space.md, gap: 8 },
-  body: { fontSize: 13, lineHeight: 19 },
+  body: { fontSize: 14, lineHeight: 19 },
   row: { gap: 6 },
   rowHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
   name: { fontSize: 16 },

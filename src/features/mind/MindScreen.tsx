@@ -54,7 +54,7 @@ export default function MindScreen({ initialTab = 'digest' }: { initialTab?: Tab
 const makeStyles = (color: Palette, font: Fonts) => StyleSheet.create({
   content: { padding: space.lg, paddingBottom: 120, gap: space.md },
   pills: { gap: 8 },
-  gear: { color: color.text, fontSize: 24 },
+  gear: { color: color.text, fontSize: 26 },
   banner: { backgroundColor: color.surface2, borderRadius: radius.md, borderWidth: 1, borderColor: color.accent, padding: space.md, gap: 2 },
   bannerTitle: { color: color.text, fontFamily: font.displayMedium, fontSize: type.subtitle },
   bannerBody: { color: color.muted, fontFamily: font.body, fontSize: type.caption },
