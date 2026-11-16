@@ -48,12 +48,13 @@ export function seriesOf(c: Comicish): SeriesInfo | null {
 }
 
 export type SeriesGroup<T> = { key: string; name: string; issues: T[] };
+export type ShelfEntry<T> = { kind: 'series'; group: SeriesGroup<T> } | { kind: 'comic'; comic: T };
 
 /**
  * The shelf as series: comics sharing a series (two or more issues) become one group, sorted by issue number; everything else stays a
  * single comic. Groups keep the order in which their first comic appears in `comics` (so a "recently read" shelf stays recent-first).
  */
-export function groupBySeries<T extends Comicish>(comics: T[]): Array<{ kind: 'series'; group: SeriesGroup<T> } | { kind: 'comic'; comic: T }> {
+export function groupBySeries<T extends Comicish>(comics: T[]): ShelfEntry<T>[] {
   const groups = new Map<string, { name: string; items: T[] }>();
   const info = new Map<string, SeriesInfo | null>();
   for (const c of comics) {
@@ -62,7 +63,7 @@ export function groupBySeries<T extends Comicish>(comics: T[]): Array<{ kind: 's
     const g = groups.get(s.key);
     if (g) g.items.push(c); else groups.set(s.key, { name: s.name, items: [c] });
   }
-  const out: Array<{ kind: 'series'; group: SeriesGroup<T> } | { kind: 'comic'; comic: T }> = [];
+  const out: ShelfEntry<T>[] = [];
   const placed = new Set<string>();
   for (const c of comics) {
     const s = info.get(c.id);

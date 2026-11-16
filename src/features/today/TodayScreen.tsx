@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { launchCover } from '../../ui/CoverLaunch';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { COVER_ASSETS } from '../../ui/coverAssets';
@@ -130,8 +131,11 @@ function CollageBackdrop({ workId, scrollY }: { workId: string | undefined; scro
 /** A small cover card for the "more picks" and "continue reading" strips. */
 function StripCard({ label, title, workId, onPress, progress, uri }: { label?: string; title: string; workId?: string; onPress: () => void; progress?: number; uri?: string | null }) {
   const { theme, typography } = useAppearance(); const c = theme.colors;
-  return <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.stripCard, pressed && { opacity: 0.85 }]}>
-    {uri ? <View style={[styles.stripCover, { backgroundColor: c.surfaceRaised }]}><Image transition={180} source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" recyclingKey={uri} /></View> : <ComicCover title={title} workId={workId} size="grid" />}
+  const coverRef = useRef<View>(null);
+  // A file on your phone opens with its cover growing into the reader.
+  const press = () => (uri ? launchCover(coverRef.current, uri, onPress) : onPress());
+  return <Pressable accessibilityRole="button" onPress={press} style={({ pressed }) => [styles.stripCard, pressed && { opacity: 0.85 }]}>
+    {uri ? <View ref={coverRef} collapsable={false} style={[styles.stripCover, { backgroundColor: c.surfaceRaised }]}><Image transition={180} source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" recyclingKey={uri} /></View> : <ComicCover title={title} workId={workId} size="grid" />}
     {label ? <Text style={[styles.stripLabel, { color: c.primary, fontFamily: typography.bodySemibold }]}>{label.toUpperCase()}</Text> : null}
     <Text numberOfLines={2} style={[styles.stripTitle, { color: c.textPrimary, fontFamily: typography.displayMedium }]}>{title}</Text>
     {progress !== undefined ? <Progress value={progress} /> : null}

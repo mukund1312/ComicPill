@@ -41,12 +41,15 @@ import { hiddenShelfReady, hideComics } from '../../lib/reader/hiddenShelf';
 import { checkPassword, isUnlocked, makeLock, markUnlocked, passwordProblem } from '../../lib/reader/lock';
 import { newSalt, sha256 } from '../../lib/reader/lockCrypto';
 import { listPresets } from '../../lib/reader/readerSettings';
+import { groupBySeries, type SeriesGroup } from '../../lib/reader/series';
+import { launchCover } from '../../ui/CoverLaunch';
 import { isFinished, matchesQuery, isSortKey, progressFraction, readingNow, SORT_KEYS, SORT_LABEL, sortComics, sortFolders, type SortKey } from '../../lib/reader/shelf';
 
 type Segment = 'library' | 'collections';
 type View_ = 'grid' | 'list';
 type Cell =
   | { kind: 'comic'; key: string; comic: ReaderComic }
+  | { kind: 'series'; key: string; group: SeriesGroup<ReaderComic> }
   | { kind: 'folder'; key: string; folder: ReaderFolder }
   | { kind: 'collection'; key: string; collection: ReaderCollection };
 
@@ -54,6 +57,7 @@ const EDGE_W = 56; // how far from the left edge counts as “back out of this f
 const MIN_CELL = 168; const TABLET_CELL = 224;
 const VIEW_KEY = 'reader_view';
 const SORT_KEY = 'reader_sort';
+const SERIES_KEY = 'reader_by_series';
 const sizeLabel = (bytes: number | null) => (bytes == null ? null : bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);
 
 type Sheet = { title?: string; options: SheetOption[] } | null;
@@ -76,7 +80,10 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [sort, setSortState] = useState<SortKey>(() => { const saved = getMeta(SORT_KEY); return isSortKey(saved) ? saved : 'recent'; });
-  const setSort = (k: SortKey) => { setSortState(k); setMeta(SORT_KEY, k); }; // remembered for next time, and the same inside every folder
+  const setSort = (k: SortKey) => { setSortState(k); setMeta(SORT_KEY, k); };
+  // Issues of one series share a single tile (on unless turned off in View).
+  const [bySeries, setBySeriesState] = useState(() => getMeta(SERIES_KEY) !== '0');
+  const setBySeries = (on: boolean) => { setBySeriesState(on); setMeta(SERIES_KEY, on ? '1' : '0'); }; // remembered for next time, and the same inside every folder
   const [openFolderRaw, setOpenFolder] = useState<string | null>(null);
   const [openCollection, setOpenCollection] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -192,8 +199,16 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
     else pool = visible.filter((comic) => comic.folderId === openFolder);
     const sorted = sortComics(pool.filter((comic) => matchesQuery(comic, query)), sort);
     const folderCells: Cell[] = segment === 'library' && !searching ? sortFolders(folders.filter((f) => f.parentId === openFolder), sort).map((folder) => ({ kind: 'folder', key: `f-${folder.id}`, folder })) : [];
+    // Series: only for the shelf itself (not search, a collection, or while picking comics one by one), and never for locked comics,
+    // whose titles stay private.
+    if (bySeries && segment === 'library' && !searching && !selecting) {
+      const open = sorted.filter((comic) => !comic.locked);
+      const grouped = groupBySeries(open).map((entry): Cell => (entry.kind === 'series' ? { kind: 'series', key: `s-${entry.group.key}`, group: entry.group } : { kind: 'comic', key: entry.comic.id, comic: entry.comic }));
+      const locked = sorted.filter((comic) => comic.locked).map((comic): Cell => ({ kind: 'comic', key: comic.id, comic }));
+      return [...folderCells, ...grouped, ...locked];
+    }
     return [...folderCells, ...sorted.map((comic): Cell => ({ kind: 'comic', key: comic.id, comic }))];
-  }, [segment, comics, folders, collections, lockedFolders, query, sort, openFolder, openCollection, readyOnly]);
+  }, [segment, comics, folders, collections, lockedFolders, query, sort, openFolder, openCollection, readyOnly, bySeries, selecting]);
 
   const folderLabel = (id: string) => pathTo(folders, id).map((p) => folders.find((f) => f.id === p)?.name ?? '').join(' › ');
   /** A list of every folder (with its path) to move things into. `current` gets the tick. */
@@ -230,7 +245,8 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
     ],
   });
 
-  const openComic = (comic: ReaderComic) => requireUnlock('comic', comic.id, comic.title, comic.locked, () => { if (!startBackgroundOpen(comic, refresh)) router.push(`/reader/${comic.id}`); });
+  const coverViews = useRef(new Map<string, View>());
+  const openComic = (comic: ReaderComic) => requireUnlock('comic', comic.id, comic.title, comic.locked, () => { if (!startBackgroundOpen(comic, refresh)) launchCover(comic.locked ? null : coverViews.current.get(comic.id), comic.coverPath, () => router.push(`/reader/${comic.id}`)); });
 
   /** Onto the hidden shelf. Without one yet, Settings sets it up first. */
   const moveToHidden = (ids: string[], done?: () => void) => {
@@ -340,6 +356,7 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
       { label: 'List', checked: view === 'list', onPress: () => setView('list') },
       { label: 'Comics per row…', onPress: () => setPerRowOpen(true) },
       { label: 'Only comics that are ready on this device', checked: readyOnly, onPress: () => setReadyOnly((v) => !v) },
+      { label: 'Group by series', checked: bySeries, onPress: () => setBySeries(!bySeries) },
       ...SORT_KEYS.map((k) => ({ label: `Sort: ${SORT_LABEL[k]}`, checked: sort === k, onPress: () => setSort(k) })),
     ],
   });
@@ -536,10 +553,14 @@ export default function ReaderShelfScreen({ mode = 'phone' }: { mode?: 'phone' |
 
   const renderItem = ({ item }: { item: Cell }) => {
     if (item.kind === 'folder') return <Tile styles={styles} view={view} width={cellWidth} highlight={hoverTarget === item.folder.id} registerRef={(v) => { if (v) folderViews.current.set(item.folder.id, v); else folderViews.current.delete(item.folder.id); }} label={item.folder.name} sub={folderSub(item.folder)} covers={item.folder.locked && !isUnlocked('folder', item.folder.id) ? [] : folderCovers.get(item.folder.id) ?? []} glyph={item.folder.locked && !isUnlocked('folder', item.folder.id) ? 'lock-closed' : 'folder'} picked={pickedFolders.has(item.folder.id)} onPress={() => (selecting ? toggleFolder(item.folder) : requireUnlock('folder', item.folder.id, item.folder.name, item.folder.locked, () => setOpenFolder(item.folder.id)))} onLongPress={() => { if (!selecting) folderMenu(item.folder); }} />;
+    if (item.kind === 'series') {
+      const issues = item.group.issues; const unread = issues.filter((comic) => !isFinished(comic)).length;
+      return <Tile styles={styles} view={view} width={cellWidth} label={item.group.name} sub={`${issues.length} issues${unread ? ` · ${unread} unread` : ' · all read'}`} covers={issues.slice(0, 3).map((comic) => comic.coverPath ?? '')} glyph="layers" onPress={() => router.push({ pathname: '/reader/series', params: { key: item.group.key, folder: openFolder ?? '' } })} onLongPress={() => undefined} />;
+    }
     if (item.kind === 'collection') return <Tile styles={styles} view={view} width={cellWidth} label={item.collection.name} sub={`${item.collection.count} ${item.collection.count === 1 ? 'title' : 'titles'}`} covers={[]} glyph="albums" onPress={() => setOpenCollection(item.collection.id)} onLongPress={() => collectionMenu(item.collection)} />;
     const comic = item.comic; const masked = coverHidden(comic);
     const cover = (
-      <View style={[styles.cover, view === 'list' && styles.coverList]}>
+      <View ref={(v) => { if (v) coverViews.current.set(comic.id, v); else coverViews.current.delete(comic.id); }} collapsable={false} style={[styles.cover, view === 'list' && styles.coverList]}>
         {masked ? <Icon name="lock-closed" size={30} color={c.textMuted} /> : <FileCover uri={comic.coverPath} title={comic.title} style={styles.coverImage} recyclingKey={comic.id} transition={120} />}
         {isFinished(comic) && !masked ? <Text style={styles.badge}>✓</Text> : null}
         {selected.has(comic.id) ? <View style={styles.picked}><Icon name="checkmark-circle" size={34} color="#fff" /></View> : null}

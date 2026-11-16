@@ -32,6 +32,9 @@ import { PanelMaskLayer } from './PanelMaskLayer';
 import { boxFromCorners, bubbleAt, insertInOrder, manualBubble, type Bubble } from '../../lib/reader/bubbles/bubbles';
 import { detectPageBubbles, saveCorrectedBubbles } from '../../lib/reader/bubbles/detect';
 import { BubbleGestureLayer } from './BubbleGestureLayer';
+import { EndOfIssue } from './EndOfIssue';
+import { markReaderShown } from '../../ui/CoverLaunch';
+import { nextIssue } from '../../lib/reader/series';
 import { BubbleFloatLayer, type FloatTarget } from './BubbleFloatLayer';
 import { extractBubble } from '../../lib/reader/bubbles/extract';
 import { BUBBLE_SIZE_STEP, clampBubbleSize, settleRect } from '../../lib/reader/bubbles/pop';
@@ -52,7 +55,7 @@ import { ComicOpenError, openComicSource, type ComicSource, type PageSize } from
 import { buildUnits, unitIndexOf } from '../../lib/reader/formats/spreads';
 import { BACKGROUND_COLORS, BUILTIN_PRESETS, resolveReading, type Fit, type Reading } from '../../lib/reader/presets';
 import {
-  getFolder, getReaderComic, listBookmarks, saveReaderMode, saveReaderProgress, saveReaderSizes, setComicPreset, setPageCount, toggleBookmark,
+  getFolder, getReaderComic, listBookmarks, listReaderComics, saveReaderMode, saveReaderProgress, saveReaderSizes, setComicPreset, setPageCount, toggleBookmark,
   type ReaderComic, type ReaderMode,
 } from '../../lib/reader/readerLibrary';
 import { listPresets, loadReaderSettings, saveReaderSettings, type ReaderSettings } from '../../lib/reader/readerSettings';
@@ -242,17 +245,11 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
   const [bookmarks, setBookmarks] = useState<Set<number>>(() => new Set(listBookmarks(comic.id)));
   const startPage = Math.min(comic.progressPage, total - 1);
   const [page, setPage] = useState(startPage);
-  const askedRef = useRef(false);
   // Opening a comic marks it as being read in the library; reaching the last page offers the rating survey once.
   useEffect(() => {
     if (!comic.workId) return;
     try { const cur = sqlite.getFirstSync<{ status: string }>('SELECT status FROM user_library WHERE work_id = ?', comic.workId)?.status; if (!cur || cur === 'none') upsertLibraryEntry(comic.workId, { status: 'reading' }); } catch { /* library link is optional */ }
   }, [comic.workId]);
-  useEffect(() => {
-    if (!comic.workId || askedRef.current || total < 3 || page < total - 1 || startPage >= total - 1) return;
-    askedRef.current = true;
-    // No pop-up at the end of a comic: the end-of-issue screen offers the next issue and a quiet way to rate it.
-  }, [page, total, comic.workId, startPage]);
   const [anchor, setAnchor] = useState<Position>({ page: startPage, frac: comic.progressOffset });
   // Live position (updates every scroll); `anchor` is its last saved mirror, safe to read in render.
   const position = useRef<Position>({ page: startPage, frac: comic.progressOffset });
@@ -282,9 +279,26 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
   const bookActive = spread && !webtoon && (display.pageAnimation === 'flip' || (display.pageAnimation === 'curl' && rtl));
   const turnKind = bookActive ? 'slide' : display.pageAnimation;
   // The 3-D curl needs whole single pages sitting on the page-sized frame, left to right.
+  // The end of the comic: going on from the last page opens the end-of-issue screen (the next issue, and a quiet rating).
+  const [ending, setEnding] = useState<{ next: ReaderComic | null; rating: number | null } | null>(null);
+  const openEnd = useCallback(() => {
+    let next: ReaderComic | null = null;
+    try { next = nextIssue(comic, listReaderComics().filter((c) => c.id !== comic.id)); } catch { next = null; }
+    let rating: number | null = null;
+    if (comic.workId) {
+      try {
+        const row = sqlite.getFirstSync<{ rating: number | null; status: string }>('SELECT rating, status FROM user_library WHERE work_id = ?', comic.workId);
+        rating = row?.rating ?? null;
+        if (row?.status !== 'done') upsertLibraryEntry(comic.workId, { status: 'done', finishedAt: new Date().toISOString() });
+      } catch { /* the library link is optional */ }
+    }
+    feedback.success();
+    setEnding({ next, rating });
+  }, [comic]);
+
   const curlActive = display.pageAnimation === 'curl' && !webtoon && !rtl && !guidedActive && fit === 'contain';
   // With the curl on, pages are turned by this gesture rather than the list's own scrolling, so the curl knows where the page was held.
-  const curlDrag = useCurlDrag(listAnim, scrollX, width, units.length - 1, unitIndexOf(units, page), curlActive);
+  const curlDrag = useCurlDrag(listAnim, scrollX, width, units.length - 1, unitIndexOf(units, page), curlActive, openEnd);
   const stackedCells = useStackedCells(units.length, turnKind === 'flip');
   const data = useMemo(() => (rtl ? [...units].reverse() : units), [units, rtl]);
   const visualIndex = useCallback((p: number) => { const i = unitIndexOf(units, p); return rtl ? units.length - 1 - i : i; }, [units, rtl]);
@@ -329,9 +343,10 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
 
   const step = useCallback((delta: number) => {
     const at = unitIndexOf(units, position.current.page);
+    if (delta > 0 && at >= units.length - 1) { openEnd(); return; }
     const next = Math.max(0, Math.min(units.length - 1, at + delta));
     goToPage(units[next][0]);
-  }, [units, goToPage]);
+  }, [units, goToPage, openEnd]);
 
   const onViewable = useCallback(({ viewableItems }: { viewableItems: Array<ViewToken<number[]>> }) => {
     if (webtoon && strip.known) return; // scroll offset is the source of truth there
@@ -410,7 +425,8 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
       if (ni >= 0 && ni < st.panels.length) { st.index = ni; showPanel(st.page, st.panels[ni], ni, st.panels.length); return; }
       // Past the last (or before the first) panel: pull the camera back to the whole page, turn to the neighbouring page, hold on it, then go in.
       const at = position.current.page; const ui = unitIndexOf(units, at);
-      if (delta > 0 ? ui >= units.length - 1 : ui <= 0) { feedback.warning(); return; } // the end of the comic: stay on this panel
+      if (delta > 0 && ui >= units.length - 1) { openEnd(); return; } // the end of the comic
+      if (delta < 0 && ui <= 0) { feedback.warning(); return; } // the start: stay on this panel
       bridgeTo.current = units[ui + (delta > 0 ? 1 : -1)][0];
       if (delta < 0) landOnLast.current = true;
       zoomRefs.current.get(at)?.zoomToPanel(null, guideCfg.current.guidedMs);
@@ -419,7 +435,7 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
       return;
     }
     step(delta);
-  }, [guidedActive, step, units, later, maskAmount, showPanel]);
+  }, [guidedActive, step, units, later, maskAmount, showPanel, openEnd]);
 
   useEffect(() => {
     if (!guidedActive) {
@@ -1051,6 +1067,15 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
           </View>
         </View>
       ) : null}
+      {ending ? (
+        <EndOfIssue
+          comic={comic} next={ending.next} rating={ending.rating}
+          onRate={comic.workId ? (n) => { try { upsertLibraryEntry(comic.workId!, { rating: n, status: 'done' }); } catch { /* optional */ } } : null}
+          onContinue={(n) => { persist(); router.replace(`/reader/${n.id}`); }}
+          onShelf={() => { persist(); router.back(); }}
+          onStay={() => setEnding(null)}
+        />
+      ) : null}
     </View>
   );
 }
@@ -1066,7 +1091,7 @@ function PageImage({ source, page, width, height, crop }: { source: ComicSource;
   // Trimmed margins: enlarge the picture about its centre so the art box fills the frame, then slide it back to centre.
   const zoom = crop ? Math.min(1.6, 1 / Math.max(crop.w, crop.h)) : 1;
   const shift = crop ? [{ translateX: (0.5 - (crop.x + crop.w / 2)) * zoom * width }, { translateY: (0.5 - (crop.y + crop.h / 2)) * zoom * height }, { scale: zoom }] : undefined;
-  return <View style={{ width, height, overflow: 'hidden' }}>{uri ? <Image transition={120} source={{ uri }} style={[styles.fill, shift && { transform: shift }]} contentFit="contain" recyclingKey={uri} /> : null}</View>;
+  return <View style={{ width, height, overflow: 'hidden' }}>{uri ? <Image transition={120} source={{ uri }} style={[styles.fill, shift && { transform: shift }]} contentFit="contain" recyclingKey={uri} onLoad={markReaderShown} /> : null}</View>;
 }
 
 /** One screen of paged reading: a single page, or two side by side (landscape). Zoom applies to the whole unit. */

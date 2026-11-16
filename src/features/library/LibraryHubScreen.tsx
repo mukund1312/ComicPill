@@ -1,7 +1,7 @@
 // The Library tab: one tidy hub that points at everything you own — files on this phone, your collection, reading lists, and imports.
 // Experimental tools (Mind Space, Comic Wallet, Compare) live in Settings → Labs.
 import { deviceIcon, deviceName, onMyDevice } from '../../lib/platform/device';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -13,6 +13,7 @@ import { space } from '../../ui/tokens';
 import { sqlite } from '../../lib/db/client';
 import { listCollections, listReaderComics, type ReaderComic } from '../../lib/reader/readerLibrary';
 import { Image } from 'expo-image';
+import { launchCover } from '../../ui/CoverLaunch';
 import { linkWithCovers, pickAndImportComics, pickAndImportFolder, pickAndLinkComics, pickAndLinkFolder, type ImportProgress, type ImportResult } from '../../lib/reader/importComics';
 import { runJob, useJob } from '../../lib/reader/importJob';
 
@@ -25,6 +26,7 @@ export default function LibraryHubScreen() {
   const [open, setOpen] = useState({ libraries: true, imports: true });
   const [recent, setRecent] = useState<ReaderComic[]>([]);
   const running = useJob().running;
+  const coverRefs = useRef(new Map<string, View>());
   useFocusEffect(useCallback(() => {
     const phone = sqlite.getFirstSync<{ n: number }>('SELECT COUNT(*) AS n FROM reader_comics WHERE hidden = 0')?.n ?? 0;
     const collection = sqlite.getFirstSync<{ n: number }>("SELECT COUNT(*) AS n FROM user_library WHERE own <> 'none'")?.n ?? 0;
@@ -99,8 +101,8 @@ export default function LibraryHubScreen() {
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shelf}>
               {recent.map((comic) => (
-                <PressableScale key={comic.id} to={0.96} onPress={() => router.push(`/reader/${comic.id}`)} style={styles.shelfItem} accessibilityRole="button" accessibilityLabel={comic.title}>
-                  <View style={[styles.shelfCover, { backgroundColor: c.surfaceRaised, borderColor: c.border }]}><Image source={{ uri: comic.coverPath ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} recyclingKey={`hub-${comic.id}`} /></View>
+                <PressableScale key={comic.id} to={0.96} onPress={() => launchCover(coverRefs.current.get(comic.id), comic.coverPath, () => router.push(`/reader/${comic.id}`))} style={styles.shelfItem} accessibilityRole="button" accessibilityLabel={comic.title}>
+                  <View ref={(v) => { if (v) coverRefs.current.set(comic.id, v); else coverRefs.current.delete(comic.id); }} collapsable={false} style={[styles.shelfCover, { backgroundColor: c.surfaceRaised, borderColor: c.border }]}><Image source={{ uri: comic.coverPath ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} recyclingKey={`hub-${comic.id}`} /></View>
                   <Text numberOfLines={1} style={[styles.shelfTitle, { color: c.textPrimary, fontFamily: typography.bodyMedium }]}>{comic.title}</Text>
                 </PressableScale>
               ))}

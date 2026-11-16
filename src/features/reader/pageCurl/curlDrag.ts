@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { Gesture } from 'react-native-gesture-handler';
-import { cancelAnimation, scrollTo, useAnimatedReaction, useSharedValue, withSpring, type AnimatedRef, type SharedValue } from 'react-native-reanimated';
+import { cancelAnimation, runOnJS, scrollTo, useAnimatedReaction, useSharedValue, withSpring, type AnimatedRef, type SharedValue } from 'react-native-reanimated';
 import { endLift, releaseTarget, stiff } from './curlMath';
 
 /**
@@ -43,7 +43,7 @@ export type CurlGrab = {
  * the finger moves the pager 1:1, and on release a spring that starts at the finger's speed carries it to the page `releaseTarget` picks.
  * Taps still turn pages (through the pager's own animated scroll); the touch-down records the grab height for those too.
  */
-export function useCurlDrag(listRef: AnimatedRef<never>, scrollX: SharedValue<number>, width: number, lastIndex: number, current: number, enabled: boolean) {
+export function useCurlDrag(listRef: AnimatedRef<never>, scrollX: SharedValue<number>, width: number, lastIndex: number, current: number, enabled: boolean, onPastEnd?: () => void) {
   // The page the reader is on. The pager reports its offset only once it has scrolled, so straight after a comic opens (at its saved page)
   // the offset can still read 0; a drag must start from the page on screen, not jump to the first one.
   const here = useSharedValue(current);
@@ -132,6 +132,8 @@ export function useCurlDrag(listRef: AnimatedRef<never>, scrollX: SharedValue<nu
       const average = took > 0 && took < 300 ? ((e.x - downX.get()) / took) * 1000 : 0;
       const v = Math.abs(e.velocityX) > 1 ? e.velocityX : Math.abs(average) > Math.abs(speed.get()) ? average : speed.get();
       const target = success ? releaseTarget(offset.get(), startPage.get(), v, width, lastIndex) : startPage.get();
+      // Pulled well past the last page (more than half of what it can lift): the comic is finished.
+      if (success && onPastEnd && end.get() > 0.1) runOnJS(onPastEnd)();
       end.set(withSpring(0, SETTLE_SPRING(0)));
       const rest = target * width;
       offset.set(withSpring(rest, SETTLE_SPRING(-v), (done) => {
@@ -141,7 +143,7 @@ export function useCurlDrag(listRef: AnimatedRef<never>, scrollX: SharedValue<nu
         scrollTo(listRef, rest, 0, false);
         driving.set(false);
       }));
-    }), [enabled, width, lastIndex, scrollX, here, offset, driving, start, startPage, downX, downY, grabX, grabY, grabFrom, grabDy, lastX, lastT, speed, downT, gate, end, listRef]);
+    }), [enabled, width, lastIndex, scrollX, here, offset, driving, start, startPage, downX, downY, grabX, grabY, grabFrom, grabDy, lastX, lastT, speed, downT, gate, end, listRef, onPastEnd]);
 
   const grab: CurlGrab = useMemo(() => ({ x: grabX, y: grabY, from: grabFrom, dy: grabDy, end }), [grabX, grabY, grabFrom, grabDy, end]);
   return { gesture, grab, gate };

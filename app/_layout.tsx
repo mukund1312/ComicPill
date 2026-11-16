@@ -34,6 +34,7 @@ import ReminderSync from '../src/features/settings/ReminderSync';
 import MindSync from '../src/features/mind/MindSync';
 import { AppLockGate } from '../src/ui/AppLockGate';
 import { BootSplash } from '../src/ui/BootSplash';
+import { CoverLaunchOverlay } from '../src/ui/CoverLaunch';
 import * as SplashScreen from 'expo-splash-screen';
 
 // Keep the native splash up until our own opening animation is on screen.
@@ -74,7 +75,7 @@ export default function RootLayout() {
 
   if (!fontsLoaded || !dbReady) return null; // the native splash is still showing
 
-  return <GestureHandlerRootView style={{ flex: 1 }}><AppearanceProvider><ReminderSync /><MindSync /><ThemedStack /><AppLockGate /><BootSplash /></AppearanceProvider></GestureHandlerRootView>;
+  return <GestureHandlerRootView style={{ flex: 1 }}><AppearanceProvider><ReminderSync /><MindSync /><ThemedStack /><CoverLaunchOverlay /><AppLockGate /><BootSplash /></AppearanceProvider></GestureHandlerRootView>;
 }
 
 function ThemedStack() {

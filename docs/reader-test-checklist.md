@@ -272,3 +272,23 @@ The emulator is slow even on the old build (16 ms is smooth); a real phone has n
 - [x] Fixed: after a release the pager stopped a few points short of the page (the final scroll was skipped), leaving a sliver or, after a
       vertical drag, a big corner curl stuck on a page at rest. Verified: progress lands on exactly 0 and the page is clean.
 - [x] Fixed: a drag that moved mostly up or down left the sheet curled even with no turn; the vertical part now fades out as the turn returns to 0.
+
+## Premium edition (branch `premium`, 16 Nov 2026)
+
+The current app is kept unchanged on `main` (tag `classic-1.0`). The premium edition lives on the `premium` branch.
+
+- [x] Four themes (Dark, Black, Paper, Sepia); hero/villain themes and their character portraits removed.
+- [x] Four tabs: Home, Library, Discover, Search. Reading now is reached from Home > Continue reading > See all.
+- [x] Reading lists: one screen for my lists, reading paths and reading orders (their data stays separate underneath).
+- [x] Settings > Labs: Mind Space, Comic Wallet, Compare (removed from the Library and comic detail).
+- [x] One accent: red only for primary actions and progress; tabs, chips, header buttons, links neutral.
+- [x] Nine-step type scale (11 12 14 16 18 22 26 30 34), fade-ins on covers/backdrops/pages, shared motion presets.
+- [x] End-of-issue screen: going past the last page (tap, keys, guided view, or pulling the last page with the curl) shows
+      "You finished", a quiet five-star rating (also marks it finished), and "Continue to #N" when the next issue is on the shelf.
+      Checked: Nightwatch #1 → "Continue to #2".
+- [x] Series on the shelf: issues of one series share a tile ("3 issues · 2 unread"); the series screen lists issues in order
+      with progress rings and a Start / Continue / Read next button. View > Group by series turns it off; Select mode and
+      search show issues individually; locked comics are never grouped. Checked with three test comics renamed Nightwatch #1–#3.
+- [x] Cover-to-reader: the tapped cover grows to full screen and gives way to the page (Library shelf, phone shelf, series
+      screen, Home Continue reading). Skipped with Reduce motion. Opening checked 3 of 3 times.
+- Not done: swiping past the last page in Slide mode doesn't open the end-of-issue screen (tap, keys and Page curl do).
