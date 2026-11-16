@@ -127,7 +127,6 @@ function Detail({ item, detail, setStatus, label, linkedBank, purchase, onSave, 
       {item.status === 'reading' ? <View style={{ marginTop: 16 }}><Progress value={0.45} /></View> : null}
       <Button style={{ marginTop: 24 }} onPress={() => item.status === 'reading' ? router.push(`/check-in/${item.workId}`) : !isAccessible(item.own) ? onAdd() : setStatus(item.workId, 'reading')}>{item.status === 'reading' ? 'Check in' : item.own === 'none' ? 'Add to library' : !isAccessible(item.own) ? 'Update ownership' : 'Start reading'}</Button>
       <FileActions workId={item.workId} />
-      <Button kind="secondary" style={{ marginTop: 10 }} onPress={() => router.push({ pathname: '/compare', params: { workId: item.workId } })}>Compare</Button>
 
       {detail.skip.affectedWorkIds.length > 0 ? (
         <View style={styles.skipBox}>

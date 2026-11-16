@@ -251,7 +251,7 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
   useEffect(() => {
     if (!comic.workId || askedRef.current || total < 3 || page < total - 1 || startPage >= total - 1) return;
     askedRef.current = true;
-    Alert.alert('Finished?', 'Rate it and answer a quick taste survey so recommendations get better.', [{ text: 'Not yet', style: 'cancel' }, { text: 'Rate it', onPress: () => router.push(`/check-in/${comic.workId}`) }]);
+    // No pop-up at the end of a comic: the end-of-issue screen offers the next issue and a quiet way to rate it.
   }, [page, total, comic.workId, startPage]);
   const [anchor, setAnchor] = useState<Position>({ page: startPage, frac: comic.progressOffset });
   // Live position (updates every scroll); `anchor` is its last saved mirror, safe to read in render.

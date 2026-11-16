@@ -185,7 +185,10 @@ export default function TodayScreen() {
 
     <Animated.View entering={FadeInDown.delay(180).duration(420)}>
     {reading.length ? <>
-      <Text style={[styles.section, { color: c.textPrimary, fontFamily: typography.display }]}>Continue reading</Text>
+      <View style={styles.sectionRow}>
+        <Text style={[styles.section, { color: c.textPrimary, fontFamily: typography.display }]}>Continue reading</Text>
+        <Pressable accessibilityRole="button" onPress={() => router.push('/reader')} hitSlop={8}><Text style={[styles.seeAll, { color: c.textSecondary, fontFamily: typography.bodySemibold }]}>See all</Text></Pressable>
+      </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.strip}>
         {reading.filter((comic) => !(isResume && comic.id === recent?.id)).map((comic) => <StripCard key={comic.id} title={comic.title} uri={comic.coverPath} progress={progressFraction(comic)} onPress={() => router.push(`/reader/${comic.id}`)} />)}
       </ScrollView>
@@ -197,9 +200,9 @@ export default function TodayScreen() {
         {others.map((card) => <StripCard key={card.workId} label={card === today.continueCard ? 'Continue' : card === today.switchCard ? 'Switch it up' : 'Explore'} title={card.title} workId={card.workId} onPress={() => router.push(`/comic/${card.workId}`)} />)}
       </ScrollView>
     </> : null}
-      <PressableScale to={0.98} onPress={() => router.push('/paths')} style={[styles.pathsCard, { backgroundColor: c.surface, borderColor: c.border }]}>
-        <View style={[styles.pathsIcon, { backgroundColor: c.primaryMuted }]}><Icon name="git-network" size={22} color={c.primary} /></View>
-        <View style={{ flex: 1 }}><Text style={[styles.pathsTitle, { color: c.textPrimary, fontFamily: typography.displayMedium }]}>Reading paths</Text><Text style={[styles.pathsSub, { color: c.textSecondary, fontFamily: typography.body }]}>What to read before or after anything.</Text></View>
+      <PressableScale to={0.98} onPress={() => router.push('/reading-lists')} style={[styles.pathsCard, { backgroundColor: c.surface, borderColor: c.border }]}>
+        <View style={[styles.pathsIcon, { backgroundColor: c.surfaceRaised }]}><Icon name="list" size={22} color={c.textPrimary} /></View>
+        <View style={{ flex: 1 }}><Text style={[styles.pathsTitle, { color: c.textPrimary, fontFamily: typography.displayMedium }]}>Reading lists</Text><Text style={[styles.pathsSub, { color: c.textSecondary, fontFamily: typography.body }]}>Your lists, reading paths and what to read first.</Text></View>
         <Icon name="chevron-forward" size={18} color={c.textMuted} />
       </PressableScale>
     </Animated.View>
@@ -227,6 +230,8 @@ const styles = StyleSheet.create({
   sectionLabel: { fontSize: 10, letterSpacing: 1.6, marginTop: 26, marginBottom: 2 },
   pills: { gap: 8, paddingVertical: 10 },
   section: { fontSize: 22, marginTop: 22, marginBottom: 12 },
+  sectionRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+  seeAll: { fontSize: 14 },
   strip: { gap: 14, paddingRight: space.lg },
   pathsCard: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, marginTop: 28 },
   pathsIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },

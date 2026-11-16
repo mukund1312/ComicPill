@@ -187,6 +187,12 @@ export default function SettingsScreen() {
         <LinkRow label="Currency" value="₹ INR" onPress={() => setSheet('currency')} last />
       </SettingsSection>
 
+      <SettingsSection title="Labs" footer="Experiments that aren't part of the main app yet. Mind Space needs your own AI key (App → AI assistant).">
+        <LinkRow label="Mind Space" detail="Screenshots and reading journeys shaped to your taste." onPress={() => router.push('/mind')} />
+        <LinkRow label="Comic Wallet" detail="A pretend budget for comics you want to buy. No real money." onPress={() => router.push('/wallet')} />
+        <LinkRow label="Compare comics" detail="Two editions side by side." onPress={() => router.push('/compare')} last />
+      </SettingsSection>
+
       <SettingsSection title="Help">
         <LinkRow label="Help & feedback" detail="Report a bug or send an idea." onPress={() => router.push('/feedback')} />
         <LinkRow label="Edit my taste picks" detail="Characters, art, genres and story feel." onPress={() => router.push('/onboarding?mode=edit')} />

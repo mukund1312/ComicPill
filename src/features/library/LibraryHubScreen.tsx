@@ -1,4 +1,5 @@
-// The Library tab: one tidy hub that points at everything you own — files on this phone, your collection, imports, and the extra tools.
+// The Library tab: one tidy hub that points at everything you own — files on this phone, your collection, reading lists, and imports.
+// Experimental tools (Mind Space, Comic Wallet, Compare) live in Settings → Labs.
 import { deviceIcon, deviceName, onMyDevice } from '../../lib/platform/device';
 import { useCallback, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -20,8 +21,8 @@ type Row = { icon: IconName; label: string; sub?: string; tint?: string; onPress
 export default function LibraryHubScreen() {
   const { theme, typography } = useAppearance(); const c = theme.colors;
   const [counts, setCounts] = useState({ phone: 0, collection: 0, collections: 0 });
-  // Your comics lead; adding comics and the extra tools are a tap away (More starts folded so the page stays calm).
-  const [open, setOpen] = useState({ libraries: true, imports: true, tools: false });
+  // Your comics lead; adding comics is a tap away.
+  const [open, setOpen] = useState({ libraries: true, imports: true });
   const [recent, setRecent] = useState<ReaderComic[]>([]);
   const running = useJob().running;
   useFocusEffect(useCallback(() => {
@@ -42,6 +43,7 @@ export default function LibraryHubScreen() {
     { icon: deviceIcon(), label: onMyDevice(), sub: plural(counts.phone, 'comic', 'comics'), onPress: () => router.push('/reader/phone') },
     { icon: 'albums-outline', label: 'My Collection', sub: plural(counts.collection, 'comic', 'comics'), onPress: () => router.push('/collection') },
     { icon: 'folder-open-outline', label: 'Collections', sub: plural(counts.collections, 'collection', 'collections'), onPress: () => router.push('/reader/collections') },
+    { icon: 'list-outline', label: 'Reading lists', sub: 'Your lists, reading paths and reading orders', onPress: () => router.push('/reading-lists') },
   ];
   // Two ways to bring files in, said plainly: a copy lives on the phone (reads offline, uses space); a link stays in the cloud app and is
   // fetched when opened. Each then asks whether it's a few files or a whole folder, instead of four near-identical rows.
@@ -61,13 +63,6 @@ export default function LibraryHubScreen() {
         () => void runImport('Linking folder', 'Linked', (p) => linkWithCovers(() => pickAndLinkFolder(p), p))) },
     { icon: 'server-outline', label: 'Connect a comic server', sub: 'Komga, Kavita, Calibre-Web or any OPDS server you run.', onPress: () => router.push('/reader/opds') },
     { icon: 'scan-outline', label: 'Scan your shelf', sub: 'Photograph physical comics to list them in My Collection.', onPress: () => router.push('/scan') },
-  ];
-  const tools: Row[] = [
-    { icon: 'list-outline', label: 'Playlists', onPress: () => router.push('/playlists') },
-    { icon: 'git-compare-outline', label: 'Compare comics', onPress: () => router.push('/compare') },
-    { icon: 'sparkles-outline', label: 'Mind Space', sub: 'Screenshots to your taste', onPress: () => router.push('/mind') },
-    { icon: 'wallet-outline', label: 'Comic Wallet', onPress: () => router.push('/wallet') },
-    { icon: 'git-network-outline', label: 'Paths', sub: 'Reading journeys', onPress: () => router.push('/paths') },
   ];
 
   const group = (title: string, key: keyof typeof open, rows: Row[], delay: number) => (
@@ -114,7 +109,6 @@ export default function LibraryHubScreen() {
         ) : null}
         {group('Libraries', 'libraries', libraries, 0)}
         {group('Add comics', 'imports', imports, 80)}
-        {group('More', 'tools', tools, 160)}
       </ScrollView>
     </AppShell>
   );

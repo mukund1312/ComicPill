@@ -34,11 +34,7 @@ export default function AppearanceScreen() {
     <Text style={[styles.title, { color: colors.textPrimary, fontFamily: t.display }]}>Appearance</Text>
     <Text style={[styles.copy, { color: colors.textSecondary, fontFamily: t.body }]}>Tap a theme or a font to try it on the whole app, then Apply right under it to keep it.</Text>
     <Text style={[styles.label, { color: colors.textMuted, fontFamily: t.bodySemibold }]}>COLOR THEME</Text>
-    {themeCard(THEMES.find((theme) => theme.id === 'comicpill')!)}
-    <Text style={[styles.label, { color: colors.textMuted, fontFamily: t.bodySemibold }]}>HEROES</Text>
-    {THEMES.filter((theme) => theme.category === 'hero').map(themeCard)}
-    <Text style={[styles.label, { color: colors.textMuted, fontFamily: t.bodySemibold }]}>VILLAINS</Text>
-    {THEMES.filter((theme) => theme.category === 'villain').map(themeCard)}
+    {THEMES.map(themeCard)}
     <Text style={[styles.label, { color: colors.textMuted, fontFamily: t.bodySemibold }]}>TYPOGRAPHY</Text>
     {TYPOGRAPHY.map((preset) => (
       <View key={preset.id}>
@@ -46,7 +42,7 @@ export default function AppearanceScreen() {
         {draftTypographyId === preset.id && draftTypographyId !== savedTypographyId ? <ApplyBar label={`Apply ${preset.name}`} colors={colors} typography={t} onApply={applyTypography} onCancel={cancelTypography} /> : null}
       </View>
     ))}
-    <Pressable onPress={() => { appearance.setAppearance('comicpill', 'polished'); setDraftThemeId('comicpill'); setDraftTypographyId('polished'); feedback.success(); }} style={[styles.reset, { borderColor: colors.border }]}><Text style={{ color: colors.textSecondary, fontFamily: t.bodySemibold }}>Back to ComicPill default</Text></Pressable>
+    <Pressable onPress={() => { appearance.setAppearance('comicpill', 'polished'); setDraftThemeId('comicpill'); setDraftTypographyId('polished'); feedback.success(); }} style={[styles.reset, { borderColor: colors.border }]}><Text style={{ color: colors.textSecondary, fontFamily: t.bodySemibold }}>Back to the default look</Text></Pressable>
   </ScrollView></SafeAreaView>;
 }
 

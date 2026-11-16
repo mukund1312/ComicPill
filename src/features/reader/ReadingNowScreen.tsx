@@ -42,7 +42,7 @@ export default function ReadingNowScreen() {
 
   const hero = reading[0];
   return (
-    <AppShell active="reading" title="Reading Now" right={<HeaderButton icon="ellipsis-horizontal" label="More" onPress={more} />}>
+    <AppShell active="today" back title="Reading now" right={<HeaderButton icon="ellipsis-horizontal" label="More" onPress={more} />}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {comics.length === 0 ? (
           <Animated.View entering={FadeInDown.duration(400)} style={styles.empty}>

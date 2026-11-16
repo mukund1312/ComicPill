@@ -18,8 +18,7 @@ import { ImportBar } from './ImportBar';
 
 type Tab = 'today' | 'reading' | 'library' | 'discover' | 'search' | 'none';
 const tabs: Array<{ id: Exclude<Tab, 'none'>; icon: IconName; iconActive: IconName; label: string; href: string }> = [
-  { id: 'today', icon: 'home-outline', iconActive: 'home', label: 'Today', href: '/' },
-  { id: 'reading', icon: 'book-outline', iconActive: 'book', label: 'Reading', href: '/reader' },
+  { id: 'today', icon: 'home-outline', iconActive: 'home', label: 'Home', href: '/' },
   { id: 'library', icon: 'layers-outline', iconActive: 'layers', label: 'Library', href: '/library' },
   { id: 'discover', icon: 'storefront-outline', iconActive: 'storefront', label: 'Discover', href: '/discover' },
   { id: 'search', icon: 'search-outline', iconActive: 'search', label: 'Search', href: '/search' },
@@ -68,8 +67,7 @@ function TabBar({ active }: { active: Tab }) {
 
 type SideRow = { icon: IconName; label: string; sub?: string; href: string; tab?: Exclude<Tab, 'none'> };
 const SIDE_MAIN: SideRow[] = [
-  { icon: 'home-outline', label: 'Today', href: '/', tab: 'today' },
-  { icon: 'book-outline', label: 'Reading Now', href: '/reader', tab: 'reading' },
+  { icon: 'home-outline', label: 'Home', href: '/', tab: 'today' },
   { icon: 'search-outline', label: 'Search', href: '/search', tab: 'search' },
   { icon: 'storefront-outline', label: 'Discover', href: '/discover', tab: 'discover' },
 ];
