@@ -6,7 +6,7 @@
  * point is its outer edge); `dy` is the finger's vertical travel in pixels since it went down; `span` is how far the finger travels sideways
  * for a whole turn (the pager's width).
  */
-export type Grab = { x: number; y: number; dy: number; span: number };
+export type Grab = { x: number; y: number; dy: number; span: number; back?: boolean };
 
 /**
  * The fold's direction for a grab. Paper held at a point is folded along the perpendicular bisector of where that point was and where the
@@ -19,7 +19,9 @@ export type Grab = { x: number; y: number; dy: number; span: number };
 export function foldAngle(t: number, pageW: number, grab: Grab) {
   'worklet';
   const g = Math.max(-1, Math.min(1, grab.y * 2 - 1));
-  const lead = 0.32 * g * Math.pow(1 - t, 1.3);
+  // Turning back, the page arrives already folded over, mirrored: the corner nearest the finger must be the one that comes over first,
+  // which is the opposite tilt to lifting that corner on the way forward.
+  const lead = (grab.back ? -0.32 : 0.32) * g * Math.pow(1 - t, 1.3);
   // Sideways travel so far; a floor keeps a tiny drag from swinging the fold wildly.
   const along = Math.max(t * grab.span, 0.35 * pageW);
   const follow = Math.atan2(-grab.dy, along) * (1 - t * t);

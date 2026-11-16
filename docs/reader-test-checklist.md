@@ -241,3 +241,10 @@ Checked on the emulator (portrait, 1080×2400), holding the finger mid-turn:
   (the main thread was waiting on the emulator's GPU to present the Skia frame). Watch for stutter on a real phone in landscape.
 - Still not a full physics simulation (no mass-spring cloth): it is an analytic per-strip roll model driven by the finger.
 - Not done: real-phone test (no phone connected to this Mac).
+
+## Page curl: turning back (16 Nov 2026)
+
+- [x] Fixed: turning back, a hold near the top brought the page's bottom over first (and the other way round). The grab-height tilt is now
+      mirrored for backward turns, so the corner nearest the finger comes over first. Checked held mid-turn in portrait (top, middle,
+      bottom) and landscape spreads (top, bottom).
+- Known: on backward turns the returning page's edge trails a little behind the finger instead of sitting exactly under it (forward turns are glued).

@@ -25,6 +25,11 @@ describe('fold direction follows the grab', () => {
     expect(foldAngle(0.3, W, at(0.5, 150))).toBeLessThan(0);
     expect(foldAngle(0.3, W, at(0.5, -150))).toBeGreaterThan(0);
   });
+  it('turning back, the held corner comes over first: the tilt is mirrored', () => {
+    expect(foldAngle(0.7, W, { ...at(0.02), back: true })).toBeGreaterThan(0);
+    expect(foldAngle(0.7, W, { ...at(0.98), back: true })).toBeLessThan(0);
+    expect(Math.abs(foldAngle(0.7, W, { ...at(0.5), back: true }))).toBeLessThan(1e-9);
+  });
   it('stays bounded even for a wild drag, and is square once the page is over', () => {
     for (const dy of [-5000, -300, 0, 300, 5000]) for (const y of [-1, 0, 0.5, 1, 2]) {
       expect(Math.abs(foldAngle(0.01, W, at(y, dy)))).toBeLessThanOrEqual(0.85);

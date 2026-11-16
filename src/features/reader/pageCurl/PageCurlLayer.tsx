@@ -136,8 +136,9 @@ function SpreadSheet({ imgs, rFrom, rTo, turning, scrollX, width, height, color,
     const t = progress.value;
     const top = rFrom.right[1]; const pageH = rFrom.right[3] - top;
     // Turning this spread away holds the point that was touched on its right page; turning back holds the page's outer edge.
-    const x = grab.from.get() === turning ? (grab.x.get() - S) / Math.max(E - S, 1) : 1;
-    const g = spreadGeometry(t, S, E, pageH, { x, y: (grab.y.get() - top) / Math.max(pageH, 1), dy: grab.dy.get(), span: width });
+    const back = grab.from.get() !== turning;
+    const x = back ? 1 : (grab.x.get() - S) / Math.max(E - S, 1);
+    const g = spreadGeometry(t, S, E, pageH, { x, y: (grab.y.get() - top) / Math.max(pageH, 1), dy: grab.dy.get(), span: width, back });
     return { rFromL: rFrom.left, rFromR: rFrom.right, rToL: rTo.left, rToR: rTo.right, size: [width, height], S, E, A0: g.A0, Rn: g.Rn, Rcap: g.Rcap, vG: g.vG, Hb: g.H, t, phi: g.phi, bg: color, paper: paperFor(color), hasNext: lift ? 0 : 1 };
   }, [S, E, width, height, color, rFrom, rTo, grab, turning, lift]);
   const style = useAnimatedStyle(() => ({ opacity: progress.value > 0 ? 1 : 0 }));
@@ -181,8 +182,9 @@ function Sheet({ from, to, turning, scrollX, width, height, color, grab, lift }:
     const pageH = pageR[3] - pageR[1];
     const pageW = pageR[2] - pageR[0];
     // Turning this page away holds the point that was touched; turning back to it holds its outer edge (the finger is on the page before).
-    const x = grab.from.get() === turning ? (grab.x.get() - pageR[0]) / Math.max(pageW, 1) : 1;
-    const g = curlGeometry(t, pageW, pageH, { x, y: (grab.y.get() - pageR[1]) / Math.max(pageH, 1), dy: grab.dy.get(), span: width });
+    const back = grab.from.get() !== turning;
+    const x = back ? 1 : (grab.x.get() - pageR[0]) / Math.max(pageW, 1);
+    const g = curlGeometry(t, pageW, pageH, { x, y: (grab.y.get() - pageR[1]) / Math.max(pageH, 1), dy: grab.dy.get(), span: width, back });
     return { size: [width, height], A0: g.A0, Rn: g.Rn, Rcap: g.Rcap, vG: g.vG, Hb: g.H, t, bg: color, paper: paperFor(color), phi: g.phi, pageR, hasNext: lift ? 0 : 1 };
   }, [width, height, color, pageR, grab, turning, lift]);
 
