@@ -30,6 +30,14 @@ import java.io.File
 import java.io.ByteArrayOutputStream
 import java.io.FileOutputStream
 import java.io.OutputStream
+import java.io.InputStream
+import java.io.RandomAccessFile
+import java.util.zip.Inflater
+import java.util.zip.InflaterInputStream
+import java.util.concurrent.Executors
+import expo.modules.kotlin.functions.Coroutine
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.withContext
 
 /**
  * Reads page entries out of RAR4 (CBR) and 7z (CB7) archives and renders PDF pages. JS decides the kind from magic
@@ -46,6 +54,12 @@ private fun bubbleSession(context: android.content.Context): OrtSession {
     return OrtEnvironment.getEnvironment().createSession(bytes, opts).also { bubbleOrt = it }
   }
 }
+
+// Page unpacking and picture shrinking each get their own threads, so neither waits behind the other or behind the module's shared queue
+// (one slow decode used to hold up the next page's unpacking). Two decode threads: enough to keep ahead of fast page turns without
+// holding several full-size bitmaps in memory at once.
+private val unpackLane = Executors.newFixedThreadPool(2).asCoroutineDispatcher()
+private val pictureLane = Executors.newFixedThreadPool(2).asCoroutineDispatcher()
 
 class ComicArchiveModule : Module() {
   private fun fileOf(uri: String): File = File(Uri.parse(uri).path ?: uri)
@@ -95,6 +109,53 @@ class ComicArchiveModule : Module() {
       }
     }
     throw CodedException("MISSING_ENTRY", "Entry not found: $entry", null)
+  }
+
+  /**
+   * `left` bytes of a file from `start`. A raw-deflate Inflater may ask for one byte past the end of the data, so `pad` adds a single zero
+   * byte after it (only used for deflated entries).
+   */
+  private class RangeStream(file: File, start: Long, private var left: Long, private var pad: Boolean) : InputStream() {
+    private val raf = RandomAccessFile(file, "r").also { it.seek(start) }
+    override fun read(): Int {
+      if (left <= 0) { if (pad) { pad = false; return 0 }; return -1 }
+      left--; return raf.read()
+    }
+    override fun read(b: ByteArray, off: Int, len: Int): Int {
+      if (len == 0) return 0
+      if (left <= 0) { if (pad) { pad = false; b[off] = 0; return 1 }; return -1 }
+      val n = raf.read(b, off, minOf(len.toLong(), left).toInt())
+      if (n > 0) left -= n
+      return n
+    }
+    override fun close() = raf.close()
+  }
+
+  /** One zip entry's data, located by the caller (offset, compressed size, method 0 = stored / 8 = deflated), written to `dest`. */
+  private fun extractZipRange(file: File, offset: Long, size: Long, method: Int, dest: File) {
+    val buffer = ByteArray(64 * 1024)
+    FileOutputStream(dest).use { out ->
+      RangeStream(file, offset, size, method == 8).use { raw ->
+        val input: InputStream = if (method == 8) InflaterInputStream(raw, Inflater(true), 64 * 1024) else raw
+        input.use { while (true) { val n = it.read(buffer); if (n < 0) break; out.write(buffer, 0, n) } }
+      }
+    }
+  }
+
+  /**
+   * A smaller copy of a page picture for the page curl, at least `minHeight` tall. Decoded straight at a reduced size (the largest
+   * power-of-two sample that stays above `minHeight`) and not rescaled after: a sampled decode is several times cheaper than a full decode
+   * plus a resize, and never holds the full-size page in memory.
+   */
+  private fun downscale(src: File, dest: File, minHeight: Int) {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(src.path, bounds)
+    if (bounds.outHeight <= 0) throw CodedException("DECODE", "Could not read the image", null)
+    var sample = 1
+    while (bounds.outHeight / (sample * 2) >= minHeight) sample *= 2
+    val decoded = BitmapFactory.decodeFile(src.path, BitmapFactory.Options().apply { inSampleSize = sample })
+      ?: throw CodedException("DECODE", "Could not decode the image", null)
+    try { FileOutputStream(dest).use { decoded.compress(Bitmap.CompressFormat.JPEG, 86, it) } } finally { decoded.recycle() }
   }
 
   /** Keeps only the first bytes written — enough for an image header — and discards the rest. */
@@ -230,6 +291,14 @@ class ComicArchiveModule : Module() {
       } catch (e: UnsupportedRarV5Exception) {
         throw CodedException("RAR5", "RAR5 archives are not supported", e)
       }
+    }
+
+    AsyncFunction("extractZipRange") Coroutine { path: String, offset: Double, size: Double, method: Int, dest: String ->
+      withContext(unpackLane) { extractZipRange(fileOf(path), offset.toLong(), size.toLong(), method, fileOf(dest)) }
+    }
+
+    AsyncFunction("downscaleImage") Coroutine { src: String, dest: String, minHeight: Int ->
+      withContext(pictureLane) { downscale(fileOf(src), fileOf(dest), minHeight) }
     }
 
     AsyncFunction("imageSizes") { path: String, kind: String, entries: List<String> ->

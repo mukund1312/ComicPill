@@ -6,7 +6,7 @@ import { extensionOf, selectImageEntries } from './formats/entries';
 import { findImageRef, parseContainer, parseOpf, resolvePath } from './formats/epub';
 import { readImageSize, type PageSize } from './formats/imageSize';
 import { ComicOpenError } from './errors';
-import { nativeArchive, translateNativeError, type NativeKind } from './nativeArchive';
+import { nativeArchive, optionalNative, translateNativeError, type NativeKind } from './nativeArchive';
 import { ZipReader } from './ZipReader';
 
 export { ComicOpenError } from './errors';
@@ -138,13 +138,22 @@ const writeBytes = (dest: File, bytes: Uint8Array) => { dest.create(); dest.writ
 
 function zipBackend(file: File): Backend {
   const zip = ZipReader.open(file);
+  // Android unpacks pages natively, off the JavaScript thread (taps and turns stay smooth while the next pages are prepared).
+  const native = optionalNative();
+  const fast = native?.extractZipRange ? native.extractZipRange.bind(native) : null;
   try {
     const isEpub = zip.has('META-INF/container.xml');
     const pages = isEpub ? epubPages(zip) : selectImageEntries(zip.names());
     if (pages.length === 0) throw new ComicOpenError('No pages found in this file.', 'no-pages');
     return {
       format: isEpub ? 'epub' : 'cbz', pages, cheapSizes: true,
-      extract: async (entry, dest) => writeBytes(dest, zip.readEntry(entry)),
+      extract: async (entry, dest) => {
+        const span = fast ? zip.span(entry) : null;
+        if (fast && span) {
+          try { await fast(file.uri, span.offset, span.size, span.method, dest.uri); return; } catch { /* fall back to the JavaScript reader */ }
+        }
+        writeBytes(dest, zip.readEntry(entry));
+      },
       head: (entry) => zip.readEntryHead(entry),
       readInfo: async () => { const n = zip.names().find((x) => x.toLowerCase() === 'comicinfo.xml'); return n ? decoder.decode(zip.readEntry(n)) : null; },
       dispose: () => zip.close(),

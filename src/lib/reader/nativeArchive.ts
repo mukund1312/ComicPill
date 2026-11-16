@@ -11,6 +11,10 @@ type Native = {
   /** [width, height] per entry, in one pass over the archive; [0, 0] when unreadable. */
   imageSizes(path: string, kind: NativeKind, entries: string[]): Promise<number[][]>;
   pdfPageSizes(path: string): Promise<number[][]>;
+  /** Android: one zip entry's data (located by JavaScript: data offset, compressed size, method 0 or 8) unpacked to `dest`, off the JS thread. */
+  extractZipRange?(path: string, offset: number, size: number, method: number, dest: string): Promise<void>;
+  /** Android: a JPEG copy of an image decoded at a reduced (power-of-two) size, at least `minHeight` tall. */
+  downscaleImage?(src: string, dest: string, minHeight: number): Promise<void>;
   renderPdfPage(path: string, index: number, dest: string, targetWidth: number): Promise<void>;
   grayThumbnail?(path: string, maxWidth: number): Promise<{ width: number; height: number; data: string }>;
   /** Android: receive the volume keys and a keyboard's left/right arrows as `onHardwareKey` events, one per press, and keep them from the system. Returns false where it can't. */

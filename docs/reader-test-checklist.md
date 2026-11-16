@@ -248,3 +248,27 @@ Checked on the emulator (portrait, 1080×2400), holding the finger mid-turn:
       mirrored for backward turns, so the corner nearest the finger comes over first. Checked held mid-turn in portrait (top, middle,
       bottom) and landscape spreads (top, bottom).
 - Known: on backward turns the returning page's edge trails a little behind the finger instead of sitting exactly under it (forward turns are glued).
+
+## Speed and smoothness pass (16 Nov 2026)
+
+Measured on the emulator (MidnightSons CBZ, 116 pages), each build measured twice right after a reboot: 15 fast taps (~120 ms apart)
+plus 8 fast swipes with Page curl on, frame times from `dumpsys gfxinfo`.
+
+| | Before | After |
+|---|---|---|
+| Median frame while flipping fast | 200–250 ms | 109–113 ms |
+| Frames slowed by draw commands | 51–52 | 29–32 |
+| Curl picture ready (after opening) | 200–450 ms | 30–120 ms |
+| CBZ page unpack | 9–67 ms on the JS thread | 5–86 ms off it (native, Android) |
+
+The emulator is slow even on the old build (16 ms is smooth); a real phone has not been measured.
+
+- [x] The idle curl canvas (the one not turning) no longer redraws a full-screen shader every frame.
+- [x] Curl pictures: decoded natively at half size (power-of-two sample, no full-size decode), on their own threads; pictures still in
+      progress are kept when the page changes (they used to be thrown away, so fast flips got no curl and slid instead).
+- [x] CBZ pages unpack natively on Android (JavaScript locates the entry, native code inflates it); iOS keeps the JavaScript reader.
+      Zip reader covered by new tests (stored and deflated entries, long local headers, entry spans).
+- [x] Reading position is saved once the reader pauses (0.4 s), not a database write per page; still saved at once on leaving/backgrounding.
+- [x] Fixed: after a release the pager stopped a few points short of the page (the final scroll was skipped), leaving a sliver or, after a
+      vertical drag, a big corner curl stuck on a page at rest. Verified: progress lands on exactly 0 and the page is clean.
+- [x] Fixed: a drag that moved mostly up or down left the sheet curled even with no turn; the vertical part now fades out as the turn returns to 0.

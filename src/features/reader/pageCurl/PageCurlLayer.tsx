@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { PixelRatio, StyleSheet } from 'react-native';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { Canvas, Fill, ImageShader, Shader, Skia, type SkImage } from '@shopify/react-native-skia';
 import Animated, { useAnimatedStyle, useDerivedValue, type SharedValue } from 'react-native-reanimated';
 import type { ComicSource } from '../../../lib/reader/ComicSource';
+import { optionalNative } from '../../../lib/reader/nativeArchive';
+import { File, Paths } from 'expo-file-system';
 import { curlEffect, curlGeometry, paperFor, spreadCurlEffect, spreadGeometry } from './curlShader';
 import type { CurlGrab } from './curlDrag';
 
@@ -34,20 +36,35 @@ type Props = {
 type Rect = [number, number, number, number]; // x0, y0, x1, y1
 
 /**
- * A page as a picture for the curl, no bigger than the screen needs. The resize runs natively, off the JavaScript thread, so turning pages quickly
- * never queues up full-size decodes there (which froze the app); only the small copy is decoded. Kept by page and target height.
+ * A page as a picture for the curl, no bigger than the screen needs. Made off the JavaScript thread: on Android a native decoder reads the page
+ * straight at a reduced size (several times faster than a full decode and resize); elsewhere the image manipulator does it. Kept by page and
+ * target height, so a page turned back and forth is prepared once.
  */
 const small = new Map<string, Promise<string>>();
+let made = 0;
+function smallCopy(uri: string, targetHeight: number) {
+  const native = optionalNative();
+  if (native?.downscaleImage) {
+    // At least 60% of the screen's height: the curl is on screen only while the page moves, and a half-size decode is about four times cheaper.
+    const dest = new File(Paths.cache, `curl-${Date.now()}-${made++}.jpg`);
+    return native.downscaleImage(uri, dest.uri, Math.round(targetHeight * 0.6)).then(() => dest.uri);
+  }
+  return ImageManipulator.manipulate(uri).resize({ height: targetHeight }).renderAsync()
+    .then((ref) => ref.saveAsync({ format: SaveFormat.JPEG, compress: 0.9 }))
+    .then((r) => r.uri);
+}
 async function pagePicture(uri: string, targetHeight: number) {
   const key = `${uri}|${targetHeight}`;
   let job = small.get(key);
   if (!job) {
-    job = ImageManipulator.manipulate(uri).resize({ height: targetHeight }).renderAsync()
-      .then((ref) => ref.saveAsync({ format: SaveFormat.JPEG, compress: 0.9 }))
-      .then((r) => r.uri)
-      .catch(() => uri);
+    job = smallCopy(uri, targetHeight).catch(() => uri);
     small.set(key, job);
-    if (small.size > 24) small.delete(small.keys().next().value as string);
+    if (small.size > 24) {
+      const oldest = small.keys().next().value as string;
+      const gone = small.get(oldest); small.delete(oldest);
+      // The small copies are ours to tidy (never the page itself, which a failed copy falls back to).
+      void gone?.then((u) => { if (u.includes('/curl-')) { const f = new File(u); if (f.exists) f.delete(); } }).catch(() => undefined);
+    }
   }
   return Skia.Image.MakeImageFromEncoded(await Skia.Data.fromURI(await job));
 }
@@ -77,28 +94,38 @@ function spreadRects(unit: number[], sizes: Size[], width: number, height: numbe
  */
 export function PageCurlLayer({ source, units, current, sizes, scrollX, width, height, bg, grab }: Props) {
   const [images, setImages] = useState<Record<number, SkImage>>({});
+  // Pages wanted right now: the turn either way, plus one more ahead (reading forwards is the common case) so a fast run of turns finds its
+  // pictures ready. Read through a ref, so a picture that finishes after the reader has moved on is still kept if it is still near.
+  const wanted = useRef(new Set<number>());
+  const asked = useRef(new Set<number>());
+  const mounted = useRef(true);
+  useEffect(() => () => { mounted.current = false; }, []);
   useEffect(() => {
-    let live = true;
-    const near = new Set<number>();
-    for (let u = Math.max(0, current - 1); u <= Math.min(units.length - 1, current + 1); u++) for (const p of units[u]) near.add(p);
-    for (const p of near) {
-      if (images[p]) continue;
+    const near = new Set<number>(); const order: number[] = [];
+    // Nearest first: this turn, the next, the one back, then further ahead.
+    for (const u of [current, current + 1, current - 1, current + 2]) {
+      if (u < 0 || u >= units.length) continue;
+      for (const p of units[u]) if (!near.has(p)) { near.add(p); order.push(p); }
+    }
+    wanted.current = near;
+    for (const p of order) {
+      if (asked.current.has(p)) continue;
+      asked.current.add(p);
       source.getPageUri(p)
         .then((uri) => pagePicture(uri, Math.round(height * PixelRatio.get())))
         .then((image) => {
-          if (!live || !image) return;
+          if (!mounted.current || !image) { asked.current.delete(p); return; }
           setImages((cur) => {
             const next: Record<number, SkImage> = {};
-            for (const k of Object.keys(cur)) if (near.has(Number(k))) next[Number(k)] = cur[Number(k)];
-            next[p] = image;
+            for (const k of Object.keys(cur)) if (wanted.current.has(Number(k))) next[Number(k)] = cur[Number(k)];
+            if (wanted.current.has(p)) next[p] = image;
+            // Anything dropped can be asked for again later.
+            for (const k of asked.current) if (!wanted.current.has(k) && !next[k]) asked.current.delete(k);
             return next;
           });
         })
-        .catch(() => undefined);
+        .catch(() => { asked.current.delete(p); });
     }
-    return () => { live = false; };
-  // `images` is read only to skip pages already loaded; reloading on its change would loop.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source, current, units, height]);
 
   const color = rgb(bg);
@@ -132,15 +159,19 @@ function SpreadSheet({ imgs, rFrom, rTo, turning, scrollX, width, height, color,
     const t = scrollX.value / width - turning;
     return atRest(t, width) ? 0 : t;
   }, [turning, width, lift]);
+  // While this sheet isn't turning, its uniforms stay the very same object, so the canvas is not redrawn at all (a full-screen shader per frame,
+  // twice over, was most of the cost of turning pages quickly).
+  const idle = useMemo(() => ({ rFromL: rFrom.left, rFromR: rFrom.right, rToL: rTo.left, rToR: rTo.right, size: [width, height], S, E, A0: E - S, Rn: 1, Rcap: 0.5, vG: 0, Hb: 1, t: 0, phi: 0, bg: color, paper: paperFor(color), hasNext: lift ? 0 : 1 }), [rFrom, rTo, width, height, S, E, color, lift]);
   const uniforms = useDerivedValue(() => {
     const t = progress.value;
+    if (t === 0) return idle;
     const top = rFrom.right[1]; const pageH = rFrom.right[3] - top;
     // Turning this spread away holds the point that was touched on its right page; turning back holds the page's outer edge.
     const back = grab.from.get() !== turning;
     const x = back ? 1 : (grab.x.get() - S) / Math.max(E - S, 1);
     const g = spreadGeometry(t, S, E, pageH, { x, y: (grab.y.get() - top) / Math.max(pageH, 1), dy: grab.dy.get(), span: width, back });
     return { rFromL: rFrom.left, rFromR: rFrom.right, rToL: rTo.left, rToR: rTo.right, size: [width, height], S, E, A0: g.A0, Rn: g.Rn, Rcap: g.Rcap, vG: g.vG, Hb: g.H, t, phi: g.phi, bg: color, paper: paperFor(color), hasNext: lift ? 0 : 1 };
-  }, [S, E, width, height, color, rFrom, rTo, grab, turning, lift]);
+  }, [S, E, width, height, color, rFrom, rTo, grab, turning, lift, idle]);
   const style = useAnimatedStyle(() => ({ opacity: progress.value > 0 ? 1 : 0 }));
   if (!spreadCurlEffect) return null;
   const at = (r: Rect) => ({ x: r[0], y: r[1], width: r[2] - r[0], height: r[3] - r[1] });
@@ -175,8 +206,11 @@ function Sheet({ from, to, turning, scrollX, width, height, color, grab, lift }:
     return atRest(s, width) ? 0 : s;
   }, [turning, width, lift]);
 
+  // Unchanged uniforms while idle: no redraw (see SpreadSheet).
+  const idle = useMemo(() => ({ size: [width, height], A0: pageR[2] - pageR[0], Rn: 1, Rcap: 0.5, vG: 0, Hb: 1, t: 0, bg: color, paper: paperFor(color), phi: 0, pageR, hasNext: lift ? 0 : 1 }), [width, height, color, pageR, lift]);
   const uniforms = useDerivedValue(() => {
     const t = progress.value;
+    if (t === 0) return idle;
     // The sheet is the page itself (fitted inside the screen), not the letterbox around it. It lifts from where the finger took hold
     // (top corner, bottom corner or anywhere between) and the fold follows the finger.
     const pageH = pageR[3] - pageR[1];
@@ -186,7 +220,7 @@ function Sheet({ from, to, turning, scrollX, width, height, color, grab, lift }:
     const x = back ? 1 : (grab.x.get() - pageR[0]) / Math.max(pageW, 1);
     const g = curlGeometry(t, pageW, pageH, { x, y: (grab.y.get() - pageR[1]) / Math.max(pageH, 1), dy: grab.dy.get(), span: width, back });
     return { size: [width, height], A0: g.A0, Rn: g.Rn, Rcap: g.Rcap, vG: g.vG, Hb: g.H, t, bg: color, paper: paperFor(color), phi: g.phi, pageR, hasNext: lift ? 0 : 1 };
-  }, [width, height, color, pageR, grab, turning, lift]);
+  }, [width, height, color, pageR, grab, turning, lift, idle]);
 
   const style = useAnimatedStyle(() => ({ opacity: progress.value > 0 ? 1 : 0 }));
   if (!curlEffect) return null;

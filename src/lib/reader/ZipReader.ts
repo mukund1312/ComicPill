@@ -53,10 +53,18 @@ export class ZipReader {
     if (!entry) throw new ComicOpenError(`"${name}" is missing from the archive.`);
     if (entry.encrypted) throw new ComicOpenError('This archive is password-protected.');
     if (entry.method !== 0 && entry.method !== 8) throw new ComicOpenError('This archive uses an unsupported compression method.');
-    // Local header = 30 fixed bytes + name + extra; read enough to find where the data starts.
+    // Local header = 30 fixed bytes + name + extra; the fixed part holds both lengths, so that is all that needs reading.
     this.handle.offset = entry.headerOffset;
-    const header = this.handle.readBytes(Math.min(30 + 65535 * 2, (this.handle.size ?? 0) - entry.headerOffset));
+    const header = this.handle.readBytes(Math.min(30, (this.handle.size ?? 0) - entry.headerOffset));
     return { entry, dataStart: entry.headerOffset + (localHeaderLength(header) ?? 30) };
+  }
+
+  /** Where an entry's data is and how it is stored, so another reader (native code) can unpack it. Null if it can't be read that way. */
+  span(name: string): { offset: number; size: number; method: number } | null {
+    try {
+      const { entry, dataStart } = this.locate(name);
+      return { offset: dataStart, size: entry.compressedSize, method: entry.method };
+    } catch { return null; }
   }
 
   /** Compressed bytes of an entry (at most `limit` of them) plus its method. */

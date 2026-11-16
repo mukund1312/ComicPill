@@ -298,10 +298,18 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
     return { known, heights, offsets };
   }, [sizes, sizeList, width]);
 
+  const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const persist = useCallback(() => {
+    if (persistTimer.current) { clearTimeout(persistTimer.current); persistTimer.current = null; }
     if (!settings.incognito) saveReaderProgress(comic.id, position.current.page, webtoon ? position.current.frac : 0);
     setAnchor(position.current);
   }, [comic.id, webtoon, settings.incognito]);
+  // Turning pages quickly writes the place once the reader pauses, not a database write per page on the thread that runs the turns.
+  // Leaving, backgrounding or changing mode still saves at once (they call `persist`).
+  const persistSoon = useCallback(() => {
+    if (persistTimer.current) clearTimeout(persistTimer.current);
+    persistTimer.current = setTimeout(persist, 400);
+  }, [persist]);
 
   // Leave exactly where you were: save on background and on exit as well as on every turn.
   useEffect(() => {
@@ -332,8 +340,8 @@ function Reader({ comic, source, sizes, reading, settings }: { comic: ReaderComi
     const p = first.item[0];
     if (p !== position.current.page) feedback.select(); // a page turned
     position.current = { page: p, frac: 0 };
-    setPage(p); persist();
-  }, [webtoon, strip.known, persist]);
+    setPage(p); persistSoon();
+  }, [webtoon, strip.known, persistSoon]);
 
   const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (!webtoon || !strip.known) return;

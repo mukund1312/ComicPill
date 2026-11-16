@@ -133,10 +133,15 @@ export function useCurlDrag(listRef: AnimatedRef<never>, scrollX: SharedValue<nu
       const v = Math.abs(e.velocityX) > 1 ? e.velocityX : Math.abs(average) > Math.abs(speed.get()) ? average : speed.get();
       const target = success ? releaseTarget(offset.get(), startPage.get(), v, width, lastIndex) : startPage.get();
       end.set(withSpring(0, SETTLE_SPRING(0)));
-      offset.set(withSpring(target * width, SETTLE_SPRING(-v), (done) => {
-        if (done) driving.set(false);
+      const rest = target * width;
+      offset.set(withSpring(rest, SETTLE_SPRING(-v), (done) => {
+        if (!done) return;
+        // Land exactly on the page: this callback runs before the reaction that scrolls the pager sees the final value, so it would
+        // otherwise stop a frame short (a few points off, leaving a sliver of the turn showing).
+        scrollTo(listRef, rest, 0, false);
+        driving.set(false);
       }));
-    }), [enabled, width, lastIndex, scrollX, here, offset, driving, start, startPage, downX, downY, grabX, grabY, grabFrom, grabDy, lastX, lastT, speed, downT, gate, end]);
+    }), [enabled, width, lastIndex, scrollX, here, offset, driving, start, startPage, downX, downY, grabX, grabY, grabFrom, grabDy, lastX, lastT, speed, downT, gate, end, listRef]);
 
   const grab: CurlGrab = useMemo(() => ({ x: grabX, y: grabY, from: grabFrom, dy: grabDy, end }), [grabX, grabY, grabFrom, grabDy, end]);
   return { gesture, grab, gate };

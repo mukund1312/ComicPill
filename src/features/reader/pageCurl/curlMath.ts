@@ -83,9 +83,12 @@ export function curlGeometry(t: number, width: number, height: number, grab: Gra
   const dEnd = 2 * (sG - sMin) + 2 * R1 - Math.PI * R1;
   const span = Math.max(grab.span, 1);
   // How far the finger has carried the held point along the fold's normal (it moved t·span left and dy down).
-  const travel = Math.max(0, t * span * c - grab.dy * sn);
+  // The finger's up/down travel only carries the sheet while the page is actually turning: at rest (t = 0) the sheet is flat, however far the
+  // finger strayed vertically before the page fell back.
+  const travel = Math.max(0, t * span * c - grab.dy * sn * Math.min(1, (t / 0.08) ** 2));
   const D = travel + Math.max(0, dEnd - span) * t * t * t;
-  const hold = sG + (sMax - sG) * Math.exp(-D / (0.12 * width));
+  // The hand-over from the leading corner to the grab point is paced by how far apart they are, so it never races ahead (at most ~4× the finger).
+  const hold = sG + (sMax - sG) * Math.exp(-D / Math.max(0.12 * width, 0.25 * (sMax - sG)));
   // The roll is fattest mid-turn, like a sheet held loosely.
   return { A0: hold - D / 2, Rn: width * (0.07 + 0.11 * Math.sin(Math.PI * t)), Rcap: D / Math.PI, vG, H: height + width * Math.abs(sn), phi };
 }
@@ -107,9 +110,11 @@ export function spreadGeometry(t: number, S: number, E: number, pageH: number, g
   const span = Math.max(grab.span, 1);
   // Landing needs the held point carried to its mirror image across the spine: 2·sG along the (by then upright) normal.
   const dEnd = 2 * sG;
-  const travel = Math.max(0, t * span * c - grab.dy * sn);
+  // The finger's up/down travel only carries the sheet while the page is actually turning: at rest (t = 0) the sheet is flat, however far the
+  // finger strayed vertically before the page fell back.
+  const travel = Math.max(0, t * span * c - grab.dy * sn * Math.min(1, (t / 0.08) ** 2));
   const D = Math.max(0, travel + (dEnd - span) * t * t * t);
-  const hold = sG + (sMax - sG) * Math.exp(-D / (0.12 * P));
+  const hold = sG + (sMax - sG) * Math.exp(-D / Math.max(0.12 * P, 0.25 * (sMax - sG)));
   // Exactly the spine at the end, whatever is left of the hand-over.
   const A0 = t >= 1 ? 0 : hold - D / 2;
   return { A0, Rn: P * (0.03 + 0.15 * Math.sin(Math.PI * t)), Rcap: D / Math.PI, vG, H: pageH + P * Math.abs(sn), phi };
