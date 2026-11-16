@@ -14,13 +14,17 @@ const SKSL = `
 uniform shader fromImg;
 uniform shader toImg;
 uniform float2 size;
-uniform float a;
-uniform float R;
+uniform float A0;
+uniform float Rn;
+uniform float Rcap;
+uniform float vG;
+uniform float Hb;
 uniform float t;
 uniform half3 bg;
 uniform half3 paper;
 uniform float phi;
 uniform float4 pageR;
+uniform float hasNext;
 
 const float PI = 3.14159265;
 
@@ -35,11 +39,17 @@ half4 main(float2 xy) {
   // The fold runs across the page at an angle: the page is lifted by its lower right corner, and the fold straightens as the turn completes.
   // Everything is measured along d, at right angles to the fold.
   float2 d = float2(cos(phi), sin(phi));
-  float s = dot(xy - float2(pageR.x, (pageR.y + pageR.w) * 0.5), d);
+  float2 rel = xy - float2(pageR.x, (pageR.y + pageR.w) * 0.5);
+  float s = dot(rel, d);
+  // Each strip across the fold rolls with its own radius: tight by the finger, looser further along (see curlMath.rollAt).
+  float v = dot(rel, float2(-d.y, d.x));
+  float bx = min(1.0, abs(v - vG) / max(0.8 * Hb, 1.0));
+  float R = max(0.5, min(Rn * (0.6 + 0.8 * bx * bx * (3.0 - 2.0 * bx)), Rcap));
+  float a = A0 - 0.5 * PI * R;
   float grain = (hash(floor(xy / 1.5)) - 0.5) * 0.03;
 
-  // Next page underneath, in the soft shadow of the sheet above it (less as the sheet lifts away).
-  half3 under = opaque(toImg.eval(xy));
+  // Next page underneath (or nothing, past the end of the book), in the soft shadow of the sheet above it.
+  half3 under = hasNext > 0.5 ? opaque(toImg.eval(xy)) : bg;
   float ex = a + R;
   float leaving = 1.0 - smoothstep(0.82, 1.0, t);
   float shadow = 0.5 * clamp(t * 6.0, 0.0, 1.0) * leaving * exp(-max(s - ex, 0.0) / (0.10 * W));
@@ -119,27 +129,37 @@ uniform float4 rToR;
 uniform float2 size;
 uniform float S;
 uniform float E;
-uniform float a;
-uniform float R;
+uniform float A0;
+uniform float Rn;
+uniform float Rcap;
+uniform float vG;
+uniform float Hb;
 uniform float t;
 uniform float phi;
 uniform half3 bg;
+uniform half3 paper;
+uniform float hasNext;
 
 const float PI = 3.14159265;
 
 bool inside(float4 r, float2 p) { return p.x >= r.x && p.x < r.z && p.y >= r.y && p.y < r.w; }
 half3 opaque(half4 c) { return c.rgb + bg * (1.0 - c.a); }
 half3 fromAt(float2 p) { if (inside(rFromL, p)) return opaque(fromL.eval(p)); if (inside(rFromR, p)) return opaque(fromR.eval(p)); return bg; }
-half3 toAt(float2 p) { if (inside(rToL, p)) return opaque(toL.eval(p)); if (inside(rToR, p)) return opaque(toR.eval(p)); return bg; }
+half3 toAt(float2 p) { if (hasNext < 0.5) return bg; if (inside(rToL, p)) return opaque(toL.eval(p)); if (inside(rToR, p)) return opaque(toR.eval(p)); return bg; }
 // The turning sheet is the right page; its back (the next left page) is the same rectangle mirrored about the spine.
 bool onSheet(float2 q) { return inside(rFromR, q); }
-half3 backAt(float2 q) { return toAt(float2(2.0 * S - q.x, q.y)); }
+half3 backAt(float2 q) { return hasNext > 0.5 ? toAt(float2(2.0 * S - q.x, q.y)) : paper; }
 float edgeDist(float2 q) { return min(min(q.x - rFromR.x, rFromR.z - q.x), min(q.y - rFromR.y, rFromR.w - q.y)); }
 
 half4 main(float2 xy) {
   float P = max(E - S, 1.0);
   float2 d = float2(cos(phi), sin(phi));
-  float s = dot(xy - float2(S, (rFromR.y + rFromR.w) * 0.5), d);
+  float2 rel = xy - float2(S, (rFromR.y + rFromR.w) * 0.5);
+  float s = dot(rel, d);
+  float v = dot(rel, float2(-d.y, d.x));
+  float bx = min(1.0, abs(v - vG) / max(0.8 * Hb, 1.0));
+  float R = max(0.5, min(Rn * (0.6 + 0.8 * bx * bx * (3.0 - 2.0 * bx)), Rcap));
+  float a = A0 - 0.5 * PI * R;
 
   half3 base = xy.x >= S ? toAt(xy) : fromAt(xy);
   float leaving = 1.0 - smoothstep(0.8, 1.0, t);

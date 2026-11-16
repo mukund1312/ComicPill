@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { Gesture } from 'react-native-gesture-handler';
 import { cancelAnimation, scrollTo, useAnimatedReaction, useSharedValue, withSpring, type AnimatedRef, type SharedValue } from 'react-native-reanimated';
-import { releaseTarget } from './curlMath';
+import { endLift, releaseTarget, stiff } from './curlMath';
 
 /**
  * The settle after release. Slightly under-damped so it arrives briskly, and clamped so it stops the moment it reaches the page instead of
@@ -14,6 +14,9 @@ const SETTLE_SPRING = (velocity: number) => {
 };
 
 /** What the page's zoom view tells the page-turn drag: whether the page is zoomed in, and whether this drag has pushed it against its side. */
+/** How much the paper gives before it follows the finger 1:1 (dp). */
+const GIVE = 10;
+
 /** Milliseconds, for measuring the finger's speed on the UI thread. */
 function clock() {
   'worklet';
@@ -30,6 +33,8 @@ export type CurlGrab = {
   from: SharedValue<number>;
   /** The finger's vertical travel since then, in pixels; held as it was when the finger lifts so the settle keeps the same fold. */
   dy: SharedValue<number>;
+  /** How far the last page is lifted by a pull past the end of the book (0..0.2 of a turn). */
+  end: SharedValue<number>;
 };
 
 /**
@@ -43,11 +48,17 @@ export function useCurlDrag(listRef: AnimatedRef<never>, scrollX: SharedValue<nu
   // the offset can still read 0; a drag must start from the page on screen, not jump to the first one.
   const here = useSharedValue(current);
   useEffect(() => { here.set(current); }, [here, current]);
+  // Rotating rebuilds the pager at the new width, landed on the current page, but it reports no offset until it scrolls: the last one it
+  // reported is still in the old width's units. Put it right so a drag (and the curl) start from where the page really is.
+  useEffect(() => {
+    if (enabled) scrollX.set(here.get() * width);
+  }, [enabled, width, scrollX, here]);
   const grabX = useSharedValue(0);
   const grabY = useSharedValue(0);
   const grabFrom = useSharedValue(0);
   const grabDy = useSharedValue(0);
   const offset = useSharedValue(0);
+  const end = useSharedValue(0);
   const driving = useSharedValue(false);
   const start = useSharedValue(0);
   const startPage = useSharedValue(0);
@@ -66,7 +77,8 @@ export function useCurlDrag(listRef: AnimatedRef<never>, scrollX: SharedValue<nu
   const restingOffset = () => {
     'worklet';
     const x = scrollX.get(); const k = here.get() * width;
-    return Math.abs(x - k) < width ? x : k;
+    // Trust the reported offset only near the page on screen (a tap's turn may still be gliding there); anything further off is stale.
+    return Math.abs(x - k) < width * 0.5 ? x : k;
   };
 
   useAnimatedReaction(() => offset.get(), (x, prev) => {
@@ -78,7 +90,11 @@ export function useCurlDrag(listRef: AnimatedRef<never>, scrollX: SharedValue<nu
     const now = clock(); const dt = now - lastT.get();
     // Moves that arrive together (a few ms apart) say nothing about speed; the lift itself is not a move.
     if (sample && dt >= 4) { speed.set(speed.get() * 0.3 + (((x - lastX.get()) / dt) * 1000) * 0.7); lastX.set(x); lastT.set(now); }
-    offset.set(Math.max(0, Math.min(lastIndex * width, start.get() - (x - downX.get()))));
+    // The paper's stiffness: the first few points of travel lift it a little less than the finger moves.
+    const want = start.get() - stiff(x - downX.get(), GIVE);
+    const max = lastIndex * width;
+    offset.set(Math.max(0, Math.min(max, want)));
+    end.set(endLift(want - max, width));
     grabDy.set(y - downY.get());
   };
 
@@ -101,7 +117,7 @@ export function useCurlDrag(listRef: AnimatedRef<never>, scrollX: SharedValue<nu
       } else if (Math.abs(dy) > 40) manager.fail();
     })
     .onStart(() => {
-      cancelAnimation(offset);
+      cancelAnimation(offset); cancelAnimation(end);
       const x0 = driving.get() ? offset.get() : restingOffset();
       start.set(x0); offset.set(x0);
       startPage.set(Math.round(x0 / Math.max(width, 1)));
@@ -116,11 +132,12 @@ export function useCurlDrag(listRef: AnimatedRef<never>, scrollX: SharedValue<nu
       const average = took > 0 && took < 300 ? ((e.x - downX.get()) / took) * 1000 : 0;
       const v = Math.abs(e.velocityX) > 1 ? e.velocityX : Math.abs(average) > Math.abs(speed.get()) ? average : speed.get();
       const target = success ? releaseTarget(offset.get(), startPage.get(), v, width, lastIndex) : startPage.get();
+      end.set(withSpring(0, SETTLE_SPRING(0)));
       offset.set(withSpring(target * width, SETTLE_SPRING(-v), (done) => {
         if (done) driving.set(false);
       }));
-    }), [enabled, width, lastIndex, scrollX, here, offset, driving, start, startPage, downX, downY, grabX, grabY, grabFrom, grabDy, lastX, lastT, speed, downT, gate]);
+    }), [enabled, width, lastIndex, scrollX, here, offset, driving, start, startPage, downX, downY, grabX, grabY, grabFrom, grabDy, lastX, lastT, speed, downT, gate, end]);
 
-  const grab: CurlGrab = useMemo(() => ({ x: grabX, y: grabY, from: grabFrom, dy: grabDy }), [grabX, grabY, grabFrom, grabDy]);
+  const grab: CurlGrab = useMemo(() => ({ x: grabX, y: grabY, from: grabFrom, dy: grabDy, end }), [grabX, grabY, grabFrom, grabDy, end]);
   return { gesture, grab, gate };
 }

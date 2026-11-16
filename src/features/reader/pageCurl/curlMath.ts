@@ -27,16 +27,44 @@ export function foldAngle(t: number, pageW: number, grab: Grab) {
 }
 
 /**
- * The cylinder (axis position `a` along the fold's normal, radius `R`) for a sheet of width W and height H, measured from the middle of its
- * free-standing (left) edge, at turn progress `t`.
- *
- * Paper held at a point G and carried to F folds along the perpendicular bisector of G and F; with a roll of radius R the axis sits at
- * (sG + sF − πR) / 2 along the fold's normal. So the point that was touched stays under the finger. Before the finger has moved, the held
- * point is the page's leading corner (nothing curls, so nothing jumps when the finger first moves); it hands over to the real grab point
- * within the first few millimetres of travel. Towards the end the sheet is carried a little faster than the finger so that, by the time the
- * pager arrives (t = 1), the roll has passed the far corner and the whole sheet is over.
+ * The pose of a turning sheet. The sheet is not one rigid cylinder: each strip of paper running at right angles to the fold rolls with its
+ * own radius, tight near the finger (where the paper is being pulled) and looser further along the fold, the way a real sheet bends freely
+ * around the point it is held by. `rollAt` gives the roll for one strip; the shader does the same per pixel.
+ *   A0   half of the mirror line: a sheet point at s' that has come over lies flat at 2·A0 − s' (whatever the strip's radius)
+ *   Rn   the nominal roll radius at this stage of the turn
+ *   Rcap the largest radius the finger's travel allows (the held point must already be over the top of the roll)
+ *   vG   where the held point is along the fold
+ *   H    the sheet's length along the fold (for how quickly the roll loosens away from the finger)
+ *   phi  the fold's angle
  */
-export function curlGeometry(t: number, width: number, height: number, grab: Grab) {
+export type CurlPose = { A0: number; Rn: number; Rcap: number; vG: number; H: number; phi: number };
+
+/** How much looser (>1) or tighter (<1) the roll is at distance |v − vG| along the fold from the held point. */
+export function bendAt(v: number, vG: number, H: number) {
+  'worklet';
+  const x = Math.min(1, Math.abs(v - vG) / Math.max(0.8 * H, 1));
+  return TIGHT + (LOOSE - TIGHT) * x * x * (3 - 2 * x);
+}
+export const TIGHT = 0.6;
+export const LOOSE = 1.4;
+
+/** One strip's roll: axis position `a` along the fold's normal and radius `R`. Mirrors the shader. */
+export function rollAt(p: CurlPose, v: number) {
+  'worklet';
+  const R = Math.max(0.5, Math.min(p.Rn * bendAt(v, p.vG, p.H), p.Rcap));
+  return { a: p.A0 - (Math.PI * R) / 2, R };
+}
+
+/**
+ * The pose of a single sheet of width W and height H, measured from the middle of its free-standing (left) edge, at turn progress `t`.
+ *
+ * Paper held at a point G and carried to F folds along the perpendicular bisector of G and F: a point s' that has come over lies at
+ * sG + sF − s', so the point that was touched stays under the finger. Before the finger has moved, the held point is the page's leading
+ * corner (nothing curls, so nothing jumps when the finger first moves); it hands over to the real grab point within the first few
+ * millimetres of travel. Towards the end the sheet is carried a little faster than the finger so that, by the time the pager arrives
+ * (t = 1), every strip's roll has passed the far corner and the whole sheet is over.
+ */
+export function curlGeometry(t: number, width: number, height: number, grab: Grab): CurlPose {
   'worklet';
   const phi = foldAngle(t, width, grab);
   const c = Math.cos(phi); const sn = Math.sin(phi);
@@ -47,32 +75,62 @@ export function curlGeometry(t: number, width: number, height: number, grab: Gra
   const gx = Math.max(0.55, Math.min(1, grab.x)) * width;
   const gy = (Math.max(0, Math.min(1, grab.y)) - 0.5) * height;
   const sG = gx * c + gy * sn;
-  const R1 = width * 0.07;
+  const vG = -gx * sn + gy * c;
+  // The tightest strip's radius at the end; every looser strip then clears the far corner too.
+  const R1 = width * 0.07 * TIGHT;
   const dEnd = 2 * (sG - sMin) + 2 * R1 - Math.PI * R1;
   const span = Math.max(grab.span, 1);
   // How far the finger has carried the held point along the fold's normal (it moved t·span left and dy down).
   const travel = Math.max(0, t * span * c - grab.dy * sn);
   const D = travel + Math.max(0, dEnd - span) * t * t * t;
-  // The roll is fattest mid-turn, like a sheet held loosely, but never more than the travel allows: the held point is always over the top
-  // of the roll and flat on the far side, which is what keeps it under the finger.
-  const R = Math.max(0.5, Math.min(width * (0.07 + 0.11 * Math.sin(Math.PI * t)), D / Math.PI));
   const hold = sG + (sMax - sG) * Math.exp(-D / (0.12 * width));
-  const a = hold - D / 2 - (Math.PI * R) / 2;
-  return { a, R, phi };
+  // The roll is fattest mid-turn, like a sheet held loosely.
+  return { A0: hold - D / 2, Rn: width * (0.07 + 0.11 * Math.sin(Math.PI * t)), Rcap: D / Math.PI, vG, H: height + width * Math.abs(sn), phi };
 }
 
-/** The roll for a spread: it starts at the outer edge `E`, ends at the spine `S` (thin again), and is fattest half-way. */
-export function spreadGeometry(t: number, S: number, E: number, pageH: number, grab: Grab) {
+/**
+ * The same for the right-hand page of a two-page spread, measured from the spine S (P = page width). The held point stays under the finger
+ * as on a single page, and at t = 1 the mirror line is the spine itself, so the page lands exactly over the left half.
+ */
+export function spreadGeometry(t: number, S: number, E: number, pageH: number, grab: Grab): CurlPose {
   'worklet';
-  const P = E - S;
-  // The fold leans towards the held corner and follows the finger, as on a single page; it is upright by the time the page lands.
+  const P = Math.max(E - S, 1);
   const phi = foldAngle(t, P, grab) * 0.8;
-  const R = P * (0.02 + 0.16 * Math.sin(Math.PI * t));
-  // Measured at right angles to the fold from the spine: the right page reaches out to its leading outer corner at sMax.
-  const sMax = P * Math.cos(phi) + (pageH / 2) * Math.abs(Math.sin(phi));
-  // At t = 1 the turned page lies mirrored about the spine (and the fold is upright): 2a + πR = 0.
-  const a = sMax - t * sMax - t * ((Math.PI * R) / 2);
-  return { a, R, phi };
+  const c = Math.cos(phi); const sn = Math.sin(phi);
+  const sMax = P * c + (pageH / 2) * Math.abs(sn);
+  const gx = Math.max(0.55, Math.min(1, grab.x)) * P;
+  const gy = (Math.max(0, Math.min(1, grab.y)) - 0.5) * pageH;
+  const sG = gx * c + gy * sn;
+  const vG = -gx * sn + gy * c;
+  const span = Math.max(grab.span, 1);
+  // Landing needs the held point carried to its mirror image across the spine: 2·sG along the (by then upright) normal.
+  const dEnd = 2 * sG;
+  const travel = Math.max(0, t * span * c - grab.dy * sn);
+  const D = Math.max(0, travel + (dEnd - span) * t * t * t);
+  const hold = sG + (sMax - sG) * Math.exp(-D / (0.12 * P));
+  // Exactly the spine at the end, whatever is left of the hand-over.
+  const A0 = t >= 1 ? 0 : hold - D / 2;
+  return { A0, Rn: P * (0.03 + 0.15 * Math.sin(Math.PI * t)), Rcap: D / Math.PI, vG, H: pageH + P * Math.abs(sn), phi };
+}
+
+/**
+ * How far a page lifts when it is pulled past the end of the book (there is no next page). The pull meets more and more resistance and the
+ * page never comes more than a fifth of the way over; let go and it falls back. `excess` is how far past the end the finger has gone.
+ */
+export function endLift(excess: number, width: number) {
+  'worklet';
+  if (excess <= 0) return 0;
+  return 0.2 * (1 - Math.exp(-excess / Math.max(0.5 * width, 1)));
+}
+
+/**
+ * The paper's stiffness at the start of a drag: the first few points of travel lift the page less than the finger moves, then it follows
+ * 1:1 (a constant lag of `give`). Smooth, so there is no step when it takes over.
+ */
+export function stiff(dx: number, give: number) {
+  'worklet';
+  const m = Math.abs(dx);
+  return Math.sign(dx) * (m - give * (1 - Math.exp(-m / give)));
 }
 
 /**

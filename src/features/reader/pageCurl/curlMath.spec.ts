@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { curlGeometry, foldAngle, releaseTarget, spreadGeometry } from './curlMath';
+import { bendAt, curlGeometry, endLift, foldAngle, releaseTarget, rollAt, spreadGeometry, stiff, type CurlPose } from './curlMath';
 
 const W = 400; const H = 600; const SPAN = 412;
 const at = (y: number, dy = 0, x = 1) => ({ x, y, dy, span: SPAN });
@@ -36,21 +36,22 @@ describe('fold direction follows the grab', () => {
   });
 });
 
+/** Strips along the fold, from one end of the page to the other. */
+const strips = (p: CurlPose) => [-1, -0.5, 0, 0.5, 1].map((k) => k * p.H / 2);
+
 describe('single-page curl geometry', () => {
   for (const y of [0.02, 0.5, 0.98]) {
-    it(`starts flat and ends fully over (grab at ${y})`, () => {
+    it(`starts flat and ends fully over, every strip (grab at ${y})`, () => {
       const g0 = curlGeometry(0, W, H, at(y));
-      // Nothing of the page is past the roll at the start: the axis sits on the leading corner.
-      expect(Math.abs(g0.a - sMax(g0.phi))).toBeLessThan(1);
+      for (const v of strips(g0)) expect(Math.abs(rollAt(g0, v).a - sMax(g0.phi))).toBeLessThan(1);
       const g1 = curlGeometry(1, W, H, at(y));
-      // At the end the roll has passed the trailing corner, so no part of the sheet is left on the page.
-      expect(g1.a + g1.R).toBeLessThanOrEqual(sMin(g1.phi) + 1e-6);
+      for (const v of strips(g1)) { const r = rollAt(g1, v); expect(r.a + r.R).toBeLessThanOrEqual(sMin(g1.phi) + 1e-6); }
     });
-    it(`moves continuously and only forwards (grab at ${y})`, () => {
+    it(`moves continuously (grab at ${y})`, () => {
       let prev = curlGeometry(0, W, H, at(y));
       for (let i = 1; i <= 200; i++) {
         const g = curlGeometry(i / 200, W, H, at(y, 40 * Math.sin(i / 30)));
-        expect(Math.abs(g.a - prev.a)).toBeLessThan(W * 0.04);
+        for (const v of [0, H / 3]) expect(Math.abs(rollAt(g, v).a - rollAt(prev, v).a)).toBeLessThan(W * 0.05);
         expect(Math.abs(g.phi - prev.phi)).toBeLessThan(0.05);
         prev = g;
       }
@@ -62,25 +63,66 @@ describe('single-page curl geometry', () => {
       const d = [Math.cos(g.phi), Math.sin(g.phi)];
       const G = [x * W, (y - 0.5) * H]; const F = [G[0] - t * SPAN, G[1] + dy];
       const sG = G[0] * d[0] + G[1] * d[1]; const sF = F[0] * d[0] + F[1] * d[1];
-      // Once it is over the roll, a sheet point at s' shows at 2a + πR − s'.
-      expect(Math.abs(2 * g.a + Math.PI * g.R - sG - sF)).toBeLessThan(0.08 * W);
+      // A sheet point at s' that has come over lies at 2·A0 − s', whatever its strip's radius.
+      expect(Math.abs(2 * g.A0 - sG - sF)).toBeLessThan(0.08 * W);
+      // And the held point really is over the top of its strip's roll (flat on the far side), not part-way round it.
+      const r = rollAt(g, g.vG);
+      expect(sG - r.a).toBeGreaterThanOrEqual(Math.PI * r.R - 1e-6);
     });
   }
+  it('the sheet bends freely: tight by the finger, looser along the fold away from it', () => {
+    const g = curlGeometry(0.5, W, H, at(0.1, 0, 1));
+    const near = rollAt(g, g.vG).R; const far = rollAt(g, g.vG + 0.9 * H).R;
+    expect(near).toBeLessThan(far);
+    expect(bendAt(0, 0, H)).toBeCloseTo(0.6);
+    expect(bendAt(H, 0, H)).toBeCloseTo(1.4);
+  });
   it('a hold far in from the edge cannot fold the whole page over at once', () => {
     const g = curlGeometry(0.02, W, H, at(0.5, 0, 0.1));
-    expect(g.a).toBeGreaterThan(0.45 * W);
+    expect(rollAt(g, 0).a).toBeGreaterThan(0.45 * W);
   });
 });
 
 describe('spread curl geometry', () => {
+  const S = 300; const E = 700; const P = E - S; const PH = 500; const SW = 1000;
+  const sp = (y: number, dy = 0, x = 1) => ({ x, y, dy, span: SW });
   it('lands mirrored about the spine with an upright fold', () => {
-    const g = spreadGeometry(1, 300, 700, 500, at(0.1, 80));
+    const g = spreadGeometry(1, S, E, PH, sp(0.1, 80));
     expect(Math.abs(g.phi)).toBeLessThan(1e-9);
-    expect(2 * g.a + Math.PI * g.R).toBeCloseTo(0, 6);
+    expect(g.A0).toBe(0);
+  });
+  it('starts flat', () => {
+    const g = spreadGeometry(0, S, E, PH, sp(0.3));
+    expect(Math.abs(rollAt(g, 0).a - (P * Math.cos(g.phi) + (PH / 2) * Math.abs(Math.sin(g.phi))))).toBeLessThan(1);
   });
   it('leans towards the held corner', () => {
-    expect(spreadGeometry(0.2, 300, 700, 500, at(0.0)).phi).toBeLessThan(0);
-    expect(spreadGeometry(0.2, 300, 700, 500, at(1.0)).phi).toBeGreaterThan(0);
+    expect(spreadGeometry(0.2, S, E, PH, sp(0.0)).phi).toBeLessThan(0);
+    expect(spreadGeometry(0.2, S, E, PH, sp(1.0)).phi).toBeGreaterThan(0);
+  });
+  for (const [x, y] of [[1, 0.5], [0.8, 0.15]]) {
+    it(`keeps the touched point under the finger (held at ${x}, ${y})`, () => {
+      const t = 0.35; const g = spreadGeometry(t, S, E, PH, sp(y, 0, x));
+      const d = [Math.cos(g.phi), Math.sin(g.phi)];
+      const G = [x * P, (y - 0.5) * PH]; const F = [G[0] - t * SW, G[1]];
+      const sG = G[0] * d[0] + G[1] * d[1]; const sF = F[0] * d[0] + F[1] * d[1];
+      expect(Math.abs(2 * g.A0 - sG - sF)).toBeLessThan(0.1 * P);
+    });
+  }
+});
+
+describe('resistance', () => {
+  it('a pull past the end lifts the last page less and less, never more than a fifth of a turn', () => {
+    expect(endLift(-10, 400)).toBe(0);
+    expect(endLift(50, 400)).toBeGreaterThan(0);
+    expect(endLift(400, 400) - endLift(200, 400)).toBeLessThan(endLift(200, 400));
+    expect(endLift(1e6, 400)).toBeLessThanOrEqual(0.2);
+  });
+  it('the paper gives a little at first, then follows the finger 1:1', () => {
+    expect(stiff(0, 10)).toBe(0);
+    expect(Math.abs(stiff(3, 10))).toBeLessThan(1);
+    expect(stiff(200, 10)).toBeCloseTo(190, 0);
+    expect(stiff(-200, 10)).toBeCloseTo(-190, 0);
+    for (let x = -100; x < 100; x += 1) expect(stiff(x + 1, 10)).toBeGreaterThanOrEqual(stiff(x, 10));
   });
 });
 

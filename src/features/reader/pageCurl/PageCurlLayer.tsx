@@ -103,16 +103,20 @@ export function PageCurlLayer({ source, units, current, sizes, scrollX, width, h
 
   const color = rgb(bg);
   const sheet = (k: number) => {
-    const from = units[k]; const to = units[k + 1];
+    const from = units[k];
+    // The last page has nothing after it: pulled past the end it lifts against growing resistance over an empty space, then falls back.
+    const last = k === units.length - 1;
+    const to = last ? from : units[k + 1];
     if (!from || !to) return null;
+    const lift = last ? grab.end : undefined;
     if (from.length === 1 && to.length === 1) {
       const a = images[from[0]]; const b = images[to[0]];
-      return a && b ? <Sheet key={`s${k}`} from={a} to={b} turning={k} scrollX={scrollX} width={width} height={height} color={color} grab={grab} /> : null;
+      return a && b ? <Sheet key={`s${k}`} from={a} to={b} turning={k} scrollX={scrollX} width={width} height={height} color={color} grab={grab} lift={lift} /> : null;
     }
     if (from.length === 2 && to.length === 2) {
       const imgs = [images[from[0]], images[from[1]], images[to[0]], images[to[1]]];
       if (imgs.some((i) => !i)) return null;
-      return <SpreadSheet key={`p${k}`} imgs={imgs as SkImage[]} rFrom={spreadRects(from, sizes, width, height)} rTo={spreadRects(to, sizes, width, height)} turning={k} scrollX={scrollX} width={width} height={height} color={color} grab={grab} />;
+      return <SpreadSheet key={`p${k}`} imgs={imgs as SkImage[]} rFrom={spreadRects(from, sizes, width, height)} rTo={spreadRects(to, sizes, width, height)} turning={k} scrollX={scrollX} width={width} height={height} color={color} grab={grab} lift={lift} />;
     }
     return null; // a lone cover next to a spread just slides
   };
@@ -121,18 +125,21 @@ export function PageCurlLayer({ source, units, current, sizes, scrollX, width, h
 }
 
 /** The right-hand page of a spread turning over like a book's, onto the left half, uncovering the next spread. */
-function SpreadSheet({ imgs, rFrom, rTo, turning, scrollX, width, height, color, grab }: { imgs: SkImage[]; rFrom: { left: Rect; right: Rect }; rTo: { left: Rect; right: Rect }; turning: number; scrollX: SharedValue<number>; width: number; height: number; color: [number, number, number]; grab: CurlGrab }) {
+function SpreadSheet({ imgs, rFrom, rTo, turning, scrollX, width, height, color, grab, lift }: { imgs: SkImage[]; rFrom: { left: Rect; right: Rect }; rTo: { left: Rect; right: Rect }; turning: number; scrollX: SharedValue<number>; width: number; height: number; color: [number, number, number]; grab: CurlGrab; lift?: SharedValue<number> }) {
   const S = rFrom.right[0]; const E = rFrom.right[2];
   const progress = useDerivedValue(() => {
+    if (lift) return lift.get() > 0.001 ? lift.get() : 0;
     const t = scrollX.value / width - turning;
     return atRest(t, width) ? 0 : t;
-  }, [turning, width]);
+  }, [turning, width, lift]);
   const uniforms = useDerivedValue(() => {
     const t = progress.value;
     const top = rFrom.right[1]; const pageH = rFrom.right[3] - top;
-    const { a, R, phi } = spreadGeometry(t, S, E, pageH, { x: 1, y: (grab.y.get() - top) / Math.max(pageH, 1), dy: grab.dy.get(), span: width });
-    return { rFromL: rFrom.left, rFromR: rFrom.right, rToL: rTo.left, rToR: rTo.right, size: [width, height], S, E, a, R, t, phi, bg: color };
-  }, [S, E, width, height, color, rFrom, rTo, grab]);
+    // Turning this spread away holds the point that was touched on its right page; turning back holds the page's outer edge.
+    const x = grab.from.get() === turning ? (grab.x.get() - S) / Math.max(E - S, 1) : 1;
+    const g = spreadGeometry(t, S, E, pageH, { x, y: (grab.y.get() - top) / Math.max(pageH, 1), dy: grab.dy.get(), span: width });
+    return { rFromL: rFrom.left, rFromR: rFrom.right, rToL: rTo.left, rToR: rTo.right, size: [width, height], S, E, A0: g.A0, Rn: g.Rn, Rcap: g.Rcap, vG: g.vG, Hb: g.H, t, phi: g.phi, bg: color, paper: paperFor(color), hasNext: lift ? 0 : 1 };
+  }, [S, E, width, height, color, rFrom, rTo, grab, turning, lift]);
   const style = useAnimatedStyle(() => ({ opacity: progress.value > 0 ? 1 : 0 }));
   if (!spreadCurlEffect) return null;
   const at = (r: Rect) => ({ x: r[0], y: r[1], width: r[2] - r[0], height: r[3] - r[1] });
@@ -153,7 +160,7 @@ function SpreadSheet({ imgs, rFrom, rTo, turning, scrollX, width, height, color,
 }
 
 /** One sheet: `from` turns away over `to` while the pager sits between page `turning` and the one after it. */
-function Sheet({ from, to, turning, scrollX, width, height, color, grab }: { from: SkImage; to: SkImage; turning: number; scrollX: SharedValue<number>; width: number; height: number; color: [number, number, number]; grab: CurlGrab }) {
+function Sheet({ from, to, turning, scrollX, width, height, color, grab, lift }: { from: SkImage; to: SkImage; turning: number; scrollX: SharedValue<number>; width: number; height: number; color: [number, number, number]; grab: CurlGrab; lift?: SharedValue<number> }) {
   // Where the page sits on screen (fitted like the reader fits it): the sheet that turns is exactly this rectangle.
   const pageR = useMemo((): [number, number, number, number] => {
     const k = Math.min(width / from.width(), height / from.height());
@@ -162,9 +169,10 @@ function Sheet({ from, to, turning, scrollX, width, height, color, grab }: { fro
   }, [from, width, height]);
   // Progress of this sheet's turn: 0 while the pager rests on `turning`, 1 once it reaches the next page; otherwise this sheet is idle.
   const progress = useDerivedValue(() => {
+    if (lift) return lift.get() > 0.001 ? lift.get() : 0;
     const s = scrollX.value / width - turning;
     return atRest(s, width) ? 0 : s;
-  }, [turning, width]);
+  }, [turning, width, lift]);
 
   const uniforms = useDerivedValue(() => {
     const t = progress.value;
@@ -174,9 +182,9 @@ function Sheet({ from, to, turning, scrollX, width, height, color, grab }: { fro
     const pageW = pageR[2] - pageR[0];
     // Turning this page away holds the point that was touched; turning back to it holds its outer edge (the finger is on the page before).
     const x = grab.from.get() === turning ? (grab.x.get() - pageR[0]) / Math.max(pageW, 1) : 1;
-    const { a, R, phi } = curlGeometry(t, pageW, pageH, { x, y: (grab.y.get() - pageR[1]) / Math.max(pageH, 1), dy: grab.dy.get(), span: width });
-    return { size: [width, height], a, R, t, bg: color, paper: paperFor(color), phi, pageR };
-  }, [width, height, color, pageR, grab, turning]);
+    const g = curlGeometry(t, pageW, pageH, { x, y: (grab.y.get() - pageR[1]) / Math.max(pageH, 1), dy: grab.dy.get(), span: width });
+    return { size: [width, height], A0: g.A0, Rn: g.Rn, Rcap: g.Rcap, vG: g.vG, Hb: g.H, t, bg: color, paper: paperFor(color), phi: g.phi, pageR, hasNext: lift ? 0 : 1 };
+  }, [width, height, color, pageR, grab, turning, lift]);
 
   const style = useAnimatedStyle(() => ({ opacity: progress.value > 0 ? 1 : 0 }));
   if (!curlEffect) return null;

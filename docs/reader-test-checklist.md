@@ -224,5 +224,20 @@ Checked on the emulator (portrait, 1080×2400), holding the finger mid-turn:
 - [x] Taps on the side zones still turn pages (both ways); a swipe no longer also counts as a tap (no menu popping up).
 - [x] Right after opening a comic at a saved page, the first drag starts from that page (it used to be able to jump to page 1).
 - [x] Landscape spread: the right page lifts from the corner that was grabbed (top or bottom).
-- Not checked on a real phone yet; zoomed-in page → push against its side → page turns relies on the zoom view handing over (logic in place, not exercised on the emulator).
-- Not physical simulation: the paper is a cylinder-roll model driven by the finger, not a cloth/mass-spring sheet. Landscape spreads lean towards the held corner but keep the spine-anchored roll (the held point is not glued to the finger there).
+- Superseded by the follow-up below.
+
+## Page curl follow-up (16 Nov 2026)
+
+- [x] The sheet bends freely instead of rolling as one rigid cylinder: each strip across the fold has its own roll, tight by the finger and
+      looser further along the fold, so a corner peel shows a curved fold. Checked top / middle / bottom grabs held mid-turn.
+- [x] Landscape spreads keep the touched point under the finger (same bisector model, landing exactly mirrored about the spine at the end).
+      Checked top-corner and bottom-corner grabs held mid-turn; the flap's corner sits at the finger.
+- [x] Fixed: after rotating, the first drag started from the old orientation's offset (pages slid, no curl). The hook resets the offset on a width change.
+- [x] End of book: pulling the last page lifts it up to a fifth of a turn against growing resistance, over an empty space, white back showing; it falls back on release.
+- [x] Paper stiffness: the first ~10 dp of a drag lift the page a little less than the finger moves, then it follows 1:1 (smooth, no step).
+- [x] Zoomed-in page (one-finger zoom): swipes pan the page; once it is against its side the next swipe turns the page.
+      Seen once: the first swipe right after zooming did not visibly pan. Later swipes did.
+- Seen once, not reproduced in 8+ further landscape drags: an "isn't responding" dialog while drawing the landscape curl on the emulator
+  (the main thread was waiting on the emulator's GPU to present the Skia frame). Watch for stutter on a real phone in landscape.
+- Still not a full physics simulation (no mass-spring cloth): it is an analytic per-strip roll model driven by the finger.
+- Not done: real-phone test (no phone connected to this Mac).
